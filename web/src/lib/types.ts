@@ -15,6 +15,10 @@ export interface Session {
   projectName: string;
   projectPath: string;
   summary: string | null;
+  // New title fields
+  generatedTitle: string | null;
+  titleSource: 'claude' | 'user_message' | 'insight' | 'character' | 'fallback' | null;
+  sessionCharacter: 'deep_focus' | 'bug_hunt' | 'feature_build' | 'exploration' | 'refactor' | 'learning' | 'quick_task' | null;
   startedAt: Date;
   endedAt: Date;
   messageCount: number;
@@ -34,8 +38,11 @@ export interface Insight {
   type: 'decision' | 'learning' | 'workitem' | 'effort';
   title: string;
   content: string;
+  // New structured fields
+  summary: string;
+  bullets: string[];
   confidence: number;
-  source: 'pattern' | 'llm';
+  source: 'pattern' | 'llm' | 'claude_insight';
   metadata: InsightMetadata;
   timestamp: Date;
   createdAt: Date;
