@@ -12,6 +12,7 @@ out/
 # Environment and config files
 .env
 .env.*
+!.env.example
 *.local
 
 # IDE
