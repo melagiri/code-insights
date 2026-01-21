@@ -60,7 +60,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">
-          {session.summary || 'Untitled Session'}
+          {session.summary || session.generatedTitle || 'Untitled Session'}
         </h1>
         <p className="text-muted-foreground">{session.projectName}</p>
       </div>
