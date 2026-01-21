@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { saveConfig, getConfigDir, isConfigured } from '../utils/config.js';
 import type { ClaudeInsightConfig } from '../types.js';
 
+const DEFAULT_DASHBOARD_URL = 'https://claudeinsight.vercel.app';
+
 /**
  * Initialize ClaudeInsight configuration
  */
@@ -25,10 +27,13 @@ export async function initCommand(): Promise<void> {
     }
   }
 
+  // Step 1: Service Account (for CLI sync)
+  console.log(chalk.bold('\n📋 Step 1: CLI Sync Configuration\n'));
   console.log(chalk.gray('You\'ll need your Firebase service account credentials.'));
-  console.log(chalk.gray('Get them from: Firebase Console > Project Settings > Service Accounts > Generate New Private Key\n'));
+  console.log(chalk.gray('Get them from: Firebase Console > Project Settings > Service Accounts'));
+  console.log(chalk.gray('Click "Generate New Private Key" and open the downloaded JSON file.\n'));
 
-  const answers = await inquirer.prompt([
+  const serviceAccountAnswers = await inquirer.prompt([
     {
       type: 'input',
       name: 'projectId',
@@ -38,59 +43,98 @@ export async function initCommand(): Promise<void> {
     {
       type: 'input',
       name: 'clientEmail',
-      message: 'Service Account Email:',
+      message: 'Service Account Email (client_email from JSON):',
       validate: (input: string) =>
         input.includes('@') || 'Please enter a valid service account email',
     },
     {
       type: 'password',
       name: 'privateKey',
-      message: 'Private Key (paste the entire key including BEGIN/END):',
+      message: 'Private Key (private_key from JSON, including BEGIN/END):',
       validate: (input: string) =>
         input.includes('PRIVATE KEY') || 'Please paste the complete private key',
     },
+  ]);
+
+  // Step 2: Web Dashboard Config
+  console.log(chalk.bold('\n🌐 Step 2: Web Dashboard Configuration\n'));
+  console.log(chalk.gray('Now we need the Firebase Web SDK config for the dashboard.'));
+  console.log(chalk.gray('Get it from: Firebase Console > Project Settings > General'));
+  console.log(chalk.gray('Scroll to "Your apps" section and copy the config values.\n'));
+
+  const webConfigAnswers = await inquirer.prompt([
     {
-      type: 'confirm',
-      name: 'configureGemini',
-      message: 'Configure Gemini API for AI-powered insights? (optional)',
-      default: false,
+      type: 'input',
+      name: 'apiKey',
+      message: 'API Key (apiKey):',
+      validate: (input: string) => input.length > 0 || 'API Key is required',
+    },
+    {
+      type: 'input',
+      name: 'authDomain',
+      message: 'Auth Domain (authDomain):',
+      default: `${serviceAccountAnswers.projectId}.firebaseapp.com`,
+    },
+    {
+      type: 'input',
+      name: 'storageBucket',
+      message: 'Storage Bucket (storageBucket):',
+      default: `${serviceAccountAnswers.projectId}.appspot.com`,
+    },
+    {
+      type: 'input',
+      name: 'messagingSenderId',
+      message: 'Messaging Sender ID (messagingSenderId):',
+      validate: (input: string) => input.length > 0 || 'Messaging Sender ID is required',
+    },
+    {
+      type: 'input',
+      name: 'appId',
+      message: 'App ID (appId):',
+      validate: (input: string) => input.length > 0 || 'App ID is required',
     },
   ]);
 
-  let geminiKey: string | undefined;
-  if (answers.configureGemini) {
-    const geminiAnswer = await inquirer.prompt([
-      {
-        type: 'password',
-        name: 'apiKey',
-        message: 'Gemini API Key:',
-        validate: (input: string) => input.length > 0 || 'API key is required',
-      },
-    ]);
-    geminiKey = geminiAnswer.apiKey;
-  }
+  // Step 3: Dashboard URL (optional)
+  console.log(chalk.bold('\n🚀 Step 3: Dashboard URL (optional)\n'));
+
+  const { dashboardUrl } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'dashboardUrl',
+      message: 'Dashboard URL (press Enter for hosted version):',
+      default: DEFAULT_DASHBOARD_URL,
+    },
+  ]);
 
   const config: ClaudeInsightConfig = {
     firebase: {
-      projectId: answers.projectId,
-      clientEmail: answers.clientEmail,
-      privateKey: answers.privateKey,
+      projectId: serviceAccountAnswers.projectId,
+      clientEmail: serviceAccountAnswers.clientEmail,
+      privateKey: serviceAccountAnswers.privateKey,
+    },
+    webConfig: {
+      apiKey: webConfigAnswers.apiKey,
+      authDomain: webConfigAnswers.authDomain,
+      storageBucket: webConfigAnswers.storageBucket,
+      messagingSenderId: webConfigAnswers.messagingSenderId,
+      appId: webConfigAnswers.appId,
     },
     sync: {
       claudeDir: '~/.claude/projects',
       excludeProjects: [],
     },
+    dashboardUrl: dashboardUrl,
   };
-
-  if (geminiKey) {
-    config.gemini = { apiKey: geminiKey };
-  }
 
   saveConfig(config);
 
   console.log(chalk.green('\n✅ Configuration saved!'));
   console.log(chalk.gray(`Config location: ${getConfigDir()}/config.json`));
-  console.log(chalk.cyan('\nNext steps:'));
-  console.log(chalk.white('  1. Run `claudeinsight sync` to sync your sessions'));
-  console.log(chalk.white('  2. Start the dashboard with `cd web && pnpm dev`'));
+
+  console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
+  console.log(chalk.white('  1. Sync your sessions:'));
+  console.log(chalk.gray('     claudeinsight sync\n'));
+  console.log(chalk.white('  2. Open the dashboard:'));
+  console.log(chalk.gray('     claudeinsight open\n'));
 }
