@@ -10,7 +10,6 @@ import type {
   MessageContent,
 } from '../types.js';
 import { generateTitle } from './titles.js';
-import { extractInsights } from './insights.js';
 
 /**
  * Parse a single JSONL file and extract session data
@@ -101,8 +100,8 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
   const startedAt = new Date(Math.min(...timestamps));
   const endedAt = new Date(Math.max(...timestamps));
 
-  // Generate insights first (needed for title generation)
-  const tempSession: ParsedSession = {
+  // Build session object
+  const session: ParsedSession = {
     id: sessionId,
     projectPath,
     projectName,
@@ -121,14 +120,11 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
     messages: parsedMessages,
   };
 
-  // Extract insights for title generation
-  const insights = extractInsights(tempSession);
-
-  // Generate smart title
-  const titleResult = generateTitle(tempSession, insights);
+  // Generate smart title (no longer depends on insights)
+  const titleResult = generateTitle(session);
 
   return {
-    ...tempSession,
+    ...session,
     generatedTitle: titleResult.title,
     titleSource: titleResult.source,
     sessionCharacter: titleResult.character,

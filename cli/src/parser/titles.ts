@@ -2,10 +2,8 @@ import type {
   ParsedSession,
   ParsedMessage,
   SessionCharacter,
-  TitleSource,
   TitleCandidate,
   GeneratedTitle,
-  Insight,
 } from '../types.js';
 
 // Skip patterns - generic responses that make poor titles
@@ -27,10 +25,7 @@ const ACTION_VERBS = /^(fix|add|create|build|implement|update|remove|delete|refa
 /**
  * Generate a smart title for a session
  */
-export function generateTitle(
-  session: ParsedSession,
-  insights: Insight[]
-): GeneratedTitle {
+export function generateTitle(session: ParsedSession): GeneratedTitle {
   // 1. If Claude Code provided a summary, use it
   if (session.summary && session.summary.trim().length > 0) {
     return {
@@ -40,33 +35,17 @@ export function generateTitle(
     };
   }
 
-  // 2. Collect title candidates
-  const candidates: TitleCandidate[] = [];
-
-  // From first user message
+  // 2. Try to extract from first user message
   const userMessageCandidate = extractFromUserMessage(session.messages);
-  if (userMessageCandidate) {
-    candidates.push(userMessageCandidate);
-  }
-
-  // From insights
-  const insightCandidates = extractFromInsights(insights);
-  candidates.push(...insightCandidates);
-
-  // 3. Select best candidate (threshold >= 40)
-  const bestCandidate = candidates
-    .filter(c => c.score >= 40)
-    .sort((a, b) => b.score - a.score)[0];
-
-  if (bestCandidate) {
+  if (userMessageCandidate && userMessageCandidate.score >= 40) {
     return {
-      title: cleanTitle(bestCandidate.text),
-      source: bestCandidate.source,
+      title: cleanTitle(userMessageCandidate.text),
+      source: userMessageCandidate.source,
       character: null,
     };
   }
 
-  // 4. Try session character-based title
+  // 3. Try session character-based title
   const character = detectSessionCharacter(session);
   if (character) {
     const characterTitle = generateCharacterTitle(session, character);
@@ -74,6 +53,15 @@ export function generateTitle(
       title: characterTitle,
       source: 'character',
       character,
+    };
+  }
+
+  // 4. Use user message even with lower score if available
+  if (userMessageCandidate) {
+    return {
+      title: cleanTitle(userMessageCandidate.text),
+      source: userMessageCandidate.source,
+      character: null,
     };
   }
 
@@ -142,46 +130,6 @@ function scoreUserMessage(text: string): number {
   if (wordCount > 15 && wordCount <= 50) return 40;
 
   return 20;
-}
-
-/**
- * Extract title candidates from insights
- */
-function extractFromInsights(insights: Insight[]): TitleCandidate[] {
-  const candidates: TitleCandidate[] = [];
-
-  for (const insight of insights) {
-    if (insight.type === 'effort') continue;
-
-    const title = insight.title;
-
-    if (insight.type === 'workitem' && /^\w+:\s*\d+\s*file/.test(title)) {
-      candidates.push({ text: title, source: 'insight', score: 10 });
-      continue;
-    }
-
-    if (insight.type === 'decision') {
-      candidates.push({ text: title, source: 'insight', score: 85 });
-      continue;
-    }
-
-    if (insight.type === 'workitem' && insight.metadata?.files?.length) {
-      const file = insight.metadata.files[0].split('/').pop() || '';
-      const workType = insight.metadata.workType || 'feature';
-      candidates.push({
-        text: `${capitalize(workType)}: ${file}`,
-        source: 'insight',
-        score: 75,
-      });
-      continue;
-    }
-
-    if (insight.type === 'learning') {
-      candidates.push({ text: title, source: 'insight', score: 65 });
-    }
-  }
-
-  return candidates;
 }
 
 /**

@@ -110,32 +110,35 @@ export interface ToolCall {
   input: Record<string, unknown>;
 }
 
+export type InsightType = 'summary' | 'decision' | 'learning' | 'technique';
+export type InsightScope = 'session' | 'project' | 'overall';
+
 export interface Insight {
   id: string;
   sessionId: string;
   projectId: string;
   projectName: string;
-  type: 'decision' | 'learning' | 'workitem' | 'effort';
+  type: InsightType;
   title: string;
   content: string;
   summary: string;
   bullets: string[];
   confidence: number;
-  source: 'pattern' | 'llm' | 'claude_insight';
+  source: 'llm';
   metadata: InsightMetadata;
   timestamp: Date;
+  createdAt?: Date;
+  scope: InsightScope;
+  analysisVersion: string;
 }
 
 export interface InsightMetadata {
   // Decision-specific
   alternatives?: string[];
   reasoning?: string;
-  // Work item-specific
-  files?: string[];
-  workType?: 'feature' | 'bugfix' | 'refactor' | 'docs' | 'test';
-  // Effort-specific
-  tokens?: number;
-  duration?: number;
+  // Technique-specific
+  context?: string;
+  applicability?: string;
 }
 
 export interface ClaudeInsightConfig {

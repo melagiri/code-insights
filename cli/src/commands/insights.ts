@@ -1,11 +1,11 @@
 import chalk from 'chalk';
 import { format } from 'date-fns';
 import { loadConfig, isConfigured } from '../utils/config.js';
-import { initializeFirebase, getRecentInsights, getRecentSessions } from '../firebase/client.js';
-import type { Insight, ParsedSession } from '../types.js';
+import { initializeFirebase, getRecentInsights } from '../firebase/client.js';
+import type { Insight, InsightType } from '../types.js';
 
 interface InsightsOptions {
-  type?: 'decision' | 'learning' | 'workitem';
+  type?: InsightType;
   project?: string;
   today?: boolean;
   limit?: number;
@@ -56,9 +56,18 @@ export async function insightsCommand(options: InsightsOptions = {}): Promise<vo
   console.log(chalk.cyan(`\n📊 Recent Insights (${insights.length})\n`));
 
   // Group by type
+  const summaries = insights.filter((i) => i.type === 'summary');
   const decisions = insights.filter((i) => i.type === 'decision');
   const learnings = insights.filter((i) => i.type === 'learning');
-  const workitems = insights.filter((i) => i.type === 'workitem');
+  const techniques = insights.filter((i) => i.type === 'technique');
+
+  if (summaries.length > 0) {
+    console.log(chalk.bold.magenta('📝 Summaries'));
+    for (const insight of summaries) {
+      printInsight(insight);
+    }
+    console.log();
+  }
 
   if (decisions.length > 0) {
     console.log(chalk.bold.blue('🎯 Decisions'));
@@ -76,9 +85,9 @@ export async function insightsCommand(options: InsightsOptions = {}): Promise<vo
     console.log();
   }
 
-  if (workitems.length > 0) {
-    console.log(chalk.bold.yellow('📋 Work Items'));
-    for (const insight of workitems) {
+  if (techniques.length > 0) {
+    console.log(chalk.bold.yellow('🔧 Techniques'));
+    for (const insight of techniques) {
       printInsight(insight);
     }
     console.log();

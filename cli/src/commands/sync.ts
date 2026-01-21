@@ -5,14 +5,12 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig, loadSyncState, saveSyncState, getClaudeDir } from '../utils/config.js';
 import { parseJsonlFile } from '../parser/jsonl.js';
-import { extractInsights } from '../parser/insights.js';
-import { initializeFirebase, uploadSession, uploadInsights, sessionExists } from '../firebase/client.js';
+import { initializeFirebase, uploadSession, uploadMessages, sessionExists } from '../firebase/client.js';
 import type { SyncState } from '../types.js';
 
 interface SyncOptions {
   force?: boolean;
   project?: string;
-  includeMessages?: boolean;
   dryRun?: boolean;
   quiet?: boolean;
   regenerateTitles?: boolean;
@@ -95,7 +93,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 
   // Process files
   let syncedCount = 0;
-  let insightCount = 0;
+  let messageCount = 0;
   let errorCount = 0;
 
   for (const filePath of filesToSync) {
@@ -120,19 +118,16 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
         }
       }
 
-      // Extract insights
-      const insights = extractInsights(session);
-
-      // Upload to Firestore
+      // Upload session and messages to Firestore
       await uploadSession(session);
-      await uploadInsights(insights);
+      await uploadMessages(session);
 
       // Update sync state
       updateSyncState(syncState, filePath, session.id);
 
       syncedCount++;
-      insightCount += insights.length;
-      spinner.succeed(`Synced ${fileName} (${session.messageCount} messages, ${insights.length} insights)`);
+      messageCount += session.messages.length;
+      spinner.succeed(`Synced ${fileName} (${session.messages.length} messages)`);
     } catch (error) {
       errorCount++;
       spinner.fail(`Failed to sync ${fileName}`);
@@ -149,7 +144,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   // Summary
   log(chalk.cyan('\n📊 Sync Summary'));
   log(chalk.white(`  Sessions synced: ${syncedCount}`));
-  log(chalk.white(`  Insights extracted: ${insightCount}`));
+  log(chalk.white(`  Messages uploaded: ${messageCount}`));
   if (errorCount > 0) {
     log(chalk.red(`  Errors: ${errorCount}`));
   }
