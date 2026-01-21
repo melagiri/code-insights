@@ -50,6 +50,10 @@ export interface ParsedSession {
   projectPath: string;
   projectName: string;
   summary: string | null;
+  // New fields for smart titles
+  generatedTitle: string | null;
+  titleSource: TitleSource | null;
+  sessionCharacter: SessionCharacter | null;
   startedAt: Date;
   endedAt: Date;
   messageCount: number;
@@ -69,6 +73,29 @@ export interface ParsedMessage {
   toolCalls: ToolCall[];
   timestamp: Date;
   parentId: string | null;
+}
+
+export type SessionCharacter =
+  | 'deep_focus'    // 50+ messages, concentrated file work
+  | 'bug_hunt'      // Error patterns + fixes
+  | 'feature_build' // Multiple new files created
+  | 'exploration'   // Heavy Read/Grep, few edits
+  | 'refactor'      // Many edits, same file count
+  | 'learning'      // Questions and explanations
+  | 'quick_task';   // <10 messages, completed
+
+export type TitleSource = 'claude' | 'user_message' | 'insight' | 'character' | 'fallback';
+
+export interface TitleCandidate {
+  text: string;
+  source: TitleSource;
+  score: number;
+}
+
+export interface GeneratedTitle {
+  title: string;
+  source: TitleSource;
+  character: SessionCharacter | null;
 }
 
 export interface ToolCall {
