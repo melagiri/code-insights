@@ -6,6 +6,7 @@ import { syncCommand } from './commands/sync.js';
 import { statusCommand } from './commands/status.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
 import { insightsCommand } from './commands/insights.js';
+import { resetCommand } from './commands/reset.js';
 
 const program = new Command();
 
@@ -24,7 +25,6 @@ program
   .description('Sync Claude Code sessions to Firestore')
   .option('-f, --force', 'Force re-sync all sessions')
   .option('-p, --project <name>', 'Only sync sessions from a specific project')
-  .option('--include-messages', 'Include full message content (increases storage)')
   .option('--dry-run', 'Show what would be synced without making changes')
   .option('-q, --quiet', 'Suppress output (useful for hooks)')
   .option('--regenerate-titles', 'Regenerate titles for all sessions')
@@ -48,7 +48,7 @@ program
 program
   .command('insights')
   .description('View recent insights from Firestore')
-  .option('-t, --type <type>', 'Filter by insight type (decision, learning, workitem)')
+  .option('-t, --type <type>', 'Filter by insight type (summary, decision, learning, technique)')
   .option('-p, --project <name>', 'Filter by project name')
   .option('--today', 'Show only today\'s insights')
   .option('-l, --limit <number>', 'Number of insights to show', '20')
@@ -60,5 +60,7 @@ program
       limit: parseInt(options.limit, 10),
     });
   });
+
+program.addCommand(resetCommand);
 
 program.parse();
