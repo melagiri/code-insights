@@ -27,6 +27,7 @@ program
   .option('--include-messages', 'Include full message content (increases storage)')
   .option('--dry-run', 'Show what would be synced without making changes')
   .option('-q, --quiet', 'Suppress output (useful for hooks)')
+  .option('--regenerate-titles', 'Regenerate titles for all sessions')
   .action(syncCommand);
 
 program

@@ -15,6 +15,7 @@ interface SyncOptions {
   includeMessages?: boolean;
   dryRun?: boolean;
   quiet?: boolean;
+  regenerateTitles?: boolean;
 }
 
 /**
