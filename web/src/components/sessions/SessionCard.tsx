@@ -23,11 +23,18 @@ export function SessionCard({ session }: SessionCardProps) {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <CardTitle className="text-base font-medium line-clamp-1">
-                {session.summary || 'Untitled Session'}
+                {session.summary || session.generatedTitle || 'Untitled Session'}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {session.projectName}
-              </p>
+              <div className="flex items-center gap-2">
+  <p className="text-sm text-muted-foreground">
+    {session.projectName}
+  </p>
+  {session.sessionCharacter && (
+    <Badge variant="secondary" className="text-xs capitalize">
+      {session.sessionCharacter.replace(/_/g, ' ')}
+    </Badge>
+  )}
+</div>
             </div>
             <Badge variant="outline" className="text-xs">
               {formatDistanceToNow(session.startedAt, { addSuffix: true })}
