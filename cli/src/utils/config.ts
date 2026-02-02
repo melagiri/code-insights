@@ -6,6 +6,7 @@ import type { ClaudeInsightConfig, SyncState } from '../types.js';
 const CONFIG_DIR = path.join(os.homedir(), '.claudeinsight');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const SYNC_STATE_FILE = path.join(CONFIG_DIR, 'sync-state.json');
+const WEB_CONFIG_FILE = path.join(CONFIG_DIR, 'web-config.json');
 
 /**
  * Ensure config directory exists
@@ -81,4 +82,34 @@ export function isConfigured(): boolean {
  */
 export function getConfigDir(): string {
   return CONFIG_DIR;
+}
+
+/**
+ * Load web config from file
+ */
+export function loadWebConfig(): Record<string, unknown> | null {
+  try {
+    if (!fs.existsSync(WEB_CONFIG_FILE)) {
+      return null;
+    }
+    const content = fs.readFileSync(WEB_CONFIG_FILE, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save web config to file
+ */
+export function saveWebConfig(config: Record<string, unknown>): void {
+  ensureConfigDir();
+  fs.writeFileSync(WEB_CONFIG_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+}
+
+/**
+ * Check if web config exists
+ */
+export function hasWebConfig(): boolean {
+  return fs.existsSync(WEB_CONFIG_FILE);
 }
