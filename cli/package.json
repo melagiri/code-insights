@@ -29,10 +29,12 @@
     "firebase-admin": "^13.4.0",
     "inquirer": "^12.6.1",
     "ora": "^8.2.0",
+    "qrcode-terminal": "^0.12.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",
+    "@types/qrcode-terminal": "^0.12.2",
     "@types/uuid": "^11.0.0",
     "typescript": "^5.9.3"
   }
