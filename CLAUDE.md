@@ -4,24 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClaudeInsight transforms Claude Code session history (`~/.claude/projects/` JSONL files) into structured, searchable insights. It follows a **Bring Your Own Firebase (BYOF)** privacy model - no central server, users own all their data.
+ClaudeInsight CLI syncs Claude Code session history (`~/.claude/projects/` JSONL files) to the user's Firebase Firestore. It follows a **Bring Your Own Firebase (BYOF)** privacy model - users own all their data.
 
-**Two main components:**
-- **CLI** (`/cli`) - Parses JSONL sessions and syncs to user's Firestore
-- **Web Dashboard** (`/web`) - Next.js app for visualizing insights
+The web dashboard is hosted separately at [claude-insights.vercel.app](https://claude-insights.vercel.app).
 
 ## Commands
 
-### Web Dashboard
-```bash
-cd web
-pnpm install          # Install dependencies
-pnpm dev              # Start dev server at http://localhost:3000
-pnpm build            # Production build
-pnpm lint             # Run ESLint
-```
-
-### CLI
 ```bash
 cd cli
 pnpm install          # Install dependencies
@@ -42,57 +30,64 @@ claudeinsight status                   # Show sync statistics
 
 ### Data Flow
 ```
-~/.claude/projects/**/*.jsonl → CLI Parser → Firestore → Web Dashboard
+~/.claude/projects/**/*.jsonl → CLI Parser → User's Firestore → Web Dashboard
 ```
 
-### CLI (`/cli/src/`)
-- `commands/` - CLI commands (init, sync, status, install-hook)
+### CLI Structure (`/cli/src/`)
+- `commands/` - CLI commands (init, sync, status, install-hook, reset)
 - `parser/jsonl.ts` - JSONL file parsing
-- `parser/insights.ts` - Pattern-based insight extraction (regex matching)
-- `firebase/` - Firebase Admin SDK for Firestore writes
-- `types.ts` - Shared TypeScript types
+- `parser/titles.ts` - Smart session title generation
+- `firebase/client.ts` - Firebase Admin SDK for Firestore writes
+- `utils/config.ts` - Configuration management (~/.claudeinsight/)
+- `utils/device.ts` - Device ID and stable project ID generation
+- `types.ts` - TypeScript types
 
-### Web (`/web/src/`)
-- `app/` - Next.js App Router pages
-- `app/providers.tsx` - Firebase client initialization from localStorage config
-- `lib/hooks/useFirestore.ts` - Real-time Firestore subscriptions
-- `lib/firebase.ts` - Firebase client utilities
-- `components/ui/` - shadcn/ui components
-
-### Firestore Collections
-- `projects` - Project metadata (id is hash of path)
-- `sessions` - Session metadata (id from JSONL filename)
-- `insights` - Extracted insights with type, confidence, metadata
-- `messages` - Optional full message content (--include-messages flag)
+### Firestore Collections (written by CLI)
+- `projects` - Project metadata (id is hash of git remote or path)
+- `sessions` - Session metadata with device info
+- `messages` - Full message content for LLM analysis
 
 ## Key Patterns
 
-### Insight Extraction
-Pattern-based extraction in `/cli/src/parser/insights.ts`:
-- **Decisions**: "decided to", "chose X over Y", "trade-off:"
-- **Learnings**: "learned that", "TIL:", "realized", "mistake:"
-- **Work Items**: Inferred from Edit/Write/Bash tool calls
-- **Effort**: Calculated from session duration and token counts
+### Session Parsing
+- Streams JSONL files line-by-line
+- Extracts messages, tool calls, timestamps
+- Generates smart titles based on content/character
+
+### Session Title Generation (`parser/titles.ts`)
+Priority: Claude summary → User message scoring → Session character → Fallback
+
+Session characters: `deep_focus`, `bug_hunt`, `feature_build`, `exploration`, `refactor`, `learning`, `quick_task`
+
+### Stable Project IDs (`utils/device.ts`)
+- Primary: Hash of git remote URL (stable across devices)
+- Fallback: Hash of project path
+- Enables multi-device sync to same Firebase
 
 ### Firebase Integration
-- CLI uses Admin SDK with service account credentials
-- Web uses client SDK with config stored in browser localStorage
-- Batch writes capped at 500 operations per batch
+- Uses Admin SDK with service account credentials
+- Batch writes capped at 500 operations
 - Incremental sync tracks file modification times
+- Messages truncated to 10KB, tool inputs to 1KB
 
-### Types
-Types are duplicated between `/cli/src/types.ts` and `/web/src/types.ts` (not yet unified).
+## Configuration
+
+Stored in `~/.claudeinsight/`:
+- `config.json` - Firebase credentials (mode 0o600)
+- `sync-state.json` - File modification tracking
+- `device-id` - Persistent device identifier
 
 ## Tech Stack
 
-- **CLI**: Node.js, Commander.js, Firebase Admin SDK, Chalk/Ora for UI
-- **Web**: Next.js 16, React 19, Tailwind CSS 4, shadcn/ui, Recharts
-- **Database**: Firebase Firestore (user-provided)
-- **Optional AI**: Google Generative AI (Gemini) with user's API key
+- **Runtime**: Node.js 18+
+- **Language**: TypeScript (strict mode)
+- **CLI Framework**: Commander.js
+- **Firebase**: Admin SDK
+- **UI**: Chalk, Ora (spinners)
+- **Package Manager**: pnpm
 
 ## Development Notes
 
 - No test framework configured yet
-- TypeScript strict mode enabled
-- ESLint configured for both CLI and web
-- pnpm is the package manager for both workspaces
+- ESLint configured
+- Build output in `dist/`
