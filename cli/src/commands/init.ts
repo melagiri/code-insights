@@ -3,11 +3,14 @@ import chalk from 'chalk';
 import qrcode from 'qrcode-terminal';
 import { saveConfig, getConfigDir, isConfigured, saveWebConfig } from '../utils/config.js';
 import {
-  readJsonFile,
+  readJsonFileWithError,
   validateServiceAccountJson,
   validateWebConfig,
   extractServiceAccountConfig,
   generateDashboardUrl,
+  fileExists,
+  looksLikeServiceAccount,
+  looksLikeWebConfig,
 } from '../utils/firebase-json.js';
 import type {
   ClaudeInsightConfig,
@@ -95,10 +98,25 @@ async function initFromJsonFile(
 ): Promise<ClaudeInsightConfig['firebase'] | null> {
   console.log(chalk.gray(`Reading service account from: ${filePath}\n`));
 
-  const json = readJsonFile<FirebaseServiceAccountJson>(filePath);
+  const result = readJsonFileWithError<FirebaseServiceAccountJson>(filePath);
 
-  if (!json) {
-    console.log(chalk.red('❌ Could not read file. Check the path and try again.'));
+  if (!result.success) {
+    console.log(chalk.red(`❌ ${result.message}`));
+    if (result.error === 'not_found') {
+      console.log(chalk.gray('  Check the path and try again. Use ~ for home directory.'));
+    } else if (result.error === 'invalid_json') {
+      console.log(chalk.gray('  Ensure the file is valid JSON (not truncated or corrupted).'));
+    }
+    return null;
+  }
+
+  const json = result.data;
+
+  // Cross-type detection: check if user provided web config instead of service account
+  if (looksLikeWebConfig(json) && !looksLikeServiceAccount(json)) {
+    console.log(chalk.red('❌ This looks like a Firebase Web SDK config, not a service account.'));
+    console.log(chalk.gray('  Service account files contain "type": "service_account" and a private_key.'));
+    console.log(chalk.gray('  Use --web-config for web SDK config files.'));
     return null;
   }
 
@@ -140,7 +158,11 @@ async function promptForServiceAccount(): Promise<ClaudeInsightConfig['firebase'
         type: 'input',
         name: 'filePath',
         message: 'Path to service account JSON file:',
-        validate: (input: string) => input.length > 0 || 'File path is required',
+        validate: (input: string) => {
+          if (!input.length) return 'File path is required';
+          if (!fileExists(input)) return 'File not found. Check the path.';
+          return true;
+        },
       },
     ]);
 
@@ -189,12 +211,22 @@ async function handleWebConfig(
 ): Promise<FirebaseWebConfig | undefined> {
   // If path provided via CLI flag
   if (providedPath) {
-    const json = readJsonFile<FirebaseWebConfig>(providedPath);
-    if (json && validateWebConfig(json)) {
-      console.log(chalk.green('✓ Web config loaded'));
-      return json;
+    const result = readJsonFileWithError<FirebaseWebConfig>(providedPath);
+    if (!result.success) {
+      console.log(chalk.yellow(`⚠ ${result.message}`));
+    } else {
+      const json = result.data;
+      // Cross-type detection
+      if (looksLikeServiceAccount(json) && !looksLikeWebConfig(json)) {
+        console.log(chalk.yellow('⚠ This looks like a service account, not a web config.'));
+        console.log(chalk.gray('  Web config files contain apiKey, authDomain, etc.'));
+      } else if (validateWebConfig(json)) {
+        console.log(chalk.green('✓ Web config loaded'));
+        return json;
+      } else {
+        console.log(chalk.yellow('⚠ Invalid web config structure. Missing required fields.'));
+      }
     }
-    console.log(chalk.yellow('⚠ Could not load web config from provided path'));
   }
 
   console.log(chalk.bold('\n🌐 Web Dashboard Configuration (Optional)\n'));
@@ -235,11 +267,27 @@ async function handleWebConfig(
       type: 'input',
       name: 'filePath',
       message: 'Path to web config JSON file:',
+      validate: (input: string) => {
+        if (!input.length) return 'File path is required';
+        if (!fileExists(input)) return 'File not found. Check the path.';
+        return true;
+      },
     },
   ]);
 
-  const json = readJsonFile<FirebaseWebConfig>(filePath);
-  if (json && validateWebConfig(json)) {
+  const result = readJsonFileWithError<FirebaseWebConfig>(filePath);
+  if (!result.success) {
+    console.log(chalk.yellow(`⚠ ${result.message}. Skipping web config.`));
+    return undefined;
+  }
+
+  const json = result.data;
+  if (looksLikeServiceAccount(json) && !looksLikeWebConfig(json)) {
+    console.log(chalk.yellow('⚠ This looks like a service account, not a web config. Skipping.'));
+    return undefined;
+  }
+
+  if (validateWebConfig(json)) {
     console.log(chalk.green('✓ Web config loaded'));
     return json;
   }
@@ -260,6 +308,8 @@ function showDashboardLink(webConfig: FirebaseWebConfig): void {
 
   console.log(chalk.gray('\n📱 Or scan this QR code:\n'));
   qrcode.generate(url, { small: true });
+
+  console.log(chalk.yellow('\n⚠ Note: Avoid sharing this URL publicly.'));
 
   console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
   console.log(chalk.white('  1. Sync your sessions:'));

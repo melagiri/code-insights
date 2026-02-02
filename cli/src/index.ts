@@ -18,7 +18,7 @@ program
 program
   .command('init')
   .description('Configure ClaudeInsight with your Firebase credentials')
-  .option('-f, --from-json <path>', 'Path to Firebase service account JSON file')
+  .option('-j, --from-json <path>', 'Path to Firebase service account JSON file')
   .option('-w, --web-config <path>', 'Path to Firebase web SDK config JSON file')
   .action(initCommand);
 
