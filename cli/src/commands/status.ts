@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { loadConfig, loadSyncState, isConfigured, getConfigDir, getClaudeDir } from '../utils/config.js';
+import { loadConfig, loadSyncState, isConfigured, getConfigDir, getClaudeDir, hasWebConfig, loadWebConfig } from '../utils/config.js';
 import { initializeFirebase, getProjects } from '../firebase/client.js';
 import * as fs from 'fs';
 
@@ -71,6 +71,20 @@ export async function statusCommand(): Promise<void> {
       console.log(chalk.red('  ✗ Connection failed'));
       console.log(chalk.gray(`    ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
+  }
+
+  // Check web dashboard config
+  console.log(chalk.white('\nWeb Dashboard:'));
+  if (hasWebConfig()) {
+    const webConfig = loadWebConfig();
+    console.log(chalk.green('  ✓ Configured'));
+    if (webConfig && typeof webConfig.projectId === 'string') {
+      console.log(chalk.gray(`    Project: ${webConfig.projectId}`));
+    }
+    console.log(chalk.gray('    Run "claudeinsight link" to get dashboard URL'));
+  } else {
+    console.log(chalk.yellow('  ○ Not configured'));
+    console.log(chalk.gray('    Run "claudeinsight init" with --web-config to add'));
   }
 
   console.log('');

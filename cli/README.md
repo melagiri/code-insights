@@ -15,42 +15,68 @@ pnpm add -g claudeinsight
 
 ## Quick Start
 
-1. **Initialize** with your Firebase credentials:
-   ```bash
-   claudeinsight init
-   ```
+### 1. Set up Firebase
 
-   You'll need a Firebase project with Firestore enabled. Get service account credentials from:
-   **Firebase Console → Project Settings → Service Accounts → Generate New Private Key**
+See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for detailed instructions.
 
-2. **Sync** your sessions:
-   ```bash
-   claudeinsight sync
-   ```
+### 2. Configure the CLI
 
-3. **View insights** on the web dashboard:
+**Option A: Quick Setup (Recommended)**
 
-   Visit [https://claudeinsight.vercel.app](https://claudeinsight.vercel.app) and configure your Firebase credentials.
+If you have the Firebase JSON files downloaded:
+
+```bash
+claudeinsight init --from-json ~/Downloads/serviceAccountKey.json
+```
+
+**Option B: With Web Dashboard Link**
+
+Include web config for instant dashboard connection:
+
+```bash
+claudeinsight init \
+  --from-json ~/Downloads/serviceAccountKey.json \
+  --web-config ~/Downloads/firebase-web-config.json
+```
+
+**Option C: Interactive Setup**
+
+```bash
+claudeinsight init
+```
+
+### 3. Sync your sessions
+
+```bash
+claudeinsight sync
+```
+
+### 4. Connect the Dashboard
+
+```bash
+claudeinsight link
+```
+
+This generates a URL and QR code to auto-configure the web dashboard.
+
+Or visit [claude-insights.vercel.app](https://claude-insights.vercel.app) and configure manually.
 
 ## Commands
 
-### `claudeinsight init`
-Configure Firebase service account credentials. You'll be prompted for:
-- Project ID
-- Client Email
-- Private Key
-
-### `claudeinsight sync`
-Sync Claude Code sessions from `~/.claude/projects/` to your Firestore.
-
-Options:
-- `--force` - Re-sync all sessions (ignores cache)
-- `--project <name>` - Only sync sessions from a specific project
-- `--dry-run` - Preview what would be synced without making changes
-- `--quiet` - Suppress output (useful for hooks/automation)
-
-### `claudeinsight status`
-Show configuration status, sync history, and connection info.
+| Command | Description |
+|---------|-------------|
+| `init` | Configure Firebase credentials interactively |
+| `init --from-json <path>` | Import service account from JSON file |
+| `init --web-config <path>` | Also configure web dashboard linking |
+| `sync` | Sync sessions to Firestore |
+| `sync --force` | Re-sync all sessions (ignores cache) |
+| `sync --dry-run` | Preview without uploading |
+| `sync --quiet` | Suppress output (for automation) |
+| `status` | Show configuration and sync status |
+| `link` | Generate dashboard connection URL/QR code |
+| `link --no-qr` | URL only, skip QR code |
+| `install-hook` | Auto-sync on Claude Code session end |
+| `uninstall-hook` | Remove auto-sync hook |
 
 ## How It Works
 

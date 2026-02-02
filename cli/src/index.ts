@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
 import { syncCommand } from './commands/sync.js';
 import { statusCommand } from './commands/status.js';
+import { linkCommand } from './commands/link.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
 import { resetCommand } from './commands/reset.js';
 
@@ -17,6 +18,8 @@ program
 program
   .command('init')
   .description('Configure ClaudeInsight with your Firebase credentials')
+  .option('-j, --from-json <path>', 'Path to Firebase service account JSON file')
+  .option('-w, --web-config <path>', 'Path to Firebase web SDK config JSON file')
   .action(initCommand);
 
 program
@@ -33,6 +36,12 @@ program
   .command('status')
   .description('Show ClaudeInsight status and statistics')
   .action(statusCommand);
+
+program
+  .command('link')
+  .description('Generate a link to connect the web dashboard')
+  .option('--no-qr', 'Skip QR code generation')
+  .action(linkCommand);
 
 program
   .command('install-hook')
