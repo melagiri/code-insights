@@ -3,13 +3,15 @@
 import { use } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { useSession, useInsights } from '@/lib/hooks/useFirestore';
+import { useSession, useInsights, useMessages } from '@/lib/hooks/useFirestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InsightCard } from '@/components/insights/InsightCard';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
+import { ChatConversation } from '@/components/chat';
 import { ArrowLeft, MessageSquare, Wrench, Clock, GitBranch, Calendar } from 'lucide-react';
 
 interface SessionDetailPageProps {
@@ -20,6 +22,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   const { id } = use(params);
   const { session, loading, error } = useSession(id);
   const { insights } = useInsights({ sessionId: id });
+  const { messages, loading: messagesLoading } = useMessages(id);
 
   if (loading) {
     return (
@@ -57,12 +60,15 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
         </Button>
       </Link>
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">
-          {session.summary || session.generatedTitle || 'Untitled Session'}
-        </h1>
-        <p className="text-muted-foreground">{session.projectName}</p>
+      {/* Header with AnalyzeButton */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {session.summary || session.generatedTitle || 'Untitled Session'}
+          </h1>
+          <p className="text-muted-foreground">{session.projectName}</p>
+        </div>
+        <AnalyzeButton session={session} />
       </div>
 
       {/* Stats */}
@@ -145,33 +151,31 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
         </CardContent>
       </Card>
 
-      {/* AI Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">AI Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AnalyzeButton session={session} />
-        </CardContent>
-      </Card>
+      {/* Tabs for Conversation and Insights */}
+      <Tabs defaultValue="conversation">
+        <TabsList>
+          <TabsTrigger value="conversation">Conversation</TabsTrigger>
+          <TabsTrigger value="insights">Insights ({insights.length})</TabsTrigger>
+        </TabsList>
 
-      {/* Insights */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">
-          Insights ({insights.length})
-        </h2>
-        {insights.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {insights.map((insight) => (
-              <InsightCard key={insight.id} insight={insight} showProject={false} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-muted-foreground">No insights extracted from this session.</p>
-          </div>
-        )}
-      </div>
+        <TabsContent value="conversation">
+          <ChatConversation messages={messages} loading={messagesLoading} />
+        </TabsContent>
+
+        <TabsContent value="insights">
+          {insights.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {insights.map((insight) => (
+                <InsightCard key={insight.id} insight={insight} showProject={false} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="text-muted-foreground">No insights extracted from this session.</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
