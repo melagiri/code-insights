@@ -7,7 +7,6 @@ import { statusCommand } from './commands/status.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
 import { insightsCommand } from './commands/insights.js';
 import { resetCommand } from './commands/reset.js';
-import { openCommand } from './commands/open.js';
 
 const program = new Command();
 
@@ -63,11 +62,5 @@ program
   });
 
 program.addCommand(resetCommand);
-
-program
-  .command('open')
-  .description('Open the ClaudeInsight dashboard in your browser')
-  .option('--url', 'Print the URL instead of opening browser')
-  .action(openCommand);
 
 program.parse();
