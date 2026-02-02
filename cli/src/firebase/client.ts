@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import type { ClaudeInsightConfig, ParsedSession, Insight, Project, InsightType } from '../types.js';
+import type { ClaudeInsightConfig, ParsedSession, Project } from '../types.js';
 import { generateStableProjectId, getDeviceInfo } from '../utils/device.js';
 
 let db: admin.firestore.Firestore | null = null;
@@ -168,63 +168,6 @@ export async function getProjects(): Promise<Project[]> {
       sessionCount: data.sessionCount || 0,
       lastActivity: data.lastActivity?.toDate() || new Date(),
       createdAt: data.createdAt?.toDate() || new Date(),
-    };
-  });
-}
-
-/**
- * Get recent insights with optional filters
- */
-export async function getRecentInsights(
-  limit: number = 20,
-  filters?: {
-    type?: InsightType;
-    project?: string;
-    todayOnly?: boolean;
-  }
-): Promise<Insight[]> {
-  const firestore = getDb();
-
-  let query: admin.firestore.Query = firestore
-    .collection('insights')
-    .orderBy('timestamp', 'desc')
-    .limit(limit);
-
-  if (filters?.type) {
-    query = query.where('type', '==', filters.type);
-  }
-
-  if (filters?.project) {
-    query = query.where('projectName', '==', filters.project);
-  }
-
-  if (filters?.todayOnly) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    query = query.where('timestamp', '>=', admin.firestore.Timestamp.fromDate(today));
-  }
-
-  const snapshot = await query.get();
-
-  return snapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      sessionId: data.sessionId,
-      projectId: data.projectId,
-      projectName: data.projectName,
-      type: data.type,
-      title: data.title,
-      content: data.content,
-      summary: data.summary || '',
-      bullets: data.bullets || [],
-      confidence: data.confidence,
-      source: data.source,
-      metadata: data.metadata,
-      timestamp: data.timestamp?.toDate() || new Date(),
-      createdAt: data.createdAt?.toDate(),
-      scope: data.scope || 'session',
-      analysisVersion: data.analysisVersion || '',
     };
   });
 }

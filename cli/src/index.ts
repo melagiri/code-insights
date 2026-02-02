@@ -5,7 +5,6 @@ import { initCommand } from './commands/init.js';
 import { syncCommand } from './commands/sync.js';
 import { statusCommand } from './commands/status.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
-import { insightsCommand } from './commands/insights.js';
 import { resetCommand } from './commands/reset.js';
 
 const program = new Command();
@@ -44,22 +43,6 @@ program
   .command('uninstall-hook')
   .description('Remove Claude Code hook')
   .action(uninstallHookCommand);
-
-program
-  .command('insights')
-  .description('View recent insights from Firestore')
-  .option('-t, --type <type>', 'Filter by insight type (summary, decision, learning, technique)')
-  .option('-p, --project <name>', 'Filter by project name')
-  .option('--today', 'Show only today\'s insights')
-  .option('-l, --limit <number>', 'Number of insights to show', '20')
-  .action((options) => {
-    insightsCommand({
-      type: options.type,
-      project: options.project,
-      today: options.today,
-      limit: parseInt(options.limit, 10),
-    });
-  });
 
 program.addCommand(resetCommand);
 
