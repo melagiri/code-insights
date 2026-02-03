@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClaudeInsight CLI syncs Claude Code session history (`~/.claude/projects/` JSONL files) to the user's Firebase Firestore. It follows a **Bring Your Own Firebase (BYOF)** privacy model - users own all their data.
+Code Insights CLI syncs Claude Code session history (`~/.claude/projects/` JSONL files) to the user's Firebase Firestore. It follows a **Bring Your Own Firebase (BYOF)** privacy model - users own all their data.
 
-The web dashboard is hosted separately at [claude-insights.vercel.app](https://claude-insights.vercel.app).
+The web dashboard is hosted separately at [code-insights.ai](https://code-insights.ai).
 
 ## Commands
 
@@ -19,11 +19,11 @@ pnpm lint             # Run ESLint
 
 # After building, link for local testing:
 npm link
-claudeinsight init                     # Configure Firebase credentials
-claudeinsight sync                     # Sync sessions to Firestore
-claudeinsight sync --force             # Re-sync all sessions
-claudeinsight sync --dry-run           # Preview without changes
-claudeinsight status                   # Show sync statistics
+code-insights init                     # Configure Firebase credentials
+code-insights sync                     # Sync sessions to Firestore
+code-insights sync --force             # Re-sync all sessions
+code-insights sync --dry-run           # Preview without changes
+code-insights status                   # Show sync statistics
 ```
 
 ## Architecture
@@ -38,7 +38,7 @@ claudeinsight status                   # Show sync statistics
 - `parser/jsonl.ts` - JSONL file parsing
 - `parser/titles.ts` - Smart session title generation
 - `firebase/client.ts` - Firebase Admin SDK for Firestore writes
-- `utils/config.ts` - Configuration management (~/.claudeinsight/)
+- `utils/config.ts` - Configuration management (~/.code-insights/)
 - `utils/device.ts` - Device ID and stable project ID generation
 - `types.ts` - TypeScript types
 
@@ -72,7 +72,7 @@ Session characters: `deep_focus`, `bug_hunt`, `feature_build`, `exploration`, `r
 
 ## Configuration
 
-Stored in `~/.claudeinsight/`:
+Stored in `~/.code-insights/`:
 - `config.json` - Firebase credentials (mode 0o600)
 - `sync-state.json` - File modification tracking
 - `device-id` - Persistent device identifier

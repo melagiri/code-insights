@@ -1,19 +1,19 @@
-# ClaudeInsight CLI
+# Code Insights CLI
 
-Sync your Claude Code session history to Firebase for analysis and insights.
+Sync your AI coding session history to Firebase for analysis and insights.
 
 ## How It Works
 
 ```
 Your Machine                     Hosted Dashboard
 ┌────────────────┐               ┌─────────────────────┐
-│ ~/.claude/     │               │ claude-insights.    │
-│   projects/    │               │ vercel.app          │
-│   (JSONL)      │               │                     │
-└───────┬────────┘               │ • Chat conversation │
-        │                        │ • LLM insights      │
-        ▼                        │ • Analytics         │
-┌────────────────┐               └──────────┬──────────┘
+│ ~/.claude/     │               │ code-insights.ai    │
+│   projects/    │               │                     │
+│   (JSONL)      │               │ • Chat conversation │
+└───────┬────────┘               │ • LLM insights      │
+        │                        │ • Analytics         │
+        ▼                        └──────────┬──────────┘
+┌────────────────┐                          │
 │ CLI (sync)     │                          │
 └───────┬────────┘                          │
         │                                   │
@@ -26,17 +26,17 @@ Your Machine                     Hosted Dashboard
 └─────────────────────────────────────────────────┘
 ```
 
-This CLI syncs your Claude Code sessions to your own Firebase Firestore. The web dashboard at [claude-insights.vercel.app](https://claude-insights.vercel.app) reads your data and provides visualization, chat views, and LLM-powered insight generation.
+This CLI syncs your Claude Code sessions to your own Firebase Firestore. The web dashboard at [code-insights.ai](https://code-insights.ai) reads your data and provides visualization, chat views, and LLM-powered insight generation.
 
 ## Installation
 
 ```bash
-npm install -g claudeinsight
+npm install -g code-insights
 ```
 
 Or with pnpm:
 ```bash
-pnpm add -g claudeinsight
+pnpm add -g code-insights
 ```
 
 ## Quick Start
@@ -48,28 +48,28 @@ pnpm add -g claudeinsight
 
 ### 2. Configure the CLI
 ```bash
-claudeinsight init
+code-insights init
 ```
 
 You'll be prompted for your Firebase service account credentials (Project ID, Client Email, Private Key).
 
 ### 3. Sync your sessions
 ```bash
-claudeinsight sync
+code-insights sync
 ```
 
 ### 4. View on the dashboard
-Visit [https://claude-insights.vercel.app](https://claude-insights.vercel.app) and enter your Firebase web credentials to view and analyze your sessions.
+Visit [https://code-insights.ai](https://code-insights.ai) and enter your Firebase web credentials to view and analyze your sessions.
 
 ## Commands
 
 ```bash
-claudeinsight init              # Configure Firebase credentials
-claudeinsight sync              # Sync sessions to Firestore
-claudeinsight sync --force      # Re-sync all sessions
-claudeinsight sync --dry-run    # Preview what would be synced
-claudeinsight sync --quiet      # Suppress output (for automation)
-claudeinsight status            # Show configuration and sync status
+code-insights init              # Configure Firebase credentials
+code-insights sync              # Sync sessions to Firestore
+code-insights sync --force      # Re-sync all sessions
+code-insights sync --dry-run    # Preview what would be synced
+code-insights sync --quiet      # Suppress output (for automation)
+code-insights status            # Show configuration and sync status
 ```
 
 ## Data Privacy
