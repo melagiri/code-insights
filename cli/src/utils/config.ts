@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import type { ClaudeInsightConfig, SyncState, FirebaseWebConfig } from '../types.js';
 
-const CONFIG_DIR = path.join(os.homedir(), '.claudeinsight');
+const CONFIG_DIR = path.join(os.homedir(), '.code-insights');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const SYNC_STATE_FILE = path.join(CONFIG_DIR, 'sync-state.json');
 const WEB_CONFIG_FILE = path.join(CONFIG_DIR, 'web-config.json');

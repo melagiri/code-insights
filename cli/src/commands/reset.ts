@@ -6,7 +6,7 @@ import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { loadConfig } from '../utils/config.js';
 
-const SYNC_STATE_FILE = join(process.env.HOME || '~', '.claudeinsight', 'sync-state.json');
+const SYNC_STATE_FILE = join(process.env.HOME || '~', '.code-insights', 'sync-state.json');
 
 export const resetCommand = new Command('reset')
   .description('Delete all data from Firestore and reset local sync state')
@@ -37,7 +37,7 @@ export const resetCommand = new Command('reset')
     // Load config
     const config = loadConfig();
     if (!config) {
-      console.error(chalk.red('Error: Not configured. Run `claudeinsight init` first.'));
+      console.error(chalk.red('Error: Not configured. Run `code-insights init` first.'));
       process.exit(1);
     }
 
@@ -81,7 +81,7 @@ export const resetCommand = new Command('reset')
       syncSpinner.fail(`Failed to remove sync state: ${error}`);
     }
 
-    console.log(chalk.green('\n✓ Reset complete. Run `claudeinsight sync` to re-sync all sessions.\n'));
+    console.log(chalk.green('\n✓ Reset complete. Run `code-insights sync` to re-sync all sessions.\n'));
     process.exit(0);
   });
 

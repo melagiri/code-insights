@@ -4,12 +4,12 @@ import { hostname, platform, userInfo } from 'os';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const CONFIG_DIR = join(process.env.HOME || '~', '.claudeinsight');
+const CONFIG_DIR = join(process.env.HOME || '~', '.code-insights');
 const DEVICE_ID_FILE = join(CONFIG_DIR, 'device-id');
 
 /**
  * Get or create a persistent device ID.
- * Stored in ~/.claudeinsight/device-id
+ * Stored in ~/.code-insights/device-id
  */
 export function getDeviceId(): string {
   // Check if device ID already exists
