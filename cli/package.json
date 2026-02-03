@@ -1,11 +1,11 @@
 {
-  "name": "@claudeinsight/cli",
+  "name": "code-insights",
   "version": "1.0.0",
-  "description": "Sync Claude Code sessions to your Firebase for analysis",
+  "description": "Sync your AI coding sessions to Firebase for analysis",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "claudeinsight": "./dist/index.js"
+    "code-insights": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
