@@ -13,24 +13,24 @@ export interface LinkOptions {
  */
 export async function linkCommand(options: LinkOptions): Promise<void> {
   if (!isConfigured()) {
-    console.log(chalk.red('\n❌ ClaudeInsight is not configured.'));
-    console.log(chalk.gray('Run "claudeinsight init" first.\n'));
+    console.log(chalk.red('\n❌ Code Insights is not configured.'));
+    console.log(chalk.gray('Run "code-insights init" first.\n'));
     return;
   }
 
   if (!hasWebConfig()) {
     console.log(chalk.yellow('\n⚠ No web config found.'));
     console.log(chalk.gray('\nTo generate a dashboard link, add web config:'));
-    console.log(chalk.white('  claudeinsight init --web-config <path-to-config.json>\n'));
+    console.log(chalk.white('  code-insights init --web-config <path-to-config.json>\n'));
     console.log(chalk.gray('Or visit the dashboard and configure Firebase manually:'));
-    console.log(chalk.white('  https://claude-insights.vercel.app\n'));
+    console.log(chalk.white('  https://code-insights.ai\n'));
     return;
   }
 
   const webConfigData = loadWebConfig();
   if (!webConfigData || !validateWebConfig(webConfigData)) {
     console.log(chalk.red('\n❌ Invalid web config stored.'));
-    console.log(chalk.gray('Run "claudeinsight init --web-config <path>" to reconfigure.\n'));
+    console.log(chalk.gray('Run "code-insights init --web-config <path>" to reconfigure.\n'));
     return;
   }
 

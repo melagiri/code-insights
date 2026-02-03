@@ -27,7 +27,7 @@ export interface InitOptions {
  * Initialize ClaudeInsight configuration
  */
 export async function initCommand(options: InitOptions): Promise<void> {
-  console.log(chalk.cyan('\n🔧 ClaudeInsight Setup\n'));
+  console.log(chalk.cyan('\n🔧 Code Insights Setup\n'));
 
   // Check for existing configuration
   if (isConfigured()) {
@@ -313,7 +313,7 @@ function showDashboardLink(webConfig: FirebaseWebConfig): void {
 
   console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
   console.log(chalk.white('  1. Sync your sessions:'));
-  console.log(chalk.gray('     claudeinsight sync\n'));
+  console.log(chalk.gray('     code-insights sync\n'));
   console.log(chalk.white('  2. Open the dashboard link above to view your insights\n'));
 }
 
@@ -323,8 +323,8 @@ function showDashboardLink(webConfig: FirebaseWebConfig): void {
 function showNextStepsWithoutWebConfig(): void {
   console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
   console.log(chalk.white('  1. Sync your sessions:'));
-  console.log(chalk.gray('     claudeinsight sync\n'));
+  console.log(chalk.gray('     code-insights sync\n'));
   console.log(chalk.white('  2. Visit the web dashboard and configure Firebase:'));
-  console.log(chalk.gray('     https://claude-insights.vercel.app\n'));
-  console.log(chalk.gray('  Tip: Run "claudeinsight link" anytime to generate a dashboard link\n'));
+  console.log(chalk.gray('     https://code-insights.ai\n'));
+  console.log(chalk.gray('  Tip: Run "code-insights link" anytime to generate a dashboard link\n'));
 }
