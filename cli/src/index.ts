@@ -34,7 +34,7 @@ program
 
 program
   .command('status')
-  .description('Show ClaudeInsight status and statistics')
+  .description('Show Code Insights status and statistics')
   .action(statusCommand);
 
 program
