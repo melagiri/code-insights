@@ -25,11 +25,11 @@ interface HookConfig {
  * Install Claude Code hook for auto-sync
  */
 export async function installHookCommand(): Promise<void> {
-  console.log(chalk.cyan('\n🔗 Install ClaudeInsight Hook\n'));
+  console.log(chalk.cyan('\n🔗 Install Code Insights Hook\n'));
 
   // Check if configured
   if (!isConfigured()) {
-    console.log(chalk.red('Not configured. Run `claudeinsight init` first.'));
+    console.log(chalk.red('Not configured. Run `code-insights init` first.'));
     process.exit(1);
   }
 
@@ -65,12 +65,12 @@ export async function installHookCommand(): Promise<void> {
   // Check if hook already exists
   const existingStopHooks = settings.hooks.Stop || [];
   const hookExists = existingStopHooks.some(
-    (h) => h.hooks.some((cmd) => cmd.includes('claudeinsight'))
+    (h) => h.hooks.some((cmd) => cmd.includes('code-insights'))
   );
 
   if (hookExists) {
-    console.log(chalk.yellow('ClaudeInsight hook already installed.'));
-    console.log(chalk.gray('To reinstall, first run `claudeinsight uninstall-hook`'));
+    console.log(chalk.yellow('Code Insights hook already installed.'));
+    console.log(chalk.gray('To reinstall, first run `code-insights uninstall-hook`'));
     return;
   }
 
@@ -92,7 +92,7 @@ export async function installHookCommand(): Promise<void> {
  * Uninstall Claude Code hook
  */
 export async function uninstallHookCommand(): Promise<void> {
-  console.log(chalk.cyan('\n🔗 Uninstall ClaudeInsight Hook\n'));
+  console.log(chalk.cyan('\n🔗 Uninstall Code Insights Hook\n'));
 
   if (!fs.existsSync(HOOKS_FILE)) {
     console.log(chalk.yellow('No hooks file found. Nothing to uninstall.'));
@@ -110,7 +110,7 @@ export async function uninstallHookCommand(): Promise<void> {
 
     // Filter out ClaudeInsight hooks
     settings.hooks.Stop = settings.hooks.Stop.filter(
-      (h) => !h.hooks.some((cmd) => cmd.includes('claudeinsight'))
+      (h) => !h.hooks.some((cmd) => cmd.includes('code-insights'))
     );
 
     // Clean up empty arrays

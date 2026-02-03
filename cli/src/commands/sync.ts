@@ -32,12 +32,12 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     ? () => noopSpinner
     : ora;
 
-  log(chalk.cyan('\n📤 ClaudeInsight Sync\n'));
+  log(chalk.cyan('\n📤 Code Insights Sync\n'));
 
   // Load config
   const config = loadConfig();
   if (!config) {
-    log(chalk.red('Not configured. Run `claudeinsight init` first.'));
+    log(chalk.red('Not configured. Run `code-insights init` first.'));
     process.exit(1);
   }
 

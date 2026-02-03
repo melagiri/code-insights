@@ -4,10 +4,10 @@ import { initializeFirebase, getProjects } from '../firebase/client.js';
 import * as fs from 'fs';
 
 /**
- * Show ClaudeInsight status
+ * Show Code Insights status
  */
 export async function statusCommand(): Promise<void> {
-  console.log(chalk.cyan('\n📊 ClaudeInsight Status\n'));
+  console.log(chalk.cyan('\n📊 Code Insights Status\n'));
 
   // Check configuration
   console.log(chalk.white('Configuration:'));
@@ -19,7 +19,7 @@ export async function statusCommand(): Promise<void> {
     }
   } else {
     console.log(chalk.red('  ✗ Not configured'));
-    console.log(chalk.gray('    Run `claudeinsight init` to set up'));
+    console.log(chalk.gray('    Run `code-insights init` to set up'));
     return;
   }
 
@@ -45,7 +45,7 @@ export async function statusCommand(): Promise<void> {
     console.log(chalk.gray(`    ${syncedFiles} files tracked`));
   } else {
     console.log(chalk.yellow('  ⚠ Never synced'));
-    console.log(chalk.gray('    Run `claudeinsight sync` to sync'));
+    console.log(chalk.gray('    Run `code-insights sync` to sync'));
   }
 
   // Check Firebase connection
@@ -81,10 +81,10 @@ export async function statusCommand(): Promise<void> {
     if (webConfig && typeof webConfig.projectId === 'string') {
       console.log(chalk.gray(`    Project: ${webConfig.projectId}`));
     }
-    console.log(chalk.gray('    Run "claudeinsight link" to get dashboard URL'));
+    console.log(chalk.gray('    Run "code-insights link" to get dashboard URL'));
   } else {
     console.log(chalk.yellow('  ○ Not configured'));
-    console.log(chalk.gray('    Run "claudeinsight init" with --web-config to add'));
+    console.log(chalk.gray('    Run "code-insights init" with --web-config to add'));
   }
 
   console.log('');
