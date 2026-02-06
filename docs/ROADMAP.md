@@ -23,14 +23,14 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
   - Extract: sessions, messages, tool calls, timestamps
   - Smart session title generation (5-tier fallback)
   - Session character classification (7 types)
-  - CLI command: `claudeinsight sync`
+  - CLI command: `code-insights sync`
 
 - [x] **1.3 Firestore Schema & Sync**
   - Document structure: projects, sessions, messages, insights
   - Upload to user's Firestore via Admin SDK
   - Incremental sync (tracks file modification times)
   - Multi-device support (git remote-based project IDs)
-  - CLI command: `claudeinsight init` (Firebase setup wizard)
+  - CLI command: `code-insights init` (Firebase setup wizard)
 
 - [x] **1.4 Basic Dashboard**
   - Session list view with filters (project, date)
@@ -60,7 +60,7 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 - [x] **2.1 Claude Code Hook**
   - Post-session hook that triggers sync automatically
   - Quiet mode for background processing (`sync -q`)
-  - `claudeinsight install-hook` / `claudeinsight uninstall-hook`
+  - `code-insights install-hook` / `code-insights uninstall-hook`
 
 - [ ] **2.2 Slash Command**
   - `/insights` - Quick summary of recent sessions

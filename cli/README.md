@@ -15,23 +15,23 @@ Command-line tool that parses Claude Code session history and syncs it to your o
 cd cli
 pnpm install
 pnpm build
-npm link    # Makes `claudeinsight` available globally
+npm link    # Makes `code-insights` available globally
 ```
 
 After linking, verify it works:
 
 ```bash
-claudeinsight --version
+code-insights --version
 ```
 
 ## Commands
 
-### `claudeinsight init`
+### `code-insights init`
 
 Configure Code Insights with your Firebase credentials (CLI + Web).
 
 ```bash
-claudeinsight init
+code-insights init
 ```
 
 You'll be prompted for:
@@ -48,52 +48,52 @@ You'll be prompted for:
 - Messaging Sender ID
 - App ID
 
-Configuration is stored in `~/.claudeinsight/config.json`.
+Configuration is stored in `~/.code-insights/config.json`.
 
-### `claudeinsight open`
+### `code-insights link`
 
-Open the Code Insights dashboard in your browser.
+Generate a URL to the Code Insights dashboard with your Firebase config pre-loaded.
 
 ```bash
-# Open dashboard with auto-configured Firebase
-claudeinsight open
+# Generate dashboard URL
+code-insights link
 
-# Just print the URL (don't open browser)
-claudeinsight open --url
+# Print the URL only
+code-insights link --url
 ```
 
 The dashboard URL includes your Firebase config encoded in the URL, so you don't need to configure it manually in the browser.
 
-### `claudeinsight sync`
+### `code-insights sync`
 
 Sync Claude Code sessions to Firestore.
 
 ```bash
 # Sync new/modified sessions
-claudeinsight sync
+code-insights sync
 
 # Force re-sync all sessions
-claudeinsight sync --force
+code-insights sync --force
 
 # Preview what would be synced
-claudeinsight sync --dry-run
+code-insights sync --dry-run
 
 # Sync specific project only
-claudeinsight sync --project "my-project"
+code-insights sync --project "my-project"
 
 # Quiet mode (for hooks)
-claudeinsight sync --quiet
+code-insights sync --quiet
 
 # Regenerate titles for all sessions
-claudeinsight sync --regenerate-titles
+code-insights sync --regenerate-titles
 ```
 
-### `claudeinsight status`
+### `code-insights status`
 
 Show sync status and statistics.
 
 ```bash
-claudeinsight status
+code-insights status
 ```
 
 Displays:
@@ -102,53 +102,53 @@ Displays:
 - Projects tracked
 - Last sync time
 
-### `claudeinsight insights`
+### `code-insights insights`
 
 View recent insights from Firestore.
 
 ```bash
 # Show recent insights
-claudeinsight insights
+code-insights insights
 
 # Filter by type
-claudeinsight insights --type decision
+code-insights insights --type decision
 
 # Filter by project
-claudeinsight insights --project "my-project"
+code-insights insights --project "my-project"
 
 # Today's insights only
-claudeinsight insights --today
+code-insights insights --today
 
 # Limit results
-claudeinsight insights --limit 10
+code-insights insights --limit 10
 ```
 
-### `claudeinsight reset`
+### `code-insights reset`
 
 Delete all data from Firestore and reset local sync state.
 
 ```bash
 # Interactive (asks for confirmation)
-claudeinsight reset
+code-insights reset
 
 # Skip confirmation
-claudeinsight reset --confirm
+code-insights reset --confirm
 ```
 
-### `claudeinsight install-hook`
+### `code-insights install-hook`
 
 Install a Claude Code hook for automatic sync after each session.
 
 ```bash
-claudeinsight install-hook
+code-insights install-hook
 ```
 
-### `claudeinsight uninstall-hook`
+### `code-insights uninstall-hook`
 
 Remove the automatic sync hook.
 
 ```bash
-claudeinsight uninstall-hook
+code-insights uninstall-hook
 ```
 
 ## How It Works
@@ -170,7 +170,7 @@ Each session is parsed to extract:
 
 ### Incremental Sync
 
-Sync state is tracked in `~/.claudeinsight/sync-state.json`:
+Sync state is tracked in `~/.code-insights/sync-state.json`:
 - File modification times are recorded
 - Only new or modified files are processed
 - Use `--force` to bypass and re-sync everything

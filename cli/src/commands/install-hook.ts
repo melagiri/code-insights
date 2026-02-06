@@ -29,7 +29,7 @@ export async function installHookCommand(): Promise<void> {
 
   // Check if configured
   if (!isConfigured()) {
-    console.log(chalk.red('Not configured. Run `claudeinsight init` first.'));
+    console.log(chalk.red('Not configured. Run `code-insights init` first.'));
     process.exit(1);
   }
 
@@ -65,12 +65,12 @@ export async function installHookCommand(): Promise<void> {
   // Check if hook already exists
   const existingStopHooks = settings.hooks.Stop || [];
   const hookExists = existingStopHooks.some(
-    (h) => h.hooks.some((cmd) => cmd.includes('claudeinsight'))
+    (h) => h.hooks.some((cmd) => cmd.includes('code-insights'))
   );
 
   if (hookExists) {
     console.log(chalk.yellow('Code Insights hook already installed.'));
-    console.log(chalk.gray('To reinstall, first run `claudeinsight uninstall-hook`'));
+    console.log(chalk.gray('To reinstall, first run `code-insights uninstall-hook`'));
     return;
   }
 
@@ -110,7 +110,7 @@ export async function uninstallHookCommand(): Promise<void> {
 
     // Filter out Code Insights hooks
     settings.hooks.Stop = settings.hooks.Stop.filter(
-      (h) => !h.hooks.some((cmd) => cmd.includes('claudeinsight'))
+      (h) => !h.hooks.some((cmd) => cmd.includes('code-insights'))
     );
 
     // Clean up empty arrays

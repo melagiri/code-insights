@@ -70,7 +70,7 @@ pnpm lint   # Check for lint errors
 
 ```bash
 # After building, test your changes with a real sync
-claudeinsight sync --dry-run
+code-insights sync --dry-run
 ```
 
 ### 5. Submit a PR

@@ -38,7 +38,7 @@ coverage/
 .claude/*
 !.claude/agents/
 !.claude/hookify.*.md
-.claudeinsight/
+.code-insights/
 
 # Git worktrees
 .worktrees/

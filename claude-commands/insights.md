@@ -4,7 +4,7 @@ Show a summary of recent insights from my Claude Code sessions.
 
 ## Instructions
 
-1. Run `claudeinsight status` to get the current sync status
+1. Run `code-insights status` to get the current sync status
 2. Read the most recent insights from the local Code Insights database
 3. Present insights grouped by type (decisions, learnings, work items)
 4. Include the date and project for context

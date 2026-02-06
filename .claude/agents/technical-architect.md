@@ -100,7 +100,7 @@ When invoked by a dev agent for clarification:
 ### Cross-Repo Impact
 - [ ] Types aligned between CLI and web (if types changed)
 - [ ] Firestore read/write contract preserved
-- [ ] CLI binary name is `claudeinsight` (not `code-insights`)
+- [ ] CLI binary name is `code-insights`
 - [ ] No breaking changes to existing Firestore data
 
 ### Pattern Consistency
@@ -212,4 +212,4 @@ Only the founder merges PRs.
 - Favor pragmatic solutions — don't over-architect beyond current needs
 - No test framework yet — flag when tests should be added, don't block on it
 - Types are duplicated across repos (not yet unified) — enforce manual alignment
-- Dashboard URL may change from `claudeinsight.vercel.app` to `code-insights.ai`
+- Dashboard URL is `https://code-insights.ai`

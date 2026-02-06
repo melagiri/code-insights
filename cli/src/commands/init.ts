@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { saveConfig, getConfigDir, isConfigured } from '../utils/config.js';
 import type { ClaudeInsightConfig } from '../types.js';
 
-const DEFAULT_DASHBOARD_URL = 'https://claudeinsight.vercel.app';
+const DEFAULT_DASHBOARD_URL = 'https://code-insights.ai';
 
 /**
  * Initialize Code Insights configuration
@@ -134,7 +134,7 @@ export async function initCommand(): Promise<void> {
 
   console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
   console.log(chalk.white('  1. Sync your sessions:'));
-  console.log(chalk.gray('     claudeinsight sync\n'));
+  console.log(chalk.gray('     code-insights sync\n'));
   console.log(chalk.white('  2. Open the dashboard:'));
-  console.log(chalk.gray('     claudeinsight open\n'));
+  console.log(chalk.gray('     code-insights link\n'));
 }

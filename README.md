@@ -31,20 +31,20 @@ cd cli
 pnpm install && pnpm build && npm link
 
 # One-time setup - collects both CLI and web credentials
-claudeinsight init
+code-insights init
 ```
 
-### 3. Sync & Open Dashboard
+### 3. Sync & View
 
 ```bash
 # Sync your Claude Code sessions
-claudeinsight sync
+code-insights sync
 
-# Open the dashboard (auto-configured!)
-claudeinsight open
+# Generate a link to the dashboard
+code-insights link
 ```
 
-That's it! The `open` command launches the hosted dashboard with your Firebase config pre-loaded.
+That's it! The `link` command generates a URL to the hosted dashboard with your Firebase config pre-loaded.
 
 ## Architecture
 
@@ -80,17 +80,15 @@ The CLI and web dashboard are developed in separate repositories:
 
 ### CLI Commands
 ```bash
-claudeinsight init              # Configure Firebase credentials
-claudeinsight sync              # Sync sessions to Firestore
-claudeinsight sync --force      # Re-sync all sessions
-claudeinsight sync --dry-run    # Preview without changes
-claudeinsight open              # Open dashboard in browser
-claudeinsight status            # Show sync statistics
-claudeinsight insights          # View recent insights
-claudeinsight insights --today  # Today's insights only
-claudeinsight install-hook      # Auto-sync on session end
-claudeinsight uninstall-hook    # Remove auto-sync hook
-claudeinsight reset --confirm   # Clear all Firestore data
+code-insights init              # Configure Firebase credentials
+code-insights sync              # Sync sessions to Firestore
+code-insights sync --force      # Re-sync all sessions
+code-insights sync --dry-run    # Preview without changes
+code-insights status            # Show sync statistics
+code-insights link              # Generate dashboard connection URL
+code-insights install-hook      # Auto-sync on session end
+code-insights uninstall-hook    # Remove auto-sync hook
+code-insights reset --confirm   # Clear all Firestore data
 ```
 
 ### Web Dashboard

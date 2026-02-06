@@ -7,7 +7,7 @@ description: |
 
   <example>
   Context: User wants to add a new CLI command.
-  user: "Add a `claudeinsight export` command that exports insights to markdown"
+  user: "Add a `code-insights export` command that exports insights to markdown"
   assistant: "I'll use the cli-engineer agent to implement the export command."
   <Task tool call to cli-engineer>
   </example>
@@ -135,8 +135,8 @@ pnpm lint         # ESLint (when configured)
 - Handle errors gracefully in CLI context (user-friendly messages, not stack traces)
 
 ### CLI Conventions
-- Binary name is `claudeinsight` — NEVER `code-insights`
-- Config dir is `~/.claudeinsight/`
+- Binary name is `code-insights`
+- Config dir is `~/.code-insights/`
 - Claude dir is `~/.claude/projects/`
 - All commands registered in `src/index.ts` via Commander.js
 

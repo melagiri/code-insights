@@ -12,9 +12,9 @@ import { openCommand } from './commands/open.js';
 const program = new Command();
 
 program
-  .name('claudeinsight')
-  .description('Sync Claude Code sessions to Firestore for insights')
-  .version('0.1.0');
+  .name('code-insights')
+  .description('Sync your AI coding sessions to Firebase for analysis')
+  .version('1.0.0');
 
 program
   .command('init')
