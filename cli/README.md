@@ -1,103 +1,279 @@
 # Code Insights CLI
 
-Sync your AI coding sessions to Firebase for analysis.
+Command-line tool that parses Claude Code session history and syncs it to your own Firebase Firestore.
+
+## Prerequisites
+
+- **Node.js** >= 18
+- **pnpm** >= 9 (`npm install -g pnpm` if needed)
+- A **Firebase project** with Firestore enabled (see [Quick Start](../README.md#quick-start))
 
 ## Installation
 
 ```bash
-npm install -g code-insights
+# From the repo root
+cd cli
+pnpm install
+pnpm build
+npm link    # Makes `claudeinsight` available globally
 ```
 
-Or with pnpm:
-```bash
-pnpm add -g code-insights
-```
-
-## Quick Start
-
-### 1. Set up Firebase
-
-See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for detailed instructions.
-
-### 2. Configure the CLI
-
-**Option A: Quick Setup (Recommended)**
-
-If you have the Firebase JSON files downloaded:
+After linking, verify it works:
 
 ```bash
-code-insights init --from-json ~/Downloads/serviceAccountKey.json
+claudeinsight --version
 ```
-
-**Option B: With Web Dashboard Link**
-
-Include web config for instant dashboard connection:
-
-```bash
-code-insights init \
-  --from-json ~/Downloads/serviceAccountKey.json \
-  --web-config ~/Downloads/firebase-web-config.json
-```
-
-**Option C: Interactive Setup**
-
-```bash
-code-insights init
-```
-
-### 3. Sync your sessions
-
-```bash
-code-insights sync
-```
-
-### 4. Connect the Dashboard
-
-```bash
-code-insights link
-```
-
-This generates a URL and QR code to auto-configure the web dashboard.
-
-Or visit [code-insights.ai](https://code-insights.ai) and configure manually.
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `init` | Configure Firebase credentials interactively |
-| `init --from-json <path>` | Import service account from JSON file |
-| `init --web-config <path>` | Also configure web dashboard linking |
-| `sync` | Sync sessions to Firestore |
-| `sync --force` | Re-sync all sessions (ignores cache) |
-| `sync --dry-run` | Preview without uploading |
-| `sync --quiet` | Suppress output (for automation) |
-| `status` | Show configuration and sync status |
-| `link` | Generate dashboard connection URL/QR code |
-| `link --no-qr` | URL only, skip QR code |
-| `install-hook` | Auto-sync on Claude Code session end |
-| `uninstall-hook` | Remove auto-sync hook |
+### `claudeinsight init`
+
+Configure ClaudeInsight with your Firebase credentials (CLI + Web).
+
+```bash
+claudeinsight init
+```
+
+You'll be prompted for:
+
+**Step 1 - CLI Sync (Service Account):**
+- Firebase Project ID
+- Service Account Email (client_email from JSON)
+- Private Key (private_key from JSON)
+
+**Step 2 - Web Dashboard (Client Config):**
+- API Key
+- Auth Domain
+- Storage Bucket
+- Messaging Sender ID
+- App ID
+
+Configuration is stored in `~/.claudeinsight/config.json`.
+
+### `claudeinsight open`
+
+Open the ClaudeInsight dashboard in your browser.
+
+```bash
+# Open dashboard with auto-configured Firebase
+claudeinsight open
+
+# Just print the URL (don't open browser)
+claudeinsight open --url
+```
+
+The dashboard URL includes your Firebase config encoded in the URL, so you don't need to configure it manually in the browser.
+
+### `claudeinsight sync`
+
+Sync Claude Code sessions to Firestore.
+
+```bash
+# Sync new/modified sessions
+claudeinsight sync
+
+# Force re-sync all sessions
+claudeinsight sync --force
+
+# Preview what would be synced
+claudeinsight sync --dry-run
+
+# Sync specific project only
+claudeinsight sync --project "my-project"
+
+# Quiet mode (for hooks)
+claudeinsight sync --quiet
+
+# Regenerate titles for all sessions
+claudeinsight sync --regenerate-titles
+```
+
+### `claudeinsight status`
+
+Show sync status and statistics.
+
+```bash
+claudeinsight status
+```
+
+Displays:
+- Configuration status
+- Total sessions synced
+- Projects tracked
+- Last sync time
+
+### `claudeinsight insights`
+
+View recent insights from Firestore.
+
+```bash
+# Show recent insights
+claudeinsight insights
+
+# Filter by type
+claudeinsight insights --type decision
+
+# Filter by project
+claudeinsight insights --project "my-project"
+
+# Today's insights only
+claudeinsight insights --today
+
+# Limit results
+claudeinsight insights --limit 10
+```
+
+### `claudeinsight reset`
+
+Delete all data from Firestore and reset local sync state.
+
+```bash
+# Interactive (asks for confirmation)
+claudeinsight reset
+
+# Skip confirmation
+claudeinsight reset --confirm
+```
+
+### `claudeinsight install-hook`
+
+Install a Claude Code hook for automatic sync after each session.
+
+```bash
+claudeinsight install-hook
+```
+
+### `claudeinsight uninstall-hook`
+
+Remove the automatic sync hook.
+
+```bash
+claudeinsight uninstall-hook
+```
 
 ## How It Works
 
-1. The CLI reads Claude Code session files from `~/.claude/projects/`
-2. Parses JSONL files and extracts session metadata + messages
-3. Uploads to your Firebase Firestore database
-4. The web dashboard reads from your Firestore and provides:
-   - Chat conversation view
-   - LLM-powered insight generation
-   - Analytics and export features
+### Session Parsing
 
-## Data Privacy
+The CLI reads JSONL files from `~/.claude/projects/` which contain:
+- User and assistant messages
+- Tool calls (Edit, Write, Bash, etc.)
+- Timestamps and metadata
 
-**Your data, your infrastructure.** All session data is stored in your own Firebase project. The CLI only uploads to Firebase credentials you provide. Nothing is sent to Code Insights servers.
+Each session is parsed to extract:
+- Project name and path
+- Start/end times and duration
+- Message counts
+- Tool call statistics
+- Git branch (if available)
+- Claude version
 
-## Multi-Device Support
+### Incremental Sync
 
-Sessions are identified by git remote URL (when available) or project path. This means you can sync from multiple machines to the same Firebase project.
+Sync state is tracked in `~/.claudeinsight/sync-state.json`:
+- File modification times are recorded
+- Only new or modified files are processed
+- Use `--force` to bypass and re-sync everything
 
-## Requirements
+### Multi-Device Support
 
-- Node.js 18+
-- Firebase project with Firestore enabled
-- Claude Code installed with session history
+Project IDs are generated from git remote URLs when available:
+- Same repo on different machines → same project ID
+- Non-git projects fall back to path-based hash
+- Each session records device metadata (hostname, platform)
+
+### Title Generation
+
+Sessions are automatically titled based on:
+1. Claude's own title (if present in session)
+2. First user message (cleaned up)
+3. Session character detection (deep focus, bug hunt, etc.)
+4. Fallback to timestamp
+
+## Project Structure
+
+```
+cli/
+├── src/
+│   ├── commands/
+│   │   ├── init.ts          # Firebase configuration
+│   │   ├── sync.ts          # Main sync logic
+│   │   ├── open.ts          # Open dashboard in browser
+│   │   ├── status.ts        # Status display
+│   │   ├── insights.ts      # View insights
+│   │   ├── reset.ts         # Clear all data
+│   │   └── install-hook.ts  # Hook management
+│   ├── firebase/
+│   │   └── client.ts        # Firestore operations
+│   ├── parser/
+│   │   ├── jsonl.ts         # JSONL file parsing
+│   │   └── titles.ts        # Title generation
+│   ├── utils/
+│   │   ├── config.ts        # Config management
+│   │   └── device.ts        # Device identification
+│   ├── types.ts             # TypeScript types
+│   └── index.ts             # CLI entry point
+├── dist/                    # Compiled output
+├── package.json
+└── tsconfig.json
+```
+
+## Development
+
+```bash
+pnpm dev    # Watch mode — recompiles on save
+pnpm build  # One-time compile
+pnpm lint   # Run ESLint
+```
+
+The CLI is written in TypeScript with ES Modules and compiled to `dist/`. After `npm link`, changes rebuild automatically in watch mode.
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for the full development workflow, code style, and PR guidelines.
+
+## Firestore Collections
+
+The CLI writes to these collections:
+
+### `projects`
+```typescript
+{
+  id: string;           // Hash of git remote URL or path
+  name: string;         // Project directory name
+  path: string;         // Full path on syncing device
+  gitRemoteUrl: string | null;
+  projectIdSource: 'git-remote' | 'path-hash';
+  sessionCount: number;
+  lastActivity: Timestamp;
+}
+```
+
+### `sessions`
+```typescript
+{
+  id: string;           // From JSONL filename
+  projectId: string;
+  projectName: string;
+  summary: string | null;
+  generatedTitle: string | null;
+  startedAt: Timestamp;
+  endedAt: Timestamp;
+  messageCount: number;
+  toolCallCount: number;
+  gitBranch: string | null;
+  deviceId: string;
+  deviceHostname: string;
+  devicePlatform: string;
+}
+```
+
+### `messages`
+```typescript
+{
+  id: string;
+  sessionId: string;
+  type: 'user' | 'assistant' | 'system';
+  content: string;
+  toolCalls: Array<{ name: string; input: string }>;
+  timestamp: Timestamp;
+}
+```
