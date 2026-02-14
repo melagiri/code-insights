@@ -60,6 +60,7 @@ export interface ParsedSession {
   userMessageCount: number;
   assistantMessageCount: number;
   toolCallCount: number;
+  customTitle?: string;
   gitBranch: string | null;
   claudeVersion: string | null;
   messages: ParsedMessage[];
@@ -110,7 +111,7 @@ export interface ToolCall {
   input: Record<string, unknown>;
 }
 
-export type InsightType = 'summary' | 'decision' | 'learning' | 'technique';
+export type InsightType = 'summary' | 'decision' | 'learning' | 'technique' | 'prompt_quality';
 export type InsightScope = 'session' | 'project' | 'overall';
 
 export interface Insight {
