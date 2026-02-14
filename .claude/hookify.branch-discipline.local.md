@@ -7,7 +7,7 @@ tool_matcher: Task
 conditions:
   - field: subagent_type
     operator: regex_match
-    pattern: (cli-engineer|web-engineer|fullstack-engineer|ux-designer)
+    pattern: (fullstack-engineer|ux-designer)
 ---
 
 **Dev Agent Branch Check**

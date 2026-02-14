@@ -198,7 +198,7 @@ Web (code-insights-web/src/lib/types.ts) → Reads from Firestore
 **Rules to Enforce (during code review):**
 - ✅ Type changes in one repo must be mirrored in the other
 - ✅ New Firestore fields must be optional (backward compatible)
-- ✅ Insight types are: `summary | decision | learning | technique`
+- ✅ Insight types are: `summary | decision | learning | technique | prompt_quality`
 - ✅ Session characters are: `deep_focus | bug_hunt | feature_build | exploration | refactor | learning | quick_task`
 - ❌ REJECT PRs that add required Firestore fields without migration plan
 - ❌ REJECT PRs that change insight types without updating both repos

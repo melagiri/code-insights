@@ -85,7 +85,7 @@ code-insights reset --confirm          # Delete all Firestore data
 ### Firestore Collections
 - `projects` - Project metadata (id is hash of git remote URL or path)
 - `sessions` - Session metadata with generated titles, character classification, device info
-- `insights` - LLM-generated insights (types: summary, decision, learning, technique)
+- `insights` - LLM-generated insights (types: summary, decision, learning, technique, prompt_quality)
 - `messages` - Full message content (uploaded during sync)
 
 ### Cross-Repo Type Contract (CRITICAL)
@@ -345,7 +345,7 @@ Multi-tier fallback: Claude summary → user message (scored) → character-base
 Key types defined in `/cli/src/types.ts`:
 - `ClaudeMessage` - Individual JSONL message entry
 - `ParsedSession` - Aggregated session with metadata, title, character
-- `Insight` - Types: summary | decision | learning | technique; source: 'llm'
+- `Insight` - Types: summary | decision | learning | technique | prompt_quality; source: 'llm'
 - `SessionCharacter` - 7 session classifications
 - `ClaudeInsightConfig` - Firebase + optional Gemini + sync config
 - `SyncState` - File modification tracking for incremental sync
