@@ -16,9 +16,10 @@ Before running agents in parallel, verify NO output dependencies exist:
 
 **Common Sequential Patterns (DO NOT parallelize):**
 ```
-TA (type alignment)   → CLI engineer (needs type decision)
-TA (type alignment)   → Web engineer (needs type decision)
-CLI engineer (types)  → Web engineer (needs CLI types to match)
+PM (requirements)     → Fullstack Engineer (needs scope)
+TA (type alignment)   → Fullstack Engineer (needs type decision)
+PM (requirements)     → TA (needs scope to design)
+TA (type alignment)   → Web Engineer (needs type decision)
 ```
 
 **Safe to Parallelize:**
