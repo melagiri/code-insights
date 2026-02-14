@@ -32,7 +32,7 @@ codeInsights/
 ├── code-insights/          # THIS REPO — Open-source CLI tool
 │   ├── cli/                # Node.js CLI (code-insights)
 │   ├── docs/               # Product docs, roadmap, vision
-│   └── .claude/agents/     # Agent definitions (TA, CLI engineer, Web engineer)
+│   └── .claude/agents/     # Agent definitions (TA, fullstack-engineer, ux-designer, PM, chronicler)
 │
 └── code-insights-web/      # SEPARATE REPO — Closed-source web dashboard
     ├── src/                # Next.js 16 app
@@ -85,7 +85,7 @@ code-insights reset --confirm          # Delete all Firestore data
 ### Firestore Collections
 - `projects` - Project metadata (id is hash of git remote URL or path)
 - `sessions` - Session metadata with generated titles, character classification, device info
-- `insights` - LLM-generated insights (types: summary, decision, learning, technique)
+- `insights` - LLM-generated insights (types: summary, decision, learning, technique, prompt_quality)
 - `messages` - Full message content (uploaded during sync)
 
 ### Cross-Repo Type Contract (CRITICAL)
@@ -117,9 +117,11 @@ Web (code-insights-web/src/lib/types.ts) → Reads from Firestore
 
 | Agent | Model | Domain | Repo Scope |
 |-------|-------|--------|------------|
-| `technical-architect` | opus | Cross-repo architecture, type alignment, code review | Both repos |
-| `cli-engineer` | sonnet | CLI implementation, parser, commands, Firebase writes | `code-insights/cli/` |
-| `web-engineer` | sonnet | Dashboard implementation, components, hooks, LLM providers | `code-insights-web/` |
+| `technical-architect` | opus | Cross-repo architecture, type alignment, code review, LLD standards | Both repos |
+| `fullstack-engineer` | sonnet | Implementation across CLI and web — features, fixes, tests | Both repos |
+| `ux-designer` | opus | ASCII wireframes, user flows, personas, UX validation | Design docs |
+| `product-manager` | sonnet | Task tracking (GitHub Issues), sprint planning, ceremony coordination | Both repos |
+| `journey-chronicler` | opus | Capture learning moments, breakthroughs, course corrections | `docs/chronicle/` |
 
 Agent definitions live in `.claude/agents/`.
 
@@ -272,10 +274,13 @@ Orchestrator MUST NOT directly edit documents it doesn't own. Always delegate.
 | Document Type | Owner Agent | Action |
 |---------------|------------|--------|
 | `CLAUDE.md` | **Orchestrator** | Direct edit allowed |
-| CLI code (`cli/src/`) | `cli-engineer` | Delegate to CLI engineer |
-| Web code (`code-insights-web/src/`) | `web-engineer` | Delegate to web engineer |
+| CLI code (`cli/src/`) | `fullstack-engineer` | Delegate to fullstack engineer |
+| Web code (`code-insights-web/src/`) | `fullstack-engineer` | Delegate to fullstack engineer |
 | Type alignment decisions | `technical-architect` | Delegate to TA |
 | Architecture docs (`docs/`) | `technical-architect` | Delegate to TA |
+| UX specs (`docs/ux/`) | `ux-designer` | Delegate to UX designer |
+| Task tracking, sprints | `product-manager` | Delegate to PM |
+| Journey chronicle (`docs/chronicle/`) | `journey-chronicler` | Delegate to chronicler |
 | PR creation | Dev agent (whoever implemented) | Agent creates PR |
 
 **Why delegation matters:** Each agent has git hygiene rules — they commit AND push immediately. Orchestrator editing code directly bypasses these safeguards.
@@ -340,7 +345,7 @@ Multi-tier fallback: Claude summary → user message (scored) → character-base
 Key types defined in `/cli/src/types.ts`:
 - `ClaudeMessage` - Individual JSONL message entry
 - `ParsedSession` - Aggregated session with metadata, title, character
-- `Insight` - Types: summary | decision | learning | technique; source: 'llm'
+- `Insight` - Types: summary | decision | learning | technique | prompt_quality; source: 'llm'
 - `SessionCharacter` - 7 session classifications
 - `ClaudeInsightConfig` - Firebase + optional Gemini + sync config
 - `SyncState` - File modification tracking for incremental sync
@@ -363,6 +368,7 @@ Key types defined in `/cli/src/types.ts`:
 | `cross-repo-type-sync` | warn | Flag type changes that affect both repos |
 | `cli-binary-name` | warn | Prevent using `claudeinsight` instead of `code-insights` |
 | `agent-parallel-warning` | warn | Verify no dependencies before parallelizing agents |
+| `no-jira` | **block** | Prevent Jira/Atlassian API calls — use GitHub Issues instead |
 
 ## Development Notes
 
