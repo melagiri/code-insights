@@ -249,8 +249,8 @@ Your Firestore security rules are blocking reads. Update them in Firebase Consol
 
 - **CLI**: Node.js, TypeScript, Commander.js, Firebase Admin SDK
 - **Web**: Next.js 16, React 19, Tailwind CSS 4, shadcn/ui
-- **Auth**: NextAuth.js (Google, GitHub)
-- **Database**: Vercel Postgres (auth only), Firebase Firestore (your data)
+- **Auth**: Supabase Auth (Google, GitHub OAuth)
+- **Database**: Firebase Firestore (your data) — auth handled by Supabase
 - **Analytics**: Vercel Analytics
 - **LLM**: OpenAI, Anthropic, Gemini, Ollama
 

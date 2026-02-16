@@ -10,7 +10,7 @@ Code Insights is a tool that helps Claude Code users understand their AI-assiste
 
 ### 1. Privacy by Architecture
 
-There is no central Code Insights data server. Users connect the CLI tool to their own Firebase project. Session data never leaves their control. The hosted dashboard only reads from the user's Firestore — it stores authentication credentials in Vercel Postgres and collects anonymous aggregate analytics via Vercel Analytics, but never touches your Claude Code data.
+There is no central Code Insights data server. Users connect the CLI tool to their own Firebase project. Session data never leaves their control. The hosted dashboard only reads from the user's Firestore — authentication is handled by Supabase Auth, and the dashboard collects anonymous aggregate analytics via Vercel Analytics, but never touches your Claude Code data.
 
 ### 2. Developers Can Handle It
 

@@ -67,10 +67,10 @@ Code Insights stores all user session data in the user's own Firebase Firestore.
 ## Tech Stack
 
 - **CLI**: Node.js CLI (runs standalone or as Claude Code hook)
-- **Database**: User's Firebase Firestore (session data), Vercel Postgres (auth only)
+- **Database**: User's Firebase Firestore (session data) — auth handled by Supabase
 - **AI**: Multi-provider — OpenAI, Anthropic, Gemini, Ollama (user's own API keys)
 - **Web**: Next.js 16 + Tailwind CSS 4 + shadcn/ui
-- **Auth**: NextAuth.js (Google, GitHub)
+- **Auth**: Supabase Auth (Google, GitHub OAuth)
 - **Hosting**: Vercel (dashboard), user's Firebase (data)
 
 ## Success Metrics
