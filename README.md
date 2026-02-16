@@ -60,19 +60,21 @@ The web dashboard uses this config to read data from your Firestore.
 2. Scroll down to **"Your apps"**
 3. Click the **Web icon** (`</>`) to add a web app
 4. Enter a nickname (e.g., `code-insights-web`), click **"Register app"**
-5. Click the **"Config"** radio button (instead of "npm") to see raw key-value pairs
-6. Save these values as a JSON file (e.g., `~/Downloads/firebase-web-config.json`):
+5. Firebase will show a code snippet — copy the entire snippet and save it to a file (e.g., `~/Downloads/firebase-web-config.js`):
 
-```json
-{
-  "apiKey": "AIza...",
-  "authDomain": "your-project.firebaseapp.com",
-  "projectId": "your-project",
-  "storageBucket": "your-project.appspot.com",
-  "messagingSenderId": "123456789",
-  "appId": "1:123456789:web:abc123"
-}
+```javascript
+// You can paste the entire Firebase snippet as-is — no need to convert to JSON
+const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abc123"
+};
 ```
+
+The CLI automatically extracts the config from the JavaScript — no manual conversion needed.
 
 ### Step 5: Update Firestore Security Rules
 

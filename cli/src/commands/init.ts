@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { saveConfig, saveWebConfig, getConfigDir, isConfigured } from '../utils/config.js';
 import {
   readJsonFileWithError,
+  readFirebaseConfigFile,
   validateServiceAccountJson,
   validateWebConfig,
   extractServiceAccountConfig,
@@ -112,8 +113,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
   let webConfig: FirebaseWebConfig;
 
   if (options.webConfig) {
-    // Read from JSON file
-    const result = readJsonFileWithError<Record<string, unknown>>(options.webConfig);
+    // Read from file — supports both JSON and Firebase JS snippet format
+    const result = readFirebaseConfigFile<Record<string, unknown>>(options.webConfig);
 
     if (!result.success) {
       console.log(chalk.red(`\n❌ ${result.message}`));
@@ -129,9 +130,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
 
     if (!validateWebConfig(result.data)) {
-      console.log(chalk.red('\n❌ Invalid web config JSON.'));
-      console.log(chalk.gray('Expected a file with: apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId'));
-      console.log(chalk.gray('Get it from: Firebase Console > Project Settings > General > Your Apps\n'));
+      console.log(chalk.red('\n❌ Invalid web config.'));
+      console.log(chalk.gray('Expected: apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId'));
+      console.log(chalk.gray('Get it from: Firebase Console > Project Settings > General > Your Apps'));
+      console.log(chalk.gray('You can paste the JavaScript snippet directly into a file — no need to convert to JSON.\n'));
       process.exit(1);
     }
 

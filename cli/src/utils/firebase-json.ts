@@ -59,6 +59,97 @@ export function validateWebConfig(data: unknown): data is FirebaseWebConfig {
 }
 
 /**
+ * Parse Firebase's JavaScript config snippet into a JSON object.
+ *
+ * Firebase Console gives you JavaScript like:
+ *   const firebaseConfig = {
+ *     apiKey: "AIza...",
+ *     authDomain: "my-project.firebaseapp.com",
+ *     ...
+ *   };
+ *
+ * This function extracts the object and converts it to a parsed object.
+ */
+export function parseFirebaseJsConfig(content: string): Record<string, unknown> | null {
+  try {
+    // Strip single-line comments
+    let cleaned = content.replace(/\/\/.*$/gm, '');
+
+    // Strip multi-line comments
+    cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // Strip import statements
+    cleaned = cleaned.replace(/^import\s+.*$/gm, '');
+
+    // Strip lines like: const app = initializeApp(firebaseConfig);
+    cleaned = cleaned.replace(/^.*initializeApp.*$/gm, '');
+
+    // Extract the object literal between first { and last }
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      return null;
+    }
+
+    let objectStr = cleaned.substring(firstBrace, lastBrace + 1);
+
+    // Quote unquoted keys at start of lines: apiKey: → "apiKey":
+    // Uses ^ with multiline to avoid matching colons inside string values
+    objectStr = objectStr.replace(/^(\s*)(\w+)\s*:/gm, '$1"$2":');
+
+    // Remove trailing commas before }
+    objectStr = objectStr.replace(/,\s*}/g, '}');
+
+    return JSON.parse(objectStr);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read a Firebase config file — accepts JSON or JavaScript format.
+ *
+ * Tries JSON.parse first. If that fails, tries to extract a JS object
+ * literal (handles the raw Firebase Console snippet).
+ */
+export function readFirebaseConfigFile<T>(filePath: string): FileReadResult<T> {
+  const resolvedPath = resolveFilePath(filePath);
+
+  try {
+    if (!fs.existsSync(resolvedPath)) {
+      return { success: false, error: 'not_found', message: `File not found: ${filePath}` };
+    }
+
+    const content = fs.readFileSync(resolvedPath, 'utf-8');
+
+    // Try JSON first
+    try {
+      const data = JSON.parse(content) as T;
+      return { success: true, data };
+    } catch {
+      // Not valid JSON — try parsing as JavaScript
+    }
+
+    // Try Firebase JS config format
+    const parsed = parseFirebaseJsConfig(content);
+    if (parsed) {
+      return { success: true, data: parsed as T };
+    }
+
+    return {
+      success: false,
+      error: 'invalid_json',
+      message: 'Could not parse file as JSON or Firebase JavaScript config',
+    };
+  } catch (err) {
+    if (err instanceof Error && 'code' in err && err.code === 'EACCES') {
+      return { success: false, error: 'permission_denied', message: 'Permission denied reading file' };
+    }
+    return { success: false, error: 'unknown', message: `Error reading file: ${err instanceof Error ? err.message : 'Unknown error'}` };
+  }
+}
+
+/**
  * Resolve file path (expand ~ to home directory)
  */
 export function resolveFilePath(filePath: string): string {
