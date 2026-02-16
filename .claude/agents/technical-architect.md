@@ -56,7 +56,7 @@ Before making any decision, ground yourself in the current state:
 | Config management | `cli/src/utils/config.ts` | N/A |
 | Firestore hooks | N/A | `code-insights-web/src/lib/hooks/useFirestore.ts` |
 | LLM providers | N/A | `code-insights-web/src/lib/llm/` |
-| Auth config | N/A | `code-insights-web/src/lib/auth.ts` |
+| Auth config | N/A | `code-insights-web/src/lib/supabase/` |
 | UI components | N/A | `code-insights-web/src/components/` |
 | Architecture docs | `CLAUDE.md`, `docs/` | `code-insights-web/CLAUDE.md` |
 
@@ -481,7 +481,7 @@ These technology choices are LOCKED. Do not introduce alternatives without an AD
 | Database | Firestore (user-owned) | Supabase, PlanetScale, custom backend |
 | Web Framework | Next.js 16 (App Router) | Remix, SvelteKit, Astro |
 | UI Library | shadcn/ui + Tailwind | Material UI, Chakra, Ant Design |
-| Auth | NextAuth v5 + Prisma | Clerk, Auth0, Firebase Auth |
+| Auth | Supabase Auth (@supabase/ssr) | Clerk, Auth0, NextAuth, Firebase Auth |
 | Package Manager | pnpm | npm, yarn, bun |
 | Language | TypeScript (strict mode) | JavaScript, Go, Rust |
 | Icons | Lucide React | Heroicons, FontAwesome, custom SVGs |
@@ -526,5 +526,5 @@ When a locked technology needs upgrading (e.g., Next.js 16 to 17):
 - pnpm is the package manager for both repos
 - ES Modules everywhere — no CommonJS `require()`
 - Firestore is the ONLY shared data store between CLI and web
-- Postgres (via Prisma) is for auth ONLY — no user data
+- Supabase is for auth ONLY — no user data stored there
 - All agent files live in `.claude/agents/`

@@ -35,9 +35,7 @@ codeInsights/
 │   └── .claude/agents/     # Agent definitions (TA, fullstack-engineer, ux-designer, PM, chronicler)
 │
 └── code-insights-web/      # SEPARATE REPO — Closed-source web dashboard
-    ├── src/                # Next.js 16 app
-    ├── prisma/             # Auth schema (Vercel Postgres)
-    └── generated/          # Prisma client output
+    └── src/                # Next.js 16 app (Supabase Auth, Firebase data)
 ```
 
 ## Commands

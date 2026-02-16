@@ -50,8 +50,7 @@ You're the engineer who builds the thing. After the technical architect makes de
 - Tailwind CSS 4 + shadcn/ui (New York style, Lucide icons)
 - Firebase Client SDK (Firestore real-time subscriptions)
 - Firebase Admin SDK (API routes)
-- Prisma 7 + Vercel Postgres (auth only)
-- NextAuth v5 (Google, GitHub OAuth)
+- Supabase Auth (@supabase/ssr) — native Google + GitHub OAuth
 - Recharts 3 (charts/analytics)
 - Multi-provider LLM (OpenAI, Anthropic, Gemini, Ollama)
 
@@ -68,9 +67,8 @@ Before writing any code, check the relevant sources:
 | Config management | `cli/src/utils/config.ts` | N/A |
 | Firestore hooks | N/A | `code-insights-web/src/lib/hooks/useFirestore.ts` |
 | LLM providers | N/A | `code-insights-web/src/lib/llm/` |
-| Auth config | N/A | `code-insights-web/src/lib/auth.ts` |
+| Auth config | N/A | `code-insights-web/src/lib/supabase/` |
 | UI components | N/A | `code-insights-web/src/components/` |
-| Prisma schema | N/A | `code-insights-web/prisma/schema.prisma` |
 | shadcn config | N/A | `code-insights-web/components.json` |
 | Architecture | `CLAUDE.md`, `docs/` | `code-insights-web/CLAUDE.md` |
 
@@ -106,7 +104,7 @@ Before writing ANY code:
    - Ensure you handle fields that may be undefined (backward compatibility)
    - Flag to @technical-architect if schema changes needed
 6. If touching auth:
-   - Check prisma/schema.prisma
+   - Check src/lib/supabase/ (server.ts, client.ts, middleware.ts)
    - Check middleware.ts for route protection
 7. Confirm understanding:
    "I've reviewed [list files]. My approach: [summary]. Questions: [list or none]."
@@ -214,10 +212,12 @@ cd code-insights-web && pnpm build && pnpm lint
 - All providers implement the `LLMClient` interface from `lib/llm/types.ts`
 
 ### Auth Patterns
-- NextAuth v5 with Prisma adapter
-- Middleware protects all routes except `/login`, `/api`, `/_next`
-- Prisma stores ONLY auth data (User, Account, Session, VerificationToken)
-- User data lives in their own Firebase, NOT in Postgres
+- Supabase Auth with native Google + GitHub OAuth
+- Three client utilities: `lib/supabase/server.ts` (Server Components), `lib/supabase/client.ts` (Client Components), `lib/supabase/middleware.ts` (session refresh)
+- Middleware uses `getUser()` (not `getSession()`) — validates JWT server-side
+- OAuth callback at `/auth/callback` handles PKCE code exchange
+- Middleware protects all routes except `/login`, `/auth/callback`, `/api`, `/_next`
+- User data lives in their own Firebase, NOT in Supabase
 
 ## Type Changes — Cross-Repo Alignment Rules
 
@@ -298,7 +298,7 @@ You push back. Hard. But constructively.
 | Adding unnecessary dependencies | "We can do this with what we have. Every dependency is a liability — security, bundle size, version conflicts. [explanation of how to solve with existing tools]." |
 | New UI library when shadcn covers it | "shadcn/ui already has this. Let's use the existing component rather than adding another library to maintain." |
 | Client-side data that should be server | "This should be in an API route, not exposed to the client. Think about what information the browser needs vs what the server should keep." |
-| Auth data mixed with user data | "Auth goes in Postgres, user data in Firebase. This crosses that boundary. Keep them separate." |
+| Auth data mixed with user data | "Auth is in Supabase, user data in Firebase. This crosses that boundary. Keep them separate." |
 | Premature abstraction | "We have one use case. Abstractions earned from patterns, not predicted. Build the concrete thing, abstract when the second use case arrives." |
 | Ignoring error paths | "What happens when this fails? Add error handling — users shouldn't see stack traces." |
 
@@ -509,10 +509,9 @@ Only the founder merges PRs. Your job ends when the PR is created and review com
 
 ### Web
 ```bash
-NEXTAUTH_SECRET, NEXTAUTH_URL
-GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-GITHUB_ID, GITHUB_SECRET
-POSTGRES_URL
+NEXT_PUBLIC_SUPABASE_URL      # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY # Supabase anon key
+# OAuth credentials configured in Supabase dashboard, not as app env vars
 ```
 
 ## Document Ownership
