@@ -114,6 +114,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
         if (exists) {
           spinner.info(`Skipped ${fileName} (already synced)`);
           updateSyncState(syncState, filePath, session.id);
+          saveSyncState(syncState);
           continue;
         }
       }
@@ -122,8 +123,10 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
       await uploadSession(session);
       await uploadMessages(session);
 
-      // Update sync state
+      // Update and persist sync state after each file
+      // so progress survives crashes (e.g., Firebase quota exceeded)
       updateSyncState(syncState, filePath, session.id);
+      saveSyncState(syncState);
 
       syncedCount++;
       messageCount += session.messages.length;

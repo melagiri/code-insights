@@ -128,6 +128,8 @@ code-insights sync
 
 This parses all Claude Code JSONL files in `~/.claude/projects/` and uploads them to your Firestore. First sync may take a moment depending on how many sessions you have.
 
+> **Large backlogs?** If you have months of Claude Code history, the initial sync may exceed Firebase's free tier (Spark plan) write limits. Consider temporarily switching to the [Blaze plan](https://firebase.google.com/pricing) (pay-as-you-go) — the cost is negligible for a one-time sync. You can switch back to the free tier after a day or two once the backlog is uploaded. Subsequent syncs are incremental and well within free tier limits.
+
 ### Step 8: Open the Dashboard
 
 ```bash
