@@ -105,10 +105,10 @@ code-insights sync
 
 ## Step 7: Open the Dashboard
 
-If you configured web config, a dashboard link was shown. Regenerate it anytime:
+Generate a URL to connect the dashboard to your Firebase:
 
 ```bash
-code-insights link
+code-insights connect
 ```
 
 Or visit [code-insights.app](https://code-insights.app) and configure manually.

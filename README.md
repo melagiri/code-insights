@@ -124,7 +124,7 @@ This parses all Claude Code JSONL files in `~/.claude/projects/` and uploads the
 ### Step 8: Open the Dashboard
 
 ```bash
-code-insights link
+code-insights connect
 ```
 
 This generates a URL to [code-insights.app](https://code-insights.app) with your Firebase config encoded in the link. Open it in your browser, sign in with Google or GitHub, and you'll see your synced sessions.
@@ -177,7 +177,7 @@ code-insights sync --dry-run           # Preview what would be synced
 code-insights sync -q                  # Quiet mode (for hooks)
 code-insights sync --regenerate-titles # Regenerate all session titles
 code-insights status                   # Show sync statistics
-code-insights link                     # Generate dashboard URL with QR code
+code-insights connect                  # Generate dashboard connection URL
 code-insights install-hook             # Auto-sync when Claude Code sessions end
 code-insights uninstall-hook           # Remove the auto-sync hook
 code-insights reset --confirm          # Delete all Firestore data and local state

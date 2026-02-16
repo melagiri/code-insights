@@ -81,7 +81,7 @@ export async function statusCommand(): Promise<void> {
     if (webConfig && typeof webConfig.projectId === 'string') {
       console.log(chalk.gray(`    Project: ${webConfig.projectId}`));
     }
-    console.log(chalk.gray('    Run "code-insights link" to get dashboard URL'));
+    console.log(chalk.gray('    Run "code-insights connect" to get dashboard URL'));
   } else {
     console.log(chalk.yellow('  ○ Not configured'));
     console.log(chalk.gray('    Run "code-insights init" with --web-config to add'));

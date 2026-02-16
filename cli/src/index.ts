@@ -5,9 +5,8 @@ import { initCommand } from './commands/init.js';
 import { syncCommand } from './commands/sync.js';
 import { statusCommand } from './commands/status.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
-import { insightsCommand } from './commands/insights.js';
+import { connectCommand } from './commands/connect.js';
 import { resetCommand } from './commands/reset.js';
-import { openCommand } from './commands/open.js';
 
 const program = new Command();
 
@@ -47,27 +46,11 @@ program
   .action(uninstallHookCommand);
 
 program
-  .command('insights')
-  .description('View recent insights from Firestore')
-  .option('-t, --type <type>', 'Filter by insight type (summary, decision, learning, technique)')
-  .option('-p, --project <name>', 'Filter by project name')
-  .option('--today', 'Show only today\'s insights')
-  .option('-l, --limit <number>', 'Number of insights to show', '20')
-  .action((options) => {
-    insightsCommand({
-      type: options.type,
-      project: options.project,
-      today: options.today,
-      limit: parseInt(options.limit, 10),
-    });
-  });
+  .command('connect')
+  .description('Generate a URL to connect the web dashboard to your Firebase')
+  .option('--no-qr', 'Skip QR code output')
+  .action(connectCommand);
 
 program.addCommand(resetCommand);
-
-program
-  .command('open')
-  .description('Open the Code Insights dashboard in your browser')
-  .option('--url', 'Print the URL instead of opening browser')
-  .action(openCommand);
 
 program.parse();
