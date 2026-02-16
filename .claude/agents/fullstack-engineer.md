@@ -146,7 +146,6 @@ git checkout -b feature/description
 2. Type definitions (if changed)
 3. Core implementation (library/hook changes)
 4. Command wiring (CLI) or page implementations (web)
-5. Prisma migrations (if any)
 
 **CI Simulation Gate (BEFORE PR):**
 ```bash

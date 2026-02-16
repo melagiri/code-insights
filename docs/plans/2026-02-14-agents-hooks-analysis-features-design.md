@@ -84,7 +84,7 @@
   - Next.js 16 App Router, React 19, Tailwind CSS 4, shadcn/ui
   - Firebase client SDK (Firestore real-time subscriptions)
   - Multi-provider LLM integration (OpenAI, Anthropic, Gemini, Ollama)
-  - Auth: NextAuth v5 with Prisma adapter
+  - Auth: Supabase Auth (@supabase/ssr)
   - Charts: Recharts 3
   - Keep: code-first design workflow, component patterns
   - Ceremony steps 3, 4, 6, 7, 8 (same as fullstack-engineer)
