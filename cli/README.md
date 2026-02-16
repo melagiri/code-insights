@@ -15,7 +15,7 @@ Command-line tool that parses Claude Code session history and syncs it to your o
 cd cli
 pnpm install
 pnpm build
-pnpm link --global    # Makes `code-insights` available globally
+npm link    # Makes `code-insights` available globally
 ```
 
 After linking, verify it works:
@@ -204,7 +204,7 @@ pnpm build  # One-time compile
 pnpm lint   # Run ESLint
 ```
 
-The CLI is written in TypeScript with ES Modules and compiled to `dist/`. After `pnpm link --global`, changes rebuild automatically in watch mode.
+The CLI is written in TypeScript with ES Modules and compiled to `dist/`. After `npm link`, changes rebuild automatically in watch mode.
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for the full development workflow, code style, and PR guidelines.
 

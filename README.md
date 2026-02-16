@@ -97,7 +97,7 @@ service cloud.firestore {
 cd cli
 pnpm install
 pnpm build
-pnpm link --global
+npm link
 ```
 
 This makes `code-insights` available as a global command. Now run the setup wizard:

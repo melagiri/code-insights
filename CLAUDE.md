@@ -50,7 +50,7 @@ pnpm build            # Compile TypeScript to dist/
 pnpm lint             # Run ESLint (no config file yet - needs setup)
 
 # After building, link for local testing:
-pnpm link --global
+npm link
 code-insights init                     # Interactive Firebase setup wizard
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions
