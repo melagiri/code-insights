@@ -50,9 +50,8 @@ pnpm build            # Compile TypeScript to dist/
 pnpm lint             # Run ESLint (no config file yet - needs setup)
 
 # After building, link for local testing:
-npm link
-code-insights init                     # Configure Firebase credentials
-code-insights init --from-json <path>  # Import from service account JSON
+pnpm link --global
+code-insights init                     # Interactive Firebase setup wizard
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions
 code-insights sync --dry-run           # Preview without changes
@@ -73,7 +72,7 @@ code-insights reset --confirm          # Delete all Firestore data
 ```
 
 ### Directory Structure (`/cli/src/`)
-- `commands/` - CLI commands (init, sync, status, insights, open, reset, install-hook)
+- `commands/` - CLI commands (init, sync, status, connect, reset, install-hook)
 - `parser/jsonl.ts` - JSONL file parsing and session metadata extraction
 - `parser/titles.ts` - Smart session title generation (5-tier fallback strategy)
 - `firebase/client.ts` - Firebase Admin SDK for Firestore reads/writes

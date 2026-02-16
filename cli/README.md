@@ -15,7 +15,7 @@ Command-line tool that parses Claude Code session history and syncs it to your o
 cd cli
 pnpm install
 pnpm build
-npm link    # Makes `code-insights` available globally
+pnpm link --global    # Makes `code-insights` available globally
 ```
 
 After linking, verify it works:
@@ -28,7 +28,7 @@ code-insights --version
 
 ### `code-insights init`
 
-Configure Code Insights with your Firebase credentials (CLI + Web).
+Configure Code Insights with your Firebase credentials (CLI + Web). This is an interactive setup wizard.
 
 ```bash
 code-insights init
@@ -38,8 +38,8 @@ You'll be prompted for:
 
 **Step 1 - CLI Sync (Service Account):**
 - Firebase Project ID
-- Service Account Email (client_email from JSON)
-- Private Key (private_key from JSON)
+- Service Account Email (`client_email` from JSON)
+- Private Key (`private_key` from JSON)
 
 **Step 2 - Web Dashboard (Client Config):**
 - API Key
@@ -48,21 +48,20 @@ You'll be prompted for:
 - Messaging Sender ID
 - App ID
 
-Configuration is stored in `~/.code-insights/config.json`.
+**Step 3 - Dashboard URL:**
+- Press Enter to accept the default (`https://code-insights.app`)
 
-### `code-insights link`
+Configuration is stored in `~/.code-insights/config.json`. Web config is stored separately in `~/.code-insights/web-config.json`.
 
-Generate a URL to the Code Insights dashboard with your Firebase config pre-loaded.
+### `code-insights connect`
+
+Generate a URL to connect the web dashboard to your Firebase.
 
 ```bash
-# Generate dashboard URL
-code-insights link
-
-# Print the URL only
-code-insights link --url
+code-insights connect
 ```
 
-The dashboard URL includes your Firebase config encoded in the URL, so you don't need to configure it manually in the browser.
+The URL includes your Firebase web config base64-encoded as a query parameter. Open it in a browser to connect the dashboard to your Firestore — no manual configuration needed.
 
 ### `code-insights sync`
 
@@ -101,27 +100,6 @@ Displays:
 - Total sessions synced
 - Projects tracked
 - Last sync time
-
-### `code-insights insights`
-
-View recent insights from Firestore.
-
-```bash
-# Show recent insights
-code-insights insights
-
-# Filter by type
-code-insights insights --type decision
-
-# Filter by project
-code-insights insights --project "my-project"
-
-# Today's insights only
-code-insights insights --today
-
-# Limit results
-code-insights insights --limit 10
-```
 
 ### `code-insights reset`
 
@@ -196,11 +174,10 @@ Sessions are automatically titled based on:
 cli/
 ├── src/
 │   ├── commands/
-│   │   ├── init.ts          # Firebase configuration
+│   │   ├── init.ts          # Interactive Firebase configuration
 │   │   ├── sync.ts          # Main sync logic
-│   │   ├── open.ts          # Open dashboard in browser
+│   │   ├── connect.ts       # Generate dashboard connection URL
 │   │   ├── status.ts        # Status display
-│   │   ├── insights.ts      # View insights
 │   │   ├── reset.ts         # Clear all data
 │   │   └── install-hook.ts  # Hook management
 │   ├── firebase/
@@ -210,7 +187,8 @@ cli/
 │   │   └── titles.ts        # Title generation
 │   ├── utils/
 │   │   ├── config.ts        # Config management
-│   │   └── device.ts        # Device identification
+│   │   ├── device.ts        # Device identification
+│   │   └── firebase-json.ts # Firebase JSON validation & URL generation
 │   ├── types.ts             # TypeScript types
 │   └── index.ts             # CLI entry point
 ├── dist/                    # Compiled output
@@ -226,7 +204,7 @@ pnpm build  # One-time compile
 pnpm lint   # Run ESLint
 ```
 
-The CLI is written in TypeScript with ES Modules and compiled to `dist/`. After `npm link`, changes rebuild automatically in watch mode.
+The CLI is written in TypeScript with ES Modules and compiled to `dist/`. After `pnpm link --global`, changes rebuild automatically in watch mode.
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for the full development workflow, code style, and PR guidelines.
 

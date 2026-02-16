@@ -42,60 +42,20 @@ This guide walks you through setting up Firebase for Code Insights.
 3. Click the **Web icon** (`</>`) to add a web app
 4. Enter a nickname (e.g., "code-insights-web")
 5. Click **"Register app"**
-6. You'll see a code snippet with `firebaseConfig`. You need to save this as JSON.
+6. Note the config values shown — you'll enter them during `code-insights init`
 
-**Option A: Use the Config button (Recommended)**
-
-After registering, click the **"Config"** radio button (instead of "npm") to get the raw config object, then save it as JSON.
-
-**Option B: Convert JavaScript to JSON manually**
-
-Firebase shows JavaScript like this:
-```javascript
-const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "your-project.firebaseapp.com",
-  // ...
-};
-```
-
-To convert to JSON:
-- Remove `const firebaseConfig = ` and the trailing `;`
-- Ensure all keys have double quotes (JSON requires `"apiKey"` not `apiKey`)
-
-**Save as: `~/Downloads/firebase-web-config.json`**
-```json
-{
-  "apiKey": "AIza...",
-  "authDomain": "your-project.firebaseapp.com",
-  "projectId": "your-project",
-  "storageBucket": "your-project.appspot.com",
-  "messagingSenderId": "123456789",
-  "appId": "1:123456789:web:abc123"
-}
-```
+> **Tip:** Click the **"Config"** radio button (instead of "npm") to see the raw key-value pairs. You'll need: `apiKey`, `authDomain`, `storageBucket`, `messagingSenderId`, and `appId`.
 
 ## Step 5: Configure Code Insights CLI
-
-### Option A: Quick Setup (Recommended)
-
-```bash
-code-insights init \
-  --from-json ~/Downloads/serviceAccountKey.json \
-  --web-config ~/Downloads/firebase-web-config.json
-```
-
-This will:
-- Configure the CLI to sync sessions
-- Generate a dashboard link with QR code
-
-### Option B: Interactive Setup
 
 ```bash
 code-insights init
 ```
 
-Follow the prompts to provide credentials.
+The interactive wizard will prompt you for:
+1. **Service account credentials** — `project_id`, `client_email`, and `private_key` from the JSON file downloaded in Step 3
+2. **Web SDK config** — the values from Step 4
+3. **Dashboard URL** — press Enter for the default (`https://code-insights.app`)
 
 ## Step 6: Sync Your Sessions
 

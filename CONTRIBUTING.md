@@ -23,7 +23,7 @@ pnpm install
 pnpm build
 
 # Link for local testing
-npm link
+pnpm link --global
 ```
 
 ## Project Structure

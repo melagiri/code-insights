@@ -84,7 +84,7 @@ export async function statusCommand(): Promise<void> {
     console.log(chalk.gray('    Run "code-insights connect" to get dashboard URL'));
   } else {
     console.log(chalk.yellow('  ○ Not configured'));
-    console.log(chalk.gray('    Run "code-insights init" with --web-config to add'));
+    console.log(chalk.gray('    Run "code-insights init" to configure'));
   }
 
   console.log('');
