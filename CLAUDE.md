@@ -52,6 +52,8 @@ pnpm lint             # Run ESLint (no config file yet - needs setup)
 # After building, link for local testing:
 npm link
 code-insights init                     # Interactive Firebase setup wizard
+code-insights init --from-json <path>  # Import service account from JSON file
+code-insights init --web-config <path> # Import web SDK config from JSON file
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions
 code-insights sync --dry-run           # Preview without changes

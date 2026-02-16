@@ -52,7 +52,7 @@ The CLI uses this to write your session data to Firestore.
 
 You'll need three values from this file during setup: `project_id`, `client_email`, and `private_key`.
 
-### Step 4: Register a Web App
+### Step 4: Register a Web App and Save Config
 
 The web dashboard uses this config to read data from your Firestore.
 
@@ -60,13 +60,19 @@ The web dashboard uses this config to read data from your Firestore.
 2. Scroll down to **"Your apps"**
 3. Click the **Web icon** (`</>`) to add a web app
 4. Enter a nickname (e.g., `code-insights-web`), click **"Register app"**
-5. You'll see a config snippet — note these values for the setup wizard:
+5. Click the **"Config"** radio button (instead of "npm") to see raw key-value pairs
+6. Save these values as a JSON file (e.g., `~/Downloads/firebase-web-config.json`):
 
+```json
+{
+  "apiKey": "AIza...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abc123"
+}
 ```
-apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId
-```
-
-> **Tip:** Click the **"Config"** radio button (instead of "npm") to see the raw key-value pairs.
 
 ### Step 5: Update Firestore Security Rules
 
@@ -100,18 +106,17 @@ pnpm build
 npm link
 ```
 
-This makes `code-insights` available as a global command. Now run the setup wizard:
+This makes `code-insights` available as a global command. Now configure it with the two JSON files from Steps 3 and 4:
 
 ```bash
-code-insights init
+code-insights init \
+  --from-json ~/Downloads/serviceAccountKey.json \
+  --web-config ~/Downloads/firebase-web-config.json
 ```
 
-The wizard will prompt you for:
-1. **Service account credentials** — `project_id`, `client_email`, and `private_key` from the JSON file you downloaded in Step 3
-2. **Web SDK config** — the six values from Step 4 (`apiKey`, `authDomain`, etc.)
-3. **Dashboard URL** — press Enter to accept the default (`https://code-insights.app`)
+That's it — no manual copy-pasting needed. The CLI reads both files and configures everything automatically.
 
-> **Tip:** Keep the service account JSON file open in a text editor so you can copy values during setup. The `private_key` is a long multi-line string starting with `-----BEGIN PRIVATE KEY-----`.
+> **Alternative:** Run `code-insights init` without flags for an interactive setup wizard that prompts for each value individually.
 
 ### Step 7: Sync Your Sessions
 
@@ -171,6 +176,8 @@ The CLI and web dashboard are developed in separate repositories:
 
 ```bash
 code-insights init                     # Interactive setup wizard
+code-insights init --from-json <path>  # Import service account from JSON file
+code-insights init --web-config <path> # Import web SDK config from JSON file
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions (ignores cache)
 code-insights sync --dry-run           # Preview what would be synced

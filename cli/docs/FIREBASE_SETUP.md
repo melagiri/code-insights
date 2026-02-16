@@ -48,14 +48,17 @@ This guide walks you through setting up Firebase for Code Insights.
 
 ## Step 5: Configure Code Insights CLI
 
+Save the web config from Step 4 as a JSON file (e.g., `~/Downloads/firebase-web-config.json`), then run:
+
 ```bash
-code-insights init
+code-insights init \
+  --from-json ~/Downloads/serviceAccountKey.json \
+  --web-config ~/Downloads/firebase-web-config.json
 ```
 
-The interactive wizard will prompt you for:
-1. **Service account credentials** — `project_id`, `client_email`, and `private_key` from the JSON file downloaded in Step 3
-2. **Web SDK config** — the values from Step 4
-3. **Dashboard URL** — press Enter for the default (`https://code-insights.app`)
+This reads both files and configures everything automatically — no manual copy-pasting.
+
+> **Alternative:** Run `code-insights init` without flags for an interactive wizard that prompts for each value.
 
 ## Step 6: Sync Your Sessions
 

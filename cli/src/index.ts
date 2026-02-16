@@ -18,6 +18,8 @@ program
 program
   .command('init')
   .description('Configure Code Insights with your Firebase credentials')
+  .option('--from-json <path>', 'Path to Firebase service account JSON file')
+  .option('--web-config <path>', 'Path to Firebase web SDK config JSON file')
   .action(initCommand);
 
 program

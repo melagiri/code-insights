@@ -28,28 +28,23 @@ code-insights --version
 
 ### `code-insights init`
 
-Configure Code Insights with your Firebase credentials (CLI + Web). This is an interactive setup wizard.
+Configure Code Insights with your Firebase credentials.
 
 ```bash
+# Quick setup — import directly from JSON files (recommended)
+code-insights init \
+  --from-json ~/Downloads/serviceAccountKey.json \
+  --web-config ~/Downloads/firebase-web-config.json
+
+# Interactive setup — prompts for each value
 code-insights init
 ```
 
-You'll be prompted for:
+**Flags:**
+- `--from-json <path>` — Path to the Firebase service account JSON (downloaded from Firebase Console > Project Settings > Service Accounts)
+- `--web-config <path>` — Path to the Firebase web SDK config JSON (saved from Firebase Console > Project Settings > General > Your Apps)
 
-**Step 1 - CLI Sync (Service Account):**
-- Firebase Project ID
-- Service Account Email (`client_email` from JSON)
-- Private Key (`private_key` from JSON)
-
-**Step 2 - Web Dashboard (Client Config):**
-- API Key
-- Auth Domain
-- Storage Bucket
-- Messaging Sender ID
-- App ID
-
-**Step 3 - Dashboard URL:**
-- Press Enter to accept the default (`https://code-insights.app`)
+You can use one flag, both, or neither. Any values not provided via flags will be collected interactively.
 
 Configuration is stored in `~/.code-insights/config.json`. Web config is stored separately in `~/.code-insights/web-config.json`.
 
