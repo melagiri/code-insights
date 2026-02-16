@@ -59,7 +59,7 @@ code-insights sync --dry-run           # Preview without changes
 code-insights sync -q                  # Quiet mode (for hook usage)
 code-insights sync --regenerate-titles # Regenerate session titles
 code-insights status                   # Show sync statistics
-code-insights link                     # Generate dashboard connection URL
+code-insights connect                  # Generate dashboard connection URL
 code-insights install-hook             # Auto-sync on session end
 code-insights uninstall-hook           # Remove auto-sync hook
 code-insights reset --confirm          # Delete all Firestore data

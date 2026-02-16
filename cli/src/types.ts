@@ -148,10 +148,12 @@ export interface ClaudeInsightConfig {
     clientEmail: string;
     privateKey: string;
   };
+  webConfig?: FirebaseWebConfig;
   sync: {
     claudeDir: string;
     excludeProjects: string[];
   };
+  dashboardUrl?: string;
 }
 
 export interface SyncState {

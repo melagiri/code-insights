@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { saveConfig, getConfigDir, isConfigured } from '../utils/config.js';
+import { saveConfig, saveWebConfig, getConfigDir, isConfigured } from '../utils/config.js';
 import type { ClaudeInsightConfig } from '../types.js';
 
 const DEFAULT_DASHBOARD_URL = 'https://code-insights.app';
@@ -116,6 +116,7 @@ export async function initCommand(): Promise<void> {
     webConfig: {
       apiKey: webConfigAnswers.apiKey,
       authDomain: webConfigAnswers.authDomain,
+      projectId: serviceAccountAnswers.projectId,
       storageBucket: webConfigAnswers.storageBucket,
       messagingSenderId: webConfigAnswers.messagingSenderId,
       appId: webConfigAnswers.appId,
@@ -128,6 +129,7 @@ export async function initCommand(): Promise<void> {
   };
 
   saveConfig(config);
+  saveWebConfig(config.webConfig!);
 
   console.log(chalk.green('\n✅ Configuration saved!'));
   console.log(chalk.gray(`Config location: ${getConfigDir()}/config.json`));
@@ -136,5 +138,5 @@ export async function initCommand(): Promise<void> {
   console.log(chalk.white('  1. Sync your sessions:'));
   console.log(chalk.gray('     code-insights sync\n'));
   console.log(chalk.white('  2. Open the dashboard:'));
-  console.log(chalk.gray('     code-insights link\n'));
+  console.log(chalk.gray('     code-insights connect\n'));
 }
