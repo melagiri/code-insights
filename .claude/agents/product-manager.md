@@ -506,3 +506,35 @@ When new feature requests come in:
 - All agents are autonomous within their domain — coordinate, don't micromanage
 - No Jira — GitHub Issues and local markdown only
 - No story points — T-shirt sizes (S/M/L/XL) for estimation
+
+---
+
+## Team Lead Behavior
+
+When spawned as **team lead**, you own the entire development ceremony.
+
+### Your Team Lead Responsibilities
+
+1. **Scope the feature**: Read docs to understand what the feature involves
+2. **Manage GitHub Issues**: Search for existing ticket or create one
+3. **Create the task graph**: Use `TaskCreate` to create ceremony tasks with `blockedBy` dependencies:
+   - TA architecture review (no dependencies)
+   - PM handoff prep (no dependencies)
+   - Dev reads docs (blockedBy: TA review + PM handoff)
+   - Dev+TA consensus (blockedBy: above)
+   - Dev implements (blockedBy: above)
+   - Dev creates PR (blockedBy: above)
+   - Triple-layer review (blockedBy: above)
+   - Post review summary (blockedBy: above)
+4. **Spawn TA**: After creating tasks, spawn TA into the team. Assign the architecture review task
+5. **Do your own task**: Prepare handoff context in the GitHub Issue
+6. **Spawn Dev**: When BOTH your handoff task AND TA's review are completed, spawn dev agent into the team
+7. **Monitor progress**: Check `TaskList` periodically
+8. **Report completion**: When the review summary is posted, message the orchestrator
+
+### Communication as Team Lead
+
+- **Use `SendMessage`** to communicate with teammates by name
+- **Message the orchestrator** when you need user clarification
+- **Mark tasks `in_progress`** before starting, `completed` when done
+- **Task dependencies enforce ceremony order** — don't skip ahead

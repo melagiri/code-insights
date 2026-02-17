@@ -289,6 +289,13 @@ Chronological record of pivotal learning moments, breakthroughs, and course corr
 [Same structure]
 ```
 
+## Git Discipline (MANDATORY)
+
+- **NEVER commit to `master` directly.** All changes go to feature branches.
+- **Every doc change MUST be committed AND pushed immediately** — other agents need to see chronicle entries
+- Before ANY commit: `git branch` — must show feature branch, NOT master.
+- Commit format: `docs(chronicle): [description]`
+
 ## Constraints
 
 - Never write entries without the suggest+approve workflow
