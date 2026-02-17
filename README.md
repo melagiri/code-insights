@@ -245,6 +245,31 @@ Your Firestore security rules are blocking reads. Update them in Firebase Consol
 - Subsequent syncs are incremental and much faster
 - Use `code-insights sync --dry-run` to preview how many sessions will be synced
 
+### Ollama CORS errors on the dashboard
+
+If you're using Ollama as your LLM provider on the dashboard and seeing CORS errors, the macOS Ollama app doesn't read shell environment variables (`.zshrc`/`.bashrc`). Try one of these:
+
+**Option 1 — Run from terminal** (most reliable):
+Quit the Ollama menu bar app first, then:
+```bash
+OLLAMA_ORIGINS="https://code-insights.app" ollama serve
+```
+Keep the terminal open while using the dashboard.
+
+**Option 2 — launchctl** (persistent for macOS app):
+```bash
+launchctl setenv OLLAMA_ORIGINS "https://code-insights.app"
+```
+Then fully quit Ollama (menu bar icon → Quit Ollama) and reopen it.
+
+**Option 3 — Shell profile** (only works with `ollama serve`):
+```bash
+echo 'export OLLAMA_ORIGINS="https://code-insights.app"' >> ~/.zshrc
+source ~/.zshrc
+ollama serve
+```
+Note: This does NOT work with the macOS Ollama desktop app — only when running `ollama serve` from the terminal.
+
 ## Tech Stack
 
 - **CLI**: Node.js, TypeScript, Commander.js, Firebase Admin SDK
