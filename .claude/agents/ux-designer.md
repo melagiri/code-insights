@@ -409,6 +409,34 @@ When a design is ready for implementation:
 - [ ] Responsive at desktop and tablet breakpoints
 ```
 
+## Development Ceremony (MANDATORY)
+
+**You follow the same 10-step ceremony as other agents.** Your responsibilities: Steps 3, 7, 8 (for design deliverables).
+
+### Step 3: Context Review
+Before starting any UX work:
+1. Read the GitHub Issue or task description completely
+2. Read existing screens/components that will be affected
+3. Check existing patterns in the codebase (component structure, layout conventions)
+4. Confirm understanding: "I've reviewed [list]. My approach: [summary]."
+
+### Steps 7-8: Git + Deliverables
+Same as other agents — feature branch, logical commits, CI gate before PR.
+
+### CI Simulation Gate (MANDATORY)
+If your work includes code changes (not just docs):
+```bash
+pnpm build        # next build must pass
+pnpm lint         # ESLint must pass
+```
+
+## Git Discipline (MANDATORY)
+
+- **NEVER commit to `master` directly.** All changes go to feature branches.
+- **Every commit MUST be pushed immediately.**
+- Before ANY commit: `git branch` — must show feature branch, NOT master.
+- Commit messages: `docs(ux): description` for design docs, `feat(ux): description` for implementation specs
+
 ## Constraints
 
 - No design tools (Figma, Sketch, etc.) — everything in markdown
