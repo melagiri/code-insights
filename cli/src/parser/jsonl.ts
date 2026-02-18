@@ -8,8 +8,10 @@ import type {
   ParsedMessage,
   ToolCall,
   MessageContent,
+  SessionUsage,
 } from '../types.js';
 import { generateTitle } from './titles.js';
+import { calculateCost, type UsageEntry } from '../utils/pricing.js';
 
 /**
  * Parse a single JSONL file and extract session data
@@ -91,6 +93,47 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
     }
   }
 
+  // Extract usage data from raw messages
+  const usageEntries: UsageEntry[] = [];
+  for (const msg of messages) {
+    if (msg.message?.model && msg.message?.usage) {
+      usageEntries.push({
+        model: msg.message.model,
+        usage: msg.message.usage,
+      });
+    }
+  }
+
+  // Aggregate usage stats
+  let usage: SessionUsage | undefined;
+  if (usageEntries.length > 0) {
+    const totalInputTokens = usageEntries.reduce((sum, e) => sum + (e.usage.input_tokens ?? 0), 0);
+    const totalOutputTokens = usageEntries.reduce((sum, e) => sum + (e.usage.output_tokens ?? 0), 0);
+    const cacheCreationTokens = usageEntries.reduce((sum, e) => sum + (e.usage.cache_creation_input_tokens ?? 0), 0);
+    const cacheReadTokens = usageEntries.reduce((sum, e) => sum + (e.usage.cache_read_input_tokens ?? 0), 0);
+
+    // Count turns per model to find primary model
+    const modelCounts = new Map<string, number>();
+    for (const e of usageEntries) {
+      modelCounts.set(e.model, (modelCounts.get(e.model) ?? 0) + 1);
+    }
+    const modelsUsed = [...modelCounts.keys()];
+    const primaryModel = modelsUsed.sort((a, b) =>
+      (modelCounts.get(b) ?? 0) - (modelCounts.get(a) ?? 0)
+    )[0] ?? 'unknown';
+
+    usage = {
+      totalInputTokens,
+      totalOutputTokens,
+      cacheCreationTokens,
+      cacheReadTokens,
+      estimatedCostUsd: calculateCost(usageEntries),
+      modelsUsed,
+      primaryModel,
+      usageSource: 'jsonl',
+    };
+  }
+
   if (parsedMessages.length === 0) {
     return null;
   }
@@ -118,6 +161,7 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
     gitBranch,
     claudeVersion,
     messages: parsedMessages,
+    usage,
   };
 
   // Generate smart title (no longer depends on insights)
