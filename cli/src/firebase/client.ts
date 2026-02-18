@@ -98,6 +98,17 @@ export async function uploadSession(session: ParsedSession): Promise<void> {
     deviceHostname: deviceInfo.hostname,
     devicePlatform: deviceInfo.platform,
     syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+    // Usage stats (conditional — absent for older sessions without token data)
+    ...(session.usage ? {
+      totalInputTokens: session.usage.totalInputTokens,
+      totalOutputTokens: session.usage.totalOutputTokens,
+      cacheCreationTokens: session.usage.cacheCreationTokens,
+      cacheReadTokens: session.usage.cacheReadTokens,
+      estimatedCostUsd: session.usage.estimatedCostUsd,
+      modelsUsed: session.usage.modelsUsed,
+      primaryModel: session.usage.primaryModel,
+      usageSource: session.usage.usageSource,
+    } : {}),
   });
 
   await batch.commit();

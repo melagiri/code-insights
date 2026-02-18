@@ -14,6 +14,13 @@ export interface ClaudeMessage {
   message: {
     role: string;
     content: string | MessageContent[];
+    model?: string;
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
 }
 
@@ -63,6 +70,7 @@ export interface ParsedSession {
   customTitle?: string;
   gitBranch: string | null;
   claudeVersion: string | null;
+  usage?: SessionUsage;
   messages: ParsedMessage[];
 }
 
@@ -74,6 +82,17 @@ export interface ParsedMessage {
   toolCalls: ToolCall[];
   timestamp: Date;
   parentId: string | null;
+}
+
+export interface SessionUsage {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  estimatedCostUsd: number;
+  modelsUsed: string[];
+  primaryModel: string;
+  usageSource: 'jsonl';
 }
 
 export type SessionCharacter =
