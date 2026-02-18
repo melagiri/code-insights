@@ -96,6 +96,7 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
   // Extract usage data from raw messages
   const usageEntries: UsageEntry[] = [];
   for (const msg of messages) {
+    if (msg.isMeta) continue;
     if (msg.message?.model && msg.message?.usage) {
       usageEntries.push({
         model: msg.message.model,
@@ -118,7 +119,7 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
       modelCounts.set(e.model, (modelCounts.get(e.model) ?? 0) + 1);
     }
     const modelsUsed = [...modelCounts.keys()];
-    const primaryModel = modelsUsed.sort((a, b) =>
+    const primaryModel = [...modelsUsed].sort((a, b) =>
       (modelCounts.get(b) ?? 0) - (modelCounts.get(a) ?? 0)
     )[0] ?? 'unknown';
 

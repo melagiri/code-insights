@@ -24,12 +24,18 @@ export interface UsageEntry {
 // Cache creation tokens are priced at 25% more than input price
 const MODEL_PRICING: Record<string, ModelPricing> = {
   // Claude 4.x family
-  'claude-opus-4-6':           { input: 15,  output: 75 },
+  'claude-opus-4-6':           { input: 5,   output: 25 },
+  'claude-opus-4-5':           { input: 5,   output: 25 },
+  'claude-opus-4-1':           { input: 15,  output: 75 },
+  'claude-opus-4':             { input: 15,  output: 75 },
+  'claude-sonnet-4-6':         { input: 3,   output: 15 },
   'claude-sonnet-4-5':         { input: 3,   output: 15 },
-  'claude-haiku-4-5':          { input: 0.8, output: 4 },
+  'claude-sonnet-4':           { input: 3,   output: 15 },
+  'claude-haiku-4-5':          { input: 1,   output: 5 },
   // Claude 3.5 family
   'claude-3-5-sonnet-20241022': { input: 3,   output: 15 },
   'claude-3-5-haiku-20241022':  { input: 0.8, output: 4 },
+  'claude-haiku-3-5':           { input: 0.8, output: 4 },
   // Claude 3 family
   'claude-3-opus-20240229':    { input: 15,  output: 75 },
   'claude-3-sonnet-20240229':  { input: 3,   output: 15 },
