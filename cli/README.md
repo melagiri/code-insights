@@ -4,7 +4,7 @@ Command-line tool that parses Claude Code session history and syncs it to your o
 
 ## Prerequisites
 
-- **Node.js** >= 18
+- **Node.js** 18 or later
 - **pnpm** >= 9 (`npm install -g pnpm` if needed)
 - A **Firebase project** with Firestore enabled (see [Quick Start](../README.md#quick-start))
 
@@ -55,6 +55,9 @@ Generate a URL to connect the web dashboard to your Firebase.
 ```bash
 code-insights connect
 ```
+
+**Flags:**
+- `--no-qr` — Skip QR code output (prints URL only)
 
 The URL includes your Firebase web config base64-encoded as a query parameter. Open it in a browser to connect the dashboard to your Firestore — no manual configuration needed.
 
@@ -140,6 +143,7 @@ Each session is parsed to extract:
 - Tool call statistics
 - Git branch (if available)
 - Claude version
+- Token usage, estimated costs, and model information (when available)
 
 ### Incremental Sync
 
@@ -223,19 +227,36 @@ The CLI writes to these collections:
 ### `sessions`
 ```typescript
 {
-  id: string;           // From JSONL filename
+  id: string;                    // From JSONL filename
   projectId: string;
   projectName: string;
+  projectPath: string;
+  gitRemoteUrl: string | null;
   summary: string | null;
   generatedTitle: string | null;
+  titleSource: 'claude' | 'user_message' | 'insight' | 'character' | 'fallback' | null;
+  sessionCharacter: 'deep_focus' | 'bug_hunt' | 'feature_build' | 'exploration' | 'refactor' | 'learning' | 'quick_task' | null;
   startedAt: Timestamp;
   endedAt: Timestamp;
   messageCount: number;
+  userMessageCount: number;
+  assistantMessageCount: number;
   toolCallCount: number;
   gitBranch: string | null;
+  claudeVersion: string | null;
   deviceId: string;
   deviceHostname: string;
   devicePlatform: string;
+  syncedAt: Timestamp;           // Server timestamp
+  // Usage stats (present when token data is available)
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+  cacheCreationTokens?: number;
+  cacheReadTokens?: number;
+  estimatedCostUsd?: number;
+  modelsUsed?: string[];
+  primaryModel?: string;
+  usageSource?: 'jsonl';
 }
 ```
 
@@ -245,8 +266,20 @@ The CLI writes to these collections:
   id: string;
   sessionId: string;
   type: 'user' | 'assistant' | 'system';
-  content: string;
-  toolCalls: Array<{ name: string; input: string }>;
+  content: string;                // Max 10,000 chars (truncated)
+  thinking: string | null;        // Extracted thinking content (max 5,000 chars)
+  toolCalls: Array<{ id: string; name: string; input: string }>;  // Input max 1,000 chars
+  toolResults: Array<{ toolUseId: string; output: string }>;      // Output max 2,000 chars
   timestamp: Timestamp;
+  parentId: string | null;
+  // Per-message usage (assistant messages only)
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+    model: string;
+    estimatedCostUsd: number;
+  };
 }
 ```

@@ -4,7 +4,7 @@ Thanks for your interest in contributing! This guide covers everything you need 
 
 ## Prerequisites
 
-- **Node.js** >= 18
+- **Node.js** 18 or later
 - **pnpm** >= 9
 - A Firebase project (for testing sync — see [Quick Start](README.md#quick-start))
 
@@ -50,7 +50,13 @@ code-insights/
 
 ```bash
 git checkout -b feature/your-feature-name
+# or: fix/description, chore/description
 ```
+
+Branch naming conventions:
+- `feature/*` — New features
+- `fix/*` — Bug fixes
+- `chore/*` — Maintenance, dependencies, config
 
 ### 2. Make changes
 

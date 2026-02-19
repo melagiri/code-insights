@@ -10,8 +10,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js",
-    "lint": "eslint src"
+    "start": "node dist/index.js"
   },
   "keywords": [
     "claude",
@@ -34,15 +33,12 @@
   "dependencies": {
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
-    "date-fns": "^4.1.0",
     "firebase-admin": "^13.4.0",
     "inquirer": "^12.6.1",
-    "ora": "^8.2.0",
-    "uuid": "^13.0.0"
+    "ora": "^8.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",
-    "@types/uuid": "^11.0.0",
     "typescript": "^5.9.3"
   }
 }

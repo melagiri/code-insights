@@ -184,6 +184,7 @@ code-insights init --from-json <path>  # Import service account from JSON file
 code-insights init --web-config <path> # Import web SDK config from JSON file
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions (ignores cache)
+code-insights sync --project <name>    # Sync only a specific project
 code-insights sync --dry-run           # Preview what would be synced
 code-insights sync -q                  # Quiet mode (for hooks)
 code-insights sync --regenerate-titles # Regenerate all session titles
@@ -212,6 +213,11 @@ The hosted dashboard at [code-insights.app](https://code-insights.app) connects 
 | **Decision** | Choices made with reasoning and alternatives |
 | **Learning** | Technical discoveries and transferable knowledge |
 | **Technique** | Problem-solving approaches and debugging strategies |
+| **Prompt Quality** | Efficiency analysis, wasted turns, and anti-patterns |
+
+## Token Usage & Cost Tracking
+
+The CLI captures token usage, estimated costs, and model information from session data when available. These stats are synced per-session and aggregated per-project, enabling cost analysis on the dashboard.
 
 ## Multi-Device Support
 

@@ -189,8 +189,6 @@ The CLI currently works on **macOS** and should work on **Linux** without change
 
 **Why first:** Largest user base among AI coding tools, data is locally accessible, community parsers exist as reference.
 
-See: `docs/plans/2026-02-18-cursor-integration-exploration.md`
-
 ### Phase 2: Codex CLI
 
 **Why second:** Lowest implementation effort — same JSONL philosophy as Claude Code. Date-organized, local-first, similar pipeline architecture.
