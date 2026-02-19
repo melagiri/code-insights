@@ -17,8 +17,13 @@ interface ClaudeSettings {
 }
 
 interface HookConfig {
-  matcher: string;
-  hooks: string[];
+  matcher?: string;
+  hooks: Array<string | { type: string; command: string; timeout?: number }>;
+}
+
+/** Extract command string from both old (string) and new ({type, command}) hook formats */
+function getHookCommand(hook: string | { type: string; command: string }): string {
+  return typeof hook === 'string' ? hook : hook.command;
 }
 
 /**
@@ -56,16 +61,15 @@ export async function installHookCommand(): Promise<void> {
     settings.hooks = {};
   }
 
-  // Add Stop hook (runs when session ends)
+  // Add Stop hook (runs when Claude finishes responding)
   const stopHook: HookConfig = {
-    matcher: '.*',
-    hooks: [syncCommand],
+    hooks: [{ type: 'command', command: syncCommand }],
   };
 
   // Check if hook already exists
   const existingStopHooks = settings.hooks.Stop || [];
   const hookExists = existingStopHooks.some(
-    (h) => h.hooks.some((cmd) => cmd.includes('code-insights'))
+    (h) => h.hooks.some((hook) => getHookCommand(hook).includes('code-insights'))
   );
 
   if (hookExists) {
@@ -110,7 +114,7 @@ export async function uninstallHookCommand(): Promise<void> {
 
     // Filter out Code Insights hooks
     settings.hooks.Stop = settings.hooks.Stop.filter(
-      (h) => !h.hooks.some((cmd) => cmd.includes('code-insights'))
+      (h) => !h.hooks.some((hook) => getHookCommand(hook).includes('code-insights'))
     );
 
     // Clean up empty arrays
