@@ -1,0 +1,32 @@
+---
+title: Code Insights
+description: Transform your Claude Code session history into structured, searchable insights.
+template: splash
+hero:
+  tagline: Your AI coding sessions, parsed, synced, and visualized — on your own Firebase.
+  actions:
+    - text: Get Started
+      link: /getting-started/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/melagiri/code-insights
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+	<Card title="Your Data, Your Firebase" icon="setting">
+		Bring Your Own Firebase (BYOF). Session data never leaves your control — the CLI writes to your Firestore, and the dashboard reads from it.
+	</Card>
+	<Card title="Automatic Session Sync" icon="rocket">
+		Install a Claude Code hook and forget about it. Every session gets synced automatically when it ends.
+	</Card>
+	<Card title="LLM-Powered Insights" icon="star">
+		Generate summaries, track decisions, surface learnings, and identify techniques — using your own API key with OpenAI, Anthropic, Gemini, or Ollama.
+	</Card>
+	<Card title="Open Source CLI" icon="open-book">
+		The CLI is MIT-licensed. Inspect the code, contribute features, or fork it. No black boxes.
+	</Card>
+</CardGrid>
