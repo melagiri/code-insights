@@ -285,6 +285,10 @@ Note: This does NOT work with the macOS Ollama desktop app — only when running
 - **Analytics**: Vercel Analytics
 - **LLM**: OpenAI, Anthropic, Gemini, Ollama
 
+## Documentation
+
+Full documentation is available at [docs.code-insights.app](https://docs.code-insights.app). Source files are in the [`docs-site/`](docs-site/) directory.
+
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style, and PR guidelines.

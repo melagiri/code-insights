@@ -2,6 +2,8 @@
 
 Command-line tool that parses Claude Code session history and syncs it to your own Firebase Firestore.
 
+Full documentation: [docs.code-insights.app](https://docs.code-insights.app)
+
 ## Prerequisites
 
 - **Node.js** 18 or later
