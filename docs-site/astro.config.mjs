@@ -38,6 +38,9 @@ export default defineConfig({
 						{ label: 'Firebase Setup', slug: 'guides/firebase-setup' },
 						{ label: 'Syncing Sessions', slug: 'guides/syncing-sessions' },
 						{ label: 'Web Dashboard', slug: 'guides/web-dashboard' },
+						{ label: 'Sessions & Chat', slug: 'guides/sessions-and-chat' },
+						{ label: 'Insights & Analysis', slug: 'guides/insights-and-analysis' },
+						{ label: 'Analytics & Export', slug: 'guides/analytics-and-export' },
 					],
 				},
 				{
