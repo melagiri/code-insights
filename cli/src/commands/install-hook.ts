@@ -18,7 +18,7 @@ interface ClaudeSettings {
 
 interface HookConfig {
   matcher?: string;
-  hooks: Array<{ type: string; command: string; timeout?: number }>;
+  hooks: Array<string | { type: string; command: string; timeout?: number }>;
 }
 
 /** Extract command string from both old (string) and new ({type, command}) hook formats */
