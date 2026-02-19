@@ -152,13 +152,32 @@ export async function uploadMessages(session: ParsedSession): Promise<void> {
     currentBatch.set(messageRef, {
       sessionId: message.sessionId,
       type: message.type,
-      content: truncateContent(message.content, 10000), // Limit content size
+      content: truncateContent(message.content, 10000),
+      thinking: message.thinking
+        ? truncateContent(message.thinking, 5000)
+        : null,
       toolCalls: message.toolCalls.map((tc) => ({
+        id: tc.id,
         name: tc.name,
-        input: JSON.stringify(tc.input).slice(0, 1000), // Limit input size
+        input: JSON.stringify(tc.input).slice(0, 1000),
+      })),
+      toolResults: message.toolResults.map((tr) => ({
+        toolUseId: tr.toolUseId,
+        output: truncateContent(tr.output, 2000),
       })),
       timestamp: admin.firestore.Timestamp.fromDate(message.timestamp),
       parentId: message.parentId,
+      // Per-message usage (assistant messages only)
+      ...(message.usage ? {
+        usage: {
+          inputTokens: message.usage.inputTokens,
+          outputTokens: message.usage.outputTokens,
+          cacheCreationTokens: message.usage.cacheCreationTokens,
+          cacheReadTokens: message.usage.cacheReadTokens,
+          model: message.usage.model,
+          estimatedCostUsd: message.usage.estimatedCostUsd,
+        },
+      } : {}),
     });
 
     operationCount++;

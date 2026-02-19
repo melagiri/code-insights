@@ -28,9 +28,13 @@ export interface MessageContent {
   type: 'text' | 'thinking' | 'tool_use' | 'tool_result';
   text?: string;
   thinking?: string;
+  // tool_use fields
+  id?: string;                       // tool_use_id
   name?: string;
   input?: Record<string, unknown>;
-  content?: string;
+  // tool_result fields
+  tool_use_id?: string;              // references tool_use_id
+  content?: string | Array<{ type: string; text: string }>;  // can be string or array
 }
 
 export interface SessionSummary {
@@ -79,7 +83,10 @@ export interface ParsedMessage {
   sessionId: string;
   type: 'user' | 'assistant' | 'system';
   content: string;
+  thinking: string | null;           // extracted thinking content
   toolCalls: ToolCall[];
+  toolResults: ToolResult[];         // extracted tool results
+  usage: MessageUsage | null;        // per-message usage (assistant only)
   timestamp: Date;
   parentId: string | null;
 }
@@ -126,8 +133,23 @@ export interface ParsedInsightContent {
 }
 
 export interface ToolCall {
+  id: string;                        // tool_use_id from JSONL
   name: string;
   input: Record<string, unknown>;
+}
+
+export interface ToolResult {
+  toolUseId: string;                 // References ToolCall.id
+  output: string;                    // Truncated tool output
+}
+
+export interface MessageUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  model: string;
+  estimatedCostUsd: number;
 }
 
 export type InsightType = 'summary' | 'decision' | 'learning' | 'technique' | 'prompt_quality';
