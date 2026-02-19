@@ -2,15 +2,25 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
-// https://astro.build/config
 export default defineConfig({
 	site: 'https://docs.code-insights.app',
 	integrations: [
 		starlight({
 			title: 'Code Insights',
 			description: 'Understand your AI coding sessions',
+			logo: {
+				src: './src/assets/logo.svg',
+				alt: 'Code Insights',
+			},
+			customCss: ['./src/styles/custom.css'],
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/melagiri/code-insights' },
+			],
+			head: [
+				{
+					tag: 'meta',
+					attrs: { name: 'theme-color', content: '#7c3aed' },
+				},
 			],
 			sidebar: [
 				{

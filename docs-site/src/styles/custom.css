@@ -1,0 +1,48 @@
+/* ==========================================================
+   Code Insights — Starlight theme overrides
+   Maps the web app's OKLCH design tokens to Starlight vars
+   ========================================================== */
+
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/400.css';
+
+:root {
+  /* Typography */
+  --sl-font: 'Geist Sans', system-ui, sans-serif;
+  --sl-font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* Colors — Light mode */
+  --sl-color-accent-low: hsl(252, 30%, 92%);
+  --sl-color-accent: hsl(252, 72%, 45%);
+  --sl-color-accent-high: hsl(252, 60%, 25%);
+
+  --sl-color-text: hsl(0, 0%, 9%);
+  --sl-color-text-accent: hsl(252, 72%, 45%);
+
+  --sl-color-bg-nav: hsl(0, 0%, 100%);
+  --sl-color-bg-sidebar: hsl(0, 0%, 98%);
+  --sl-color-bg-content: hsl(0, 0%, 100%);
+
+  --sl-color-hairline-shade: hsl(0, 0%, 85%);
+  --sl-color-hairline-light: hsl(0, 0%, 92%);
+
+  --sl-border-radius: 0.625rem;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: hsl(252, 30%, 18%);
+  --sl-color-accent: hsl(252, 55%, 65%);
+  --sl-color-accent-high: hsl(252, 40%, 85%);
+
+  --sl-color-text: hsl(0, 0%, 97%);
+
+  --sl-color-bg-nav: hsl(0, 0%, 13%);
+  --sl-color-bg-sidebar: hsl(0, 0%, 13%);
+  --sl-color-bg-content: hsl(0, 0%, 9%);
+
+  --sl-color-hairline-shade: hsl(0 0% 100% / 0.1);
+  --sl-color-hairline-light: hsl(0 0% 100% / 0.05);
+}
