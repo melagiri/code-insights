@@ -7,6 +7,8 @@ import type {
   ParsedSession,
   ParsedMessage,
   ToolCall,
+  ToolResult,
+  MessageUsage,
   MessageContent,
   SessionUsage,
 } from '../types.js';
@@ -186,11 +188,36 @@ function parseMessage(msg: ClaudeMessage, sessionId: string): ParsedMessage | nu
   }
 
   const content = extractTextContent(msg.message.content);
+  const thinking = extractThinkingContent(msg.message.content);
   const toolCalls = extractToolCalls(msg.message.content);
+  const toolResults = extractToolResults(msg.message.content);
 
-  // Skip empty messages
-  if (!content && toolCalls.length === 0) {
+  // Skip empty messages (but keep if there's thinking or tool results)
+  if (!content && toolCalls.length === 0 && !thinking && toolResults.length === 0) {
     return null;
+  }
+
+  // Per-message usage (assistant messages only)
+  let usage: MessageUsage | null = null;
+  if (msg.type === 'assistant' && msg.message.model && msg.message.usage) {
+    const u = msg.message.usage;
+    const model = msg.message.model;
+    const inputTokens = u.input_tokens ?? 0;
+    const outputTokens = u.output_tokens ?? 0;
+    const cacheCreationTokens = u.cache_creation_input_tokens ?? 0;
+    const cacheReadTokens = u.cache_read_input_tokens ?? 0;
+
+    const costEntries = [{ model, usage: u }];
+    const estimatedCostUsd = calculateCost(costEntries);
+
+    usage = {
+      inputTokens,
+      outputTokens,
+      cacheCreationTokens,
+      cacheReadTokens,
+      model,
+      estimatedCostUsd,
+    };
   }
 
   return {
@@ -198,7 +225,10 @@ function parseMessage(msg: ClaudeMessage, sessionId: string): ParsedMessage | nu
     sessionId,
     type: msg.type,
     content,
+    thinking,
     toolCalls,
+    toolResults,
+    usage,
     timestamp: new Date(msg.timestamp),
     parentId: msg.parentUuid || null,
   };
@@ -234,6 +264,7 @@ function extractToolCalls(content: string | MessageContent[]): ToolCall[] {
   for (const part of content) {
     if (part.type === 'tool_use' && part.name) {
       toolCalls.push({
+        id: part.id || '',           // capture tool_use_id
         name: part.name,
         input: part.input || {},
       });
@@ -241,6 +272,51 @@ function extractToolCalls(content: string | MessageContent[]): ToolCall[] {
   }
 
   return toolCalls;
+}
+
+/**
+ * Extract thinking content from assistant messages
+ */
+function extractThinkingContent(content: string | MessageContent[]): string | null {
+  if (typeof content === 'string') return null;
+
+  const thinkingParts: string[] = [];
+  for (const part of content) {
+    if (part.type === 'thinking' && part.thinking) {
+      thinkingParts.push(part.thinking);
+    }
+  }
+
+  return thinkingParts.length > 0 ? thinkingParts.join('\n') : null;
+}
+
+/**
+ * Extract tool results from user messages
+ */
+function extractToolResults(content: string | MessageContent[]): ToolResult[] {
+  if (typeof content === 'string') return [];
+
+  const results: ToolResult[] = [];
+  for (const part of content) {
+    if (part.type === 'tool_result' && part.tool_use_id) {
+      let output: string;
+      if (typeof part.content === 'string') {
+        output = part.content;
+      } else if (Array.isArray(part.content)) {
+        output = part.content
+          .filter(sub => sub.type === 'text' && sub.text)
+          .map(sub => sub.text)
+          .join('\n');
+      } else {
+        output = '';
+      }
+      results.push({
+        toolUseId: part.tool_use_id,
+        output,
+      });
+    }
+  }
+  return results;
 }
 
 /**
