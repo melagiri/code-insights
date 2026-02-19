@@ -44,6 +44,7 @@ Configure your API key in the dashboard settings. Analysis runs client-side — 
 | **Decision** | Architecture choices, trade-offs, reasoning, and alternatives considered |
 | **Learning** | Technical discoveries and transferable knowledge |
 | **Technique** | Problem-solving approaches and debugging strategies |
+| **Prompt Quality** | Efficiency scoring, wasted turns, anti-patterns, and improvement suggestions |
 
 ### Analytics
 

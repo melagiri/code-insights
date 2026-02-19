@@ -5,6 +5,10 @@ description: Collections and document structure used by Code Insights.
 
 The CLI writes three collections to Firestore. The web dashboard reads from these collections and additionally writes an `insights` collection for LLM-generated analysis.
 
+:::note
+All `Timestamp` fields convert to JavaScript `Date` objects when read by the web dashboard's Firestore hooks.
+:::
+
 ## `projects`
 
 Each project corresponds to a directory under `~/.claude/projects/`. Project IDs are derived from the git remote URL when available, making them stable across devices.
@@ -156,6 +160,20 @@ The web dashboard writes this collection when you run LLM analysis on a session.
     reasoning?: string          // decisions
     context?: string            // learnings
     applicability?: string      // techniques
+
+    // Prompt quality analysis
+    efficiencyScore?: number              // 0-100
+    wastedTurns?: Array<{
+      messageIndex: number
+      reason: string
+      suggestedRewrite: string
+    }>
+    antiPatterns?: Array<{
+      name: string
+      count: number
+      examples: string[]
+    }>
+    potentialMessageReduction?: number    // Estimated messages that could be saved
   }
   timestamp: Timestamp      // Session's endedAt
   createdAt: Timestamp
