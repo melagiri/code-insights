@@ -57,7 +57,7 @@ Below the greeting, two rows of stat cards summarize your entire coding history:
 - **Coding Time** — Accumulated session duration in hours and minutes
 - **Projects** — Number of distinct projects you've worked on
 
-**Bottom row:**
+**Bottom row** (visible once usage data exists):
 - **Total Tokens** — Aggregate token usage with a breakdown of cache reads vs. input/output
 - **Estimated Spend** — Approximate cost based on token counts and model pricing
 - **Top Model** — The model you've used most frequently
@@ -71,7 +71,7 @@ These stats update in real-time. As the CLI syncs new sessions to Firestore, the
 Below the stats, a dual-line area chart shows your coding cadence over time.
 
 - The **blue line** tracks sessions per day — how often you sat down to work with Claude
-- The **green line** tracks tool calls per day — a proxy for session intensity and complexity
+- The **green line** tracks insights per day — a measure of how much analysis has been generated for your sessions
 
 Three range toggles let you zoom in or out: **30d** (default), **90d**, and **All**. The 30-day view is useful for spotting recent patterns — a burst of activity around a deadline, a quiet week during a refactor, or a steady daily rhythm. The All view reveals longer arcs: how your usage has evolved since you started.
 

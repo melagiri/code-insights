@@ -30,7 +30,7 @@ Before you can run analysis, you need to tell the dashboard which LLM to use.
 | Provider | Popular Models | Key Required |
 |----------|---------------|--------------|
 | OpenAI | gpt-4o, gpt-4o-mini | Yes |
-| Anthropic | claude-sonnet-4, claude-opus-4 | Yes |
+| Anthropic | claude-sonnet-4, claude-3.5-haiku, claude-opus-4 | Yes |
 | Gemini | gemini-2.0-flash, gemini-1.5-pro | Yes |
 | Ollama | Any local model | No (runs locally) |
 

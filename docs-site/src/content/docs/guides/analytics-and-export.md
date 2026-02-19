@@ -25,7 +25,7 @@ Below the summary cards, five charts break your data down into visual patterns.
 A full-width area chart showing two metrics across your entire history:
 
 - **Sessions** (blue) — How many sessions you started each day
-- **Tool calls** (green) — How many tool invocations Claude made each day, a proxy for session complexity
+- **Insights** (green) — How many insights were generated each day, reflecting your analysis activity
 
 Unlike the dashboard home page, which defaults to a 30-day window, the Analytics chart shows everything from your first session onward. Hover over any point to see the exact daily counts. This is where you spot long-term trends: a ramp-up before a release, a quiet stretch during vacation, or a steady cadence that tells you your workflow is stable.
 
@@ -34,7 +34,7 @@ Unlike the dashboard home page, which defaults to a 30-day window, the Analytics
 A donut chart showing the distribution of your insight categories:
 
 - **Decisions** (blue) — Architectural and design choices the LLM identified
-- **Learnings** (green) — New knowledge or techniques you picked up
+- **Learnings** (green) — New knowledge or techniques you picked up (Technique insights are grouped under Learnings here)
 - **Prompt Quality** (red) — Analysis of how effectively you prompted Claude
 - **Summaries** (purple) — High-level session recaps
 
