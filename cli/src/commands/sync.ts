@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig, loadSyncState, saveSyncState, getClaudeDir } from '../utils/config.js';
 import { parseJsonlFile } from '../parser/jsonl.js';
-import { initializeFirebase, uploadSession, uploadMessages, sessionExists } from '../firebase/client.js';
+import { initializeFirebase, uploadSession, uploadMessages, sessionExists, recalculateUsageStats } from '../firebase/client.js';
 import type { SyncState } from '../types.js';
 
 interface SyncOptions {
@@ -120,7 +120,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
       }
 
       // Upload session and messages to Firestore
-      await uploadSession(session);
+      await uploadSession(session, !!options.force);
       await uploadMessages(session);
 
       // Update and persist sync state after each file
@@ -137,6 +137,17 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
       if (!options.quiet) {
         console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
+    }
+  }
+
+  // Reconcile usage stats after force sync
+  if (options.force && syncedCount > 0) {
+    spinner.start('Recalculating usage stats...');
+    try {
+      const result = await recalculateUsageStats();
+      spinner.succeed(`Usage stats reconciled (${result.sessionsWithUsage} sessions with usage data)`);
+    } catch (error) {
+      spinner.warn('Could not reconcile usage stats');
     }
   }
 

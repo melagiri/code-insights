@@ -37,7 +37,7 @@ function getDb(): admin.firestore.Firestore {
 /**
  * Upload a session to Firestore
  */
-export async function uploadSession(session: ParsedSession): Promise<void> {
+export async function uploadSession(session: ParsedSession, isForceSync = false): Promise<void> {
   const firestore = getDb();
 
   // Generate stable project ID (prefers git remote URL)
@@ -110,6 +110,29 @@ export async function uploadSession(session: ParsedSession): Promise<void> {
       usageSource: session.usage.usageSource,
     } : {}),
   });
+
+  // Atomically increment usage stats for new sessions (non-force only)
+  if (isNewSession && !isForceSync && session.usage) {
+    const statsRef = firestore.collection('stats').doc('usage');
+    batch.set(statsRef, {
+      totalInputTokens: admin.firestore.FieldValue.increment(session.usage.totalInputTokens),
+      totalOutputTokens: admin.firestore.FieldValue.increment(session.usage.totalOutputTokens),
+      cacheCreationTokens: admin.firestore.FieldValue.increment(session.usage.cacheCreationTokens),
+      cacheReadTokens: admin.firestore.FieldValue.increment(session.usage.cacheReadTokens),
+      estimatedCostUsd: admin.firestore.FieldValue.increment(session.usage.estimatedCostUsd),
+      sessionsWithUsage: admin.firestore.FieldValue.increment(1),
+      lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    // Increment project-level usage stats
+    batch.set(projectRef, {
+      totalInputTokens: admin.firestore.FieldValue.increment(session.usage.totalInputTokens),
+      totalOutputTokens: admin.firestore.FieldValue.increment(session.usage.totalOutputTokens),
+      cacheCreationTokens: admin.firestore.FieldValue.increment(session.usage.cacheCreationTokens),
+      cacheReadTokens: admin.firestore.FieldValue.increment(session.usage.cacheReadTokens),
+      estimatedCostUsd: admin.firestore.FieldValue.increment(session.usage.estimatedCostUsd),
+    }, { merge: true });
+  }
 
   await batch.commit();
 }
@@ -218,6 +241,104 @@ export async function getRecentSessions(limit: number = 10): Promise<ParsedSessi
   });
 }
 
+
+/**
+ * Recalculate usage stats from all sessions in Firestore.
+ * Used after --force sync to reconcile totals.
+ */
+export async function recalculateUsageStats(): Promise<{
+  sessionsWithUsage: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+}> {
+  const firestore = getDb();
+
+  // Query all sessions that have usage data
+  const snapshot = await firestore
+    .collection('sessions')
+    .where('usageSource', '==', 'jsonl')
+    .get();
+
+  // Aggregate global + per-project totals
+  const global = {
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    cacheCreationTokens: 0,
+    cacheReadTokens: 0,
+    estimatedCostUsd: 0,
+    sessionsWithUsage: 0,
+  };
+
+  const perProject: Record<string, {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+    estimatedCostUsd: number;
+  }> = {};
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    global.totalInputTokens += data.totalInputTokens ?? 0;
+    global.totalOutputTokens += data.totalOutputTokens ?? 0;
+    global.cacheCreationTokens += data.cacheCreationTokens ?? 0;
+    global.cacheReadTokens += data.cacheReadTokens ?? 0;
+    global.estimatedCostUsd += data.estimatedCostUsd ?? 0;
+    global.sessionsWithUsage++;
+
+    const pid = data.projectId;
+    if (pid) {
+      if (!perProject[pid]) {
+        perProject[pid] = {
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          cacheCreationTokens: 0,
+          cacheReadTokens: 0,
+          estimatedCostUsd: 0,
+        };
+      }
+      perProject[pid].totalInputTokens += data.totalInputTokens ?? 0;
+      perProject[pid].totalOutputTokens += data.totalOutputTokens ?? 0;
+      perProject[pid].cacheCreationTokens += data.cacheCreationTokens ?? 0;
+      perProject[pid].cacheReadTokens += data.cacheReadTokens ?? 0;
+      perProject[pid].estimatedCostUsd += data.estimatedCostUsd ?? 0;
+    }
+  }
+
+  // Write global stats (overwrite, not merge)
+  const statsRef = firestore.collection('stats').doc('usage');
+  await statsRef.set({
+    ...global,
+    lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Update each project's usage fields
+  const batches: admin.firestore.WriteBatch[] = [];
+  let currentBatch = firestore.batch();
+  let opCount = 0;
+
+  for (const [projectId, usage] of Object.entries(perProject)) {
+    const projectRef = firestore.collection('projects').doc(projectId);
+    currentBatch.set(projectRef, usage, { merge: true });
+    opCount++;
+    if (opCount >= 500) {
+      batches.push(currentBatch);
+      currentBatch = firestore.batch();
+      opCount = 0;
+    }
+  }
+  if (opCount > 0) batches.push(currentBatch);
+  await Promise.all(batches.map(b => b.commit()));
+
+  const totalTokens = global.totalInputTokens + global.totalOutputTokens
+    + global.cacheCreationTokens + global.cacheReadTokens;
+
+  return {
+    sessionsWithUsage: global.sessionsWithUsage,
+    totalTokens,
+    estimatedCostUsd: global.estimatedCostUsd,
+  };
+}
 
 /**
  * Truncate content to max length
