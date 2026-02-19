@@ -15,6 +15,7 @@ export default defineConfig({
 			customCss: ['./src/styles/custom.css'],
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/melagiri/code-insights' },
+				{ icon: 'external', label: 'Open Dashboard', href: 'https://code-insights.app' },
 			],
 			head: [
 				{
