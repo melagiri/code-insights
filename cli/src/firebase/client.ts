@@ -70,9 +70,17 @@ export async function uploadSession(session: ParsedSession, isForceSync = false)
 
   // Only increment session count for NEW sessions (idempotent)
   if (isNewSession) {
-    batch.update(projectRef, {
+    const incrementFields: Record<string, admin.firestore.FieldValue> = {
       sessionCount: admin.firestore.FieldValue.increment(1),
-    });
+    };
+    if (!isForceSync && session.usage) {
+      incrementFields.totalInputTokens = admin.firestore.FieldValue.increment(session.usage.totalInputTokens);
+      incrementFields.totalOutputTokens = admin.firestore.FieldValue.increment(session.usage.totalOutputTokens);
+      incrementFields.cacheCreationTokens = admin.firestore.FieldValue.increment(session.usage.cacheCreationTokens);
+      incrementFields.cacheReadTokens = admin.firestore.FieldValue.increment(session.usage.cacheReadTokens);
+      incrementFields.estimatedCostUsd = admin.firestore.FieldValue.increment(session.usage.estimatedCostUsd);
+    }
+    batch.update(projectRef, incrementFields);
   }
 
   // Upload session with device info
@@ -122,15 +130,6 @@ export async function uploadSession(session: ParsedSession, isForceSync = false)
       estimatedCostUsd: admin.firestore.FieldValue.increment(session.usage.estimatedCostUsd),
       sessionsWithUsage: admin.firestore.FieldValue.increment(1),
       lastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    // Increment project-level usage stats
-    batch.set(projectRef, {
-      totalInputTokens: admin.firestore.FieldValue.increment(session.usage.totalInputTokens),
-      totalOutputTokens: admin.firestore.FieldValue.increment(session.usage.totalOutputTokens),
-      cacheCreationTokens: admin.firestore.FieldValue.increment(session.usage.cacheCreationTokens),
-      cacheReadTokens: admin.firestore.FieldValue.increment(session.usage.cacheReadTokens),
-      estimatedCostUsd: admin.firestore.FieldValue.increment(session.usage.estimatedCostUsd),
     }, { merge: true });
   }
 

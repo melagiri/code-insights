@@ -141,13 +141,16 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   }
 
   // Reconcile usage stats after force sync
-  if (options.force && syncedCount > 0) {
+  if (options.force) {
     spinner.start('Recalculating usage stats...');
     try {
       const result = await recalculateUsageStats();
       spinner.succeed(`Usage stats reconciled (${result.sessionsWithUsage} sessions with usage data)`);
     } catch (error) {
       spinner.warn('Could not reconcile usage stats');
+      if (!options.quiet) {
+        console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
+      }
     }
   }
 
