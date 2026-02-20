@@ -74,6 +74,7 @@ export interface ParsedSession {
   customTitle?: string;
   gitBranch: string | null;
   claudeVersion: string | null;
+  sourceTool?: string;
   usage?: SessionUsage;
   messages: ParsedMessage[];
 }
