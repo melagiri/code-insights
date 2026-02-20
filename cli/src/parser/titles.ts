@@ -1,3 +1,4 @@
+import * as path from 'path';
 import type {
   ParsedSession,
   ParsedMessage,
@@ -214,7 +215,7 @@ function generateCharacterTitle(
       if (tc.name === 'Edit' || tc.name === 'Write') {
         const filePath = tc.input?.file_path as string | undefined;
         if (filePath) {
-          const fileName = filePath.split('/').pop() || filePath;
+          const fileName = path.basename(filePath) || filePath;
           fileCounts[fileName] = (fileCounts[fileName] || 0) + 1;
         }
       }

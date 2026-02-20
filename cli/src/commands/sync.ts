@@ -1,9 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import chalk from 'chalk';
 import ora from 'ora';
-import { loadConfig, loadSyncState, saveSyncState, getClaudeDir } from '../utils/config.js';
+import { loadConfig, loadSyncState, saveSyncState } from '../utils/config.js';
 import { initializeFirebase, uploadSession, uploadMessages, sessionExists, recalculateUsageStats } from '../firebase/client.js';
 import { getDefaultProvider } from '../providers/registry.js';
 import type { SyncState } from '../types.js';
@@ -56,13 +55,6 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 
   // Discover session files via provider
   const provider = getDefaultProvider();
-  const claudeDir = getClaudeDir();
-  if (!fs.existsSync(claudeDir)) {
-    log(chalk.yellow(`Claude directory not found: ${claudeDir}`));
-    log(chalk.gray('Make sure you have Claude Code installed and have run at least one session.'));
-    process.exit(1);
-  }
-
   spinner.start('Discovering sessions...');
   const jsonlFiles = await provider.discover({ projectFilter: options.project });
   spinner.succeed(`Found ${jsonlFiles.length} session files`);
