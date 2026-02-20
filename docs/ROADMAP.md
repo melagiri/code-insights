@@ -38,16 +38,16 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
   - Insights display by type
   - Analytics page with Recharts charts
 
-- [ ] **1.5 Marketing Site**
+- [x] **1.5 Marketing Site & Documentation**
   - Landing page at code-insights.app
   - What it is, how it works, privacy model
-  - Quick start guide
+  - Docs site with guides, reference, and quick start
   - Link to GitHub repo
 
 ### Deliverables
 - ✅ CLI tool that syncs sessions to Firestore
 - ✅ Web dashboard showing sessions and insights
-- Marketing site (pending)
+- ✅ Marketing site and docs at docs.code-insights.app
 
 ---
 

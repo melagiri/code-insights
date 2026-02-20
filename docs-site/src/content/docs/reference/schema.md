@@ -58,6 +58,7 @@ One document per Claude Code session. The session ID comes from the JSONL filena
   toolCallCount: number
   gitBranch: string | null
   claudeVersion: string | null
+  sourceTool?: string           // 'claude-code' (multi-tool identifier)
 
   // Device info
   deviceId: string
@@ -178,7 +179,7 @@ The web dashboard writes this collection when you run LLM analysis on a session.
   timestamp: Timestamp      // Session's endedAt
   createdAt: Timestamp
   scope: 'session' | 'project' | 'overall'
-  analysisVersion: string   // Currently '1.0.0'
+  analysisVersion: string   // Currently '2.0.0'
 }
 ```
 
