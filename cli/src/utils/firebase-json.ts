@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import type { FirebaseServiceAccountJson, FirebaseWebConfig } from '../types.js';
 
 export type FileReadResult<T> =
@@ -153,7 +154,7 @@ export function readFirebaseConfigFile<T>(filePath: string): FileReadResult<T> {
  * Resolve file path (expand ~ to home directory)
  */
 export function resolveFilePath(filePath: string): string {
-  return filePath.replace(/^~/, process.env.HOME || '');
+  return filePath.replace(/^~/, os.homedir());
 }
 
 /**

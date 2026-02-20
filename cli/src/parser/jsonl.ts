@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import * as readline from 'readline';
 import type {
   JsonlEntry,
@@ -323,7 +324,7 @@ function extractToolResults(content: string | MessageContent[]): ToolResult[] {
  * Extract session ID from file path
  */
 function extractSessionId(filePath: string): string | null {
-  const filename = filePath.split('/').pop();
+  const filename = path.basename(filePath);
   if (!filename) return null;
 
   // Handle both UUID.jsonl and agent-*.jsonl formats
@@ -336,11 +337,13 @@ function extractSessionId(filePath: string): string | null {
  */
 function extractProjectPath(filePath: string): string {
   // File path format: ~/.claude/projects/-Users-name-path-to-project/session.jsonl
-  const parts = filePath.split('/');
+  // On Windows: ~\.claude\projects\-Users-name-path-to-project\session.jsonl
+  const parts = filePath.split(path.sep);
   const projectDirIndex = parts.findIndex((p) => p === 'projects');
   if (projectDirIndex >= 0 && projectDirIndex < parts.length - 1) {
     const encodedPath = parts[projectDirIndex + 1];
     // Convert -Users-name-path to /Users/name/path
+    // This always decodes to a forward-slash path (original project path encoding)
     return encodedPath.replace(/^-/, '/').replace(/-/g, '/');
   }
   return filePath;

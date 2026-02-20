@@ -4,9 +4,10 @@ import ora from 'ora';
 import admin from 'firebase-admin';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 import { loadConfig } from '../utils/config.js';
 
-const SYNC_STATE_FILE = join(process.env.HOME || '~', '.code-insights', 'sync-state.json');
+const SYNC_STATE_FILE = join(homedir(), '.code-insights', 'sync-state.json');
 
 export const resetCommand = new Command('reset')
   .description('Delete all data from Firestore and reset local sync state')

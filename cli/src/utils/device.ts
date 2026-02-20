@@ -1,10 +1,10 @@
 import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
-import { hostname, platform, userInfo } from 'os';
+import { homedir, hostname, platform, userInfo } from 'os';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const CONFIG_DIR = join(process.env.HOME || '~', '.code-insights');
+const CONFIG_DIR = join(homedir(), '.code-insights');
 const DEVICE_ID_FILE = join(CONFIG_DIR, 'device-id');
 
 /**
