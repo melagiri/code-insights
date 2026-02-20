@@ -8,7 +8,7 @@ description: Complete reference for every code-insights command and flag.
 Configure Code Insights with your Firebase credentials.
 
 ```bash
-# Import from JSON files (recommended)
+# Import from files (recommended)
 code-insights init \
   --from-json ~/Downloads/serviceAccountKey.json \
   --web-config ~/Downloads/firebase-web-config.js

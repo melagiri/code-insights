@@ -21,16 +21,6 @@ Verify it works:
 code-insights --version
 ```
 
-### Development Setup
-
-```bash
-# From the repo root
-cd cli
-pnpm install
-pnpm build
-npm link    # Makes `code-insights` available globally
-```
-
 ## Commands
 
 ### `code-insights init`
@@ -38,18 +28,18 @@ npm link    # Makes `code-insights` available globally
 Configure Code Insights with your Firebase credentials.
 
 ```bash
-# Quick setup — import directly from JSON files (recommended)
+# Quick setup — import directly from files (recommended)
 code-insights init \
   --from-json ~/Downloads/serviceAccountKey.json \
-  --web-config ~/Downloads/firebase-web-config.json
+  --web-config ~/Downloads/firebase-web-config.js
 
 # Interactive setup — prompts for each value
 code-insights init
 ```
 
 **Flags:**
-- `--from-json <path>` — Path to the Firebase service account JSON (downloaded from Firebase Console > Project Settings > Service Accounts)
-- `--web-config <path>` — Path to the Firebase web SDK config JSON (saved from Firebase Console > Project Settings > General > Your Apps)
+- `--from-json <path>` — Path to the Firebase service account key (downloaded from Firebase Console > Project Settings > Service Accounts)
+- `--web-config <path>` — Path to the Firebase web SDK config (saved from Firebase Console > Project Settings > General > Your Apps). Accepts both JSON and the JavaScript snippet from Firebase.
 
 You can use one flag, both, or neither. Any values not provided via flags will be collected interactively.
 
@@ -174,119 +164,10 @@ Sessions are automatically titled based on:
 3. Session character detection (deep focus, bug hunt, etc.)
 4. Fallback to timestamp
 
-## Project Structure
+## Contributing
 
-```
-cli/
-├── src/
-│   ├── commands/
-│   │   ├── init.ts          # Interactive Firebase configuration
-│   │   ├── sync.ts          # Main sync logic
-│   │   ├── connect.ts       # Generate dashboard connection URL
-│   │   ├── status.ts        # Status display
-│   │   ├── reset.ts         # Clear all data
-│   │   └── install-hook.ts  # Hook management
-│   ├── firebase/
-│   │   └── client.ts        # Firestore operations
-│   ├── parser/
-│   │   ├── jsonl.ts         # JSONL file parsing
-│   │   └── titles.ts        # Title generation
-│   ├── utils/
-│   │   ├── config.ts        # Config management
-│   │   ├── device.ts        # Device identification
-│   │   └── firebase-json.ts # Firebase JSON validation & URL generation
-│   ├── types.ts             # TypeScript types
-│   └── index.ts             # CLI entry point
-├── dist/                    # Compiled output
-├── package.json
-└── tsconfig.json
-```
+See [CONTRIBUTING.md](https://github.com/melagiri/code-insights/blob/master/CONTRIBUTING.md) for development setup, code style, and PR guidelines.
 
-## Development
+## License
 
-```bash
-pnpm dev    # Watch mode — recompiles on save
-pnpm build  # One-time compile
-pnpm lint   # Run ESLint
-```
-
-The CLI is written in TypeScript with ES Modules and compiled to `dist/`. After `npm link`, changes rebuild automatically in watch mode.
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for the full development workflow, code style, and PR guidelines.
-
-## Firestore Collections
-
-The CLI writes to these collections:
-
-### `projects`
-```typescript
-{
-  id: string;           // Hash of git remote URL or path
-  name: string;         // Project directory name
-  path: string;         // Full path on syncing device
-  gitRemoteUrl: string | null;
-  projectIdSource: 'git-remote' | 'path-hash';
-  sessionCount: number;
-  lastActivity: Timestamp;
-}
-```
-
-### `sessions`
-```typescript
-{
-  id: string;                    // From JSONL filename
-  projectId: string;
-  projectName: string;
-  projectPath: string;
-  gitRemoteUrl: string | null;
-  summary: string | null;
-  generatedTitle: string | null;
-  titleSource: 'claude' | 'user_message' | 'insight' | 'character' | 'fallback' | null;
-  sessionCharacter: 'deep_focus' | 'bug_hunt' | 'feature_build' | 'exploration' | 'refactor' | 'learning' | 'quick_task' | null;
-  startedAt: Timestamp;
-  endedAt: Timestamp;
-  messageCount: number;
-  userMessageCount: number;
-  assistantMessageCount: number;
-  toolCallCount: number;
-  gitBranch: string | null;
-  claudeVersion: string | null;
-  deviceId: string;
-  deviceHostname: string;
-  devicePlatform: string;
-  syncedAt: Timestamp;           // Server timestamp
-  // Usage stats (present when token data is available)
-  totalInputTokens?: number;
-  totalOutputTokens?: number;
-  cacheCreationTokens?: number;
-  cacheReadTokens?: number;
-  estimatedCostUsd?: number;
-  modelsUsed?: string[];
-  primaryModel?: string;
-  usageSource?: 'jsonl';
-}
-```
-
-### `messages`
-```typescript
-{
-  id: string;
-  sessionId: string;
-  type: 'user' | 'assistant' | 'system';
-  content: string;                // Max 10,000 chars (truncated)
-  thinking: string | null;        // Extracted thinking content (max 5,000 chars)
-  toolCalls: Array<{ id: string; name: string; input: string }>;  // Input max 1,000 chars
-  toolResults: Array<{ toolUseId: string; output: string }>;      // Output max 2,000 chars
-  timestamp: Timestamp;
-  parentId: string | null;
-  // Per-message usage (assistant messages only)
-  usage?: {
-    inputTokens: number;
-    outputTokens: number;
-    cacheCreationTokens: number;
-    cacheReadTokens: number;
-    model: string;
-    estimatedCostUsd: number;
-  };
-}
-```
+MIT License — see [LICENSE](https://github.com/melagiri/code-insights/blob/master/LICENSE) for details.

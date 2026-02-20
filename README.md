@@ -103,12 +103,12 @@ service cloud.firestore {
 npm install -g @code-insights/cli
 ```
 
-Now configure it with the two JSON files from Steps 3 and 4:
+Now configure it with the files from Steps 3 and 4:
 
 ```bash
 code-insights init \
   --from-json ~/Downloads/serviceAccountKey.json \
-  --web-config ~/Downloads/firebase-web-config.json
+  --web-config ~/Downloads/firebase-web-config.js
 ```
 
 That's it — no manual copy-pasting needed. The CLI reads both files and configures everything automatically.
