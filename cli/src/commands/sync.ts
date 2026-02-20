@@ -4,8 +4,8 @@ import * as os from 'os';
 import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig, loadSyncState, saveSyncState, getClaudeDir } from '../utils/config.js';
-import { parseJsonlFile } from '../parser/jsonl.js';
 import { initializeFirebase, uploadSession, uploadMessages, sessionExists, recalculateUsageStats } from '../firebase/client.js';
+import { getDefaultProvider } from '../providers/registry.js';
 import type { SyncState } from '../types.js';
 
 interface SyncOptions {
@@ -54,7 +54,8 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     process.exit(1);
   }
 
-  // Find JSONL files
+  // Discover session files via provider
+  const provider = getDefaultProvider();
   const claudeDir = getClaudeDir();
   if (!fs.existsSync(claudeDir)) {
     log(chalk.yellow(`Claude directory not found: ${claudeDir}`));
@@ -63,7 +64,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   }
 
   spinner.start('Discovering sessions...');
-  const jsonlFiles = discoverJsonlFiles(claudeDir, options.project);
+  const jsonlFiles = await provider.discover({ projectFilter: options.project });
   spinner.succeed(`Found ${jsonlFiles.length} session files`);
 
   if (jsonlFiles.length === 0) {
@@ -102,7 +103,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 
     try {
       // Parse session
-      const session = await parseJsonlFile(filePath);
+      const session = await provider.parse(filePath);
       if (!session) {
         spinner.warn(`Skipped ${fileName} (no valid data)`);
         continue;
@@ -166,49 +167,6 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     log(chalk.red(`  Errors: ${errorCount}`));
   }
   log(chalk.green('\n✅ Sync complete!'));
-}
-
-/**
- * Discover all JSONL files in Claude directory
- */
-function discoverJsonlFiles(baseDir: string, projectFilter?: string): string[] {
-  const files: string[] = [];
-
-  const projectDirs = fs.readdirSync(baseDir);
-  for (const projectDir of projectDirs) {
-    // Skip hidden files and non-directories
-    if (projectDir.startsWith('.')) continue;
-
-    const projectPath = path.join(baseDir, projectDir);
-    const stat = fs.statSync(projectPath);
-    if (!stat.isDirectory()) continue;
-
-    // Apply project filter if specified
-    if (projectFilter && !projectDir.toLowerCase().includes(projectFilter.toLowerCase())) {
-      continue;
-    }
-
-    // Find JSONL files in project directory
-    const projectFiles = fs.readdirSync(projectPath);
-    for (const file of projectFiles) {
-      if (file.endsWith('.jsonl')) {
-        files.push(path.join(projectPath, file));
-      }
-    }
-
-    // Also check subagents directory
-    const subagentsDir = path.join(projectPath, 'subagents');
-    if (fs.existsSync(subagentsDir)) {
-      const subagentFiles = fs.readdirSync(subagentsDir);
-      for (const file of subagentFiles) {
-        if (file.endsWith('.jsonl')) {
-          files.push(path.join(subagentsDir, file));
-        }
-      }
-    }
-  }
-
-  return files;
 }
 
 /**
