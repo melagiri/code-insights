@@ -50,7 +50,6 @@ program
 program
   .command('connect')
   .description('Generate a URL to connect the web dashboard to your Firebase')
-  .option('--no-qr', 'Skip QR code output')
   .action(connectCommand);
 
 program.addCommand(resetCommand);
