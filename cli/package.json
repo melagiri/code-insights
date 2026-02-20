@@ -1,5 +1,5 @@
 {
-  "name": "code-insights",
+  "name": "@code-insights/cli",
   "version": "1.0.0",
   "description": "Sync your AI coding sessions to Firebase for analysis",
   "type": "module",
@@ -38,6 +38,9 @@
     "url": "https://github.com/melagiri/code-insights/issues"
   },
   "homepage": "https://github.com/melagiri/code-insights/tree/master/cli#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.4.1",
