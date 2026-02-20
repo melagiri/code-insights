@@ -3,14 +3,10 @@ import { isConfigured, loadWebConfig, hasWebConfig } from '../utils/config.js';
 import { generateDashboardUrl, validateWebConfig } from '../utils/firebase-json.js';
 import type { FirebaseWebConfig } from '../types.js';
 
-export interface ConnectOptions {
-  qr?: boolean;
-}
-
 /**
  * Generate and display the dashboard connection URL
  */
-export async function connectCommand(options: ConnectOptions): Promise<void> {
+export async function connectCommand(): Promise<void> {
   if (!isConfigured()) {
     console.log(chalk.red('\n❌ Code Insights is not configured.'));
     console.log(chalk.gray('Run "code-insights init" first.\n'));

@@ -53,9 +53,6 @@ Generate a URL to connect the web dashboard to your Firebase.
 code-insights connect
 ```
 
-**Flags:**
-- `--no-qr` — Skip QR code output (prints URL only)
-
 The URL includes your Firebase web config base64-encoded as a query parameter. Open it in a browser to connect the dashboard to your Firestore — no manual configuration needed.
 
 ### `code-insights sync`

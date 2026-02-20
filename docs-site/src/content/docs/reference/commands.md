@@ -91,20 +91,12 @@ No flags.
 Generate a URL to connect the web dashboard to your Firebase.
 
 ```bash
-# Print URL and QR code
 code-insights connect
-
-# URL only, no QR code
-code-insights connect --no-qr
 ```
 
-**Flags:**
-
-| Flag | Description |
-|------|-------------|
-| `--no-qr` | Skip QR code output (print URL only) |
-
 The URL includes your Firebase web config base64-encoded as a query parameter. Open it in a browser to connect the dashboard to your Firestore automatically.
+
+No flags.
 
 ---
 
