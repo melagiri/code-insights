@@ -7,8 +7,7 @@ Full documentation: [docs.code-insights.app](https://docs.code-insights.app)
 ## Prerequisites
 
 - **Node.js** 18 or later
-- **pnpm** >= 9 (`npm install -g pnpm` if needed)
-- A **Firebase project** with Firestore enabled (see [Quick Start](../README.md#quick-start))
+- A **Firebase project** with Firestore enabled (see [Quick Start](https://docs.code-insights.app/getting-started/quick-start/))
 
 ## Installation
 

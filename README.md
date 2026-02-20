@@ -17,7 +17,6 @@ Code Insights parses Claude Code's JSONL session files (`~/.claude/projects/`) a
 ## Prerequisites
 
 - **Node.js** 18 or later
-- **pnpm** package manager (`npm install -g pnpm`)
 - **Claude Code** installed with existing session history in `~/.claude/projects/`
 - A **Google account** (for Firebase)
 
@@ -101,14 +100,10 @@ service cloud.firestore {
 ### Step 6: Install and Configure the CLI
 
 ```bash
-# From the repository root
-cd cli
-pnpm install
-pnpm build
-npm link
+npm install -g @code-insights/cli
 ```
 
-This makes `code-insights` available as a global command. Now configure it with the two JSON files from Steps 3 and 4:
+Now configure it with the two JSON files from Steps 3 and 4:
 
 ```bash
 code-insights init \

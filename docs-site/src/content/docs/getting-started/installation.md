@@ -6,21 +6,14 @@ description: Install the Code Insights CLI and verify it works.
 ## Prerequisites
 
 - **Node.js** 18 or later
-- **pnpm** package manager (`npm install -g pnpm`)
 - **Claude Code** installed with existing session history in `~/.claude/projects/`
 - A **Google account** (for Firebase — see [Firebase Setup](/guides/firebase-setup/))
 
-## Install from Source
+## Install
 
 ```bash
-git clone https://github.com/melagiri/code-insights.git
-cd code-insights/cli
-pnpm install
-pnpm build
-npm link
+npm install -g @code-insights/cli
 ```
-
-The `npm link` step makes `code-insights` available as a global command.
 
 ## Verify
 
