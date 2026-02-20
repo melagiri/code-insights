@@ -13,17 +13,23 @@ Full documentation: [docs.code-insights.app](https://docs.code-insights.app)
 ## Installation
 
 ```bash
+npm install -g @code-insights/cli
+```
+
+Verify it works:
+
+```bash
+code-insights --version
+```
+
+### Development Setup
+
+```bash
 # From the repo root
 cd cli
 pnpm install
 pnpm build
 npm link    # Makes `code-insights` available globally
-```
-
-After linking, verify it works:
-
-```bash
-code-insights --version
 ```
 
 ## Commands

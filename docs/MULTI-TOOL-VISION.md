@@ -235,7 +235,7 @@ The core philosophy remains unchanged: your data, your infrastructure, your insi
 
 ## Open Questions
 
-1. **CLI naming**: The npm package is `code-insights`, not `claude-insights`. Already tool-agnostic in branding.
+1. **CLI naming**: The npm package is `@code-insights/cli`, not `claude-insights`. Already tool-agnostic in branding.
 2. **Dashboard UX**: How to filter/visualize sessions from different tools? New filter? Color-coded by source?
 3. **Hook integration**: Claude Code uses hooks for auto-sync. Cursor/Codex have no equivalent — need a watcher or cron-based approach?
 4. **Session merging**: If a user works on the same project in both Claude Code and Cursor, should we detect and link related sessions?
