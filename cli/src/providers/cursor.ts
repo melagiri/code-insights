@@ -258,8 +258,12 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
 
     // Build timestamps from messages
     const timestamps = messages.map(m => m.timestamp.getTime()).filter(t => t > 0);
-    let startedAt = timestamps.length > 0 ? new Date(Math.min(...timestamps)) : new Date();
-    let endedAt = timestamps.length > 0 ? new Date(Math.max(...timestamps)) : new Date();
+    let startedAt = timestamps.length > 0
+      ? new Date(timestamps.reduce((a, b) => a < b ? a : b))
+      : new Date();
+    let endedAt = timestamps.length > 0
+      ? new Date(timestamps.reduce((a, b) => a > b ? a : b))
+      : new Date();
 
     // If timestamps are missing or invalid, try composerData timestamps
     const createdAt = composerData.createdAt as number | undefined;
@@ -347,7 +351,7 @@ function extractMessages(composerData: Record<string, unknown>, sessionId: strin
     if (bubble.createdAt) {
       timestamp = new Date(typeof bubble.createdAt === 'number' ? bubble.createdAt : Date.parse(bubble.createdAt as string));
     } else {
-      timestamp = new Date(); // Fallback
+      timestamp = new Date(0); // Epoch fallback — filtered out of session bounds calculation
     }
 
     // Extract tool calls from toolFormerData if present

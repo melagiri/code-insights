@@ -197,18 +197,48 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 }
 
 /**
+ * Extract real filesystem path and optional session fragment from a virtual path.
+ * Virtual paths use '#' delimiter: "/path/to/state.vscdb#composerId"
+ * Regular paths pass through unchanged.
+ */
+function splitVirtualPath(filePath: string): { realPath: string; sessionFragment: string | null } {
+  const hashIndex = filePath.lastIndexOf('#');
+  if (hashIndex > 0) {
+    return {
+      realPath: filePath.slice(0, hashIndex),
+      sessionFragment: filePath.slice(hashIndex + 1),
+    };
+  }
+  return { realPath: filePath, sessionFragment: null };
+}
+
+/**
  * Filter files to only those that need syncing
  */
 function filterFilesToSync(files: string[], syncState: SyncState, force?: boolean): string[] {
   if (force) return files;
 
   return files.filter((filePath) => {
-    const stat = fs.statSync(filePath);
+    const { realPath, sessionFragment } = splitVirtualPath(filePath);
+    const stat = fs.statSync(realPath);
     const lastModified = stat.mtime.toISOString();
-    const fileState = syncState.files[filePath];
+    const fileState = syncState.files[realPath];
 
-    // Sync if never synced or modified since last sync
-    return !fileState || fileState.lastModified !== lastModified;
+    // If file was never synced, sync it
+    if (!fileState) return true;
+
+    // For virtual paths (multi-session files), check if this specific session was synced
+    if (sessionFragment && fileState.syncedSessionIds) {
+      return !fileState.syncedSessionIds.includes(sessionFragment);
+    }
+
+    // For regular files, check if modified since last sync
+    if (sessionFragment) {
+      // Virtual path but no syncedSessionIds tracked yet — needs sync
+      return true;
+    }
+
+    return fileState.lastModified !== lastModified;
   });
 }
 
@@ -216,10 +246,28 @@ function filterFilesToSync(files: string[], syncState: SyncState, force?: boolea
  * Update sync state for a file
  */
 function updateSyncState(state: SyncState, filePath: string, sessionId: string): void {
-  const stat = fs.statSync(filePath);
-  state.files[filePath] = {
-    lastModified: stat.mtime.toISOString(),
-    lastSyncedLine: 0, // Not tracking lines for now
-    sessionId,
-  };
+  const { realPath, sessionFragment } = splitVirtualPath(filePath);
+  const stat = fs.statSync(realPath);
+
+  if (sessionFragment) {
+    // Virtual path: track the session fragment in syncedSessionIds
+    const existing = state.files[realPath];
+    const syncedIds = existing?.syncedSessionIds || [];
+    if (!syncedIds.includes(sessionFragment)) {
+      syncedIds.push(sessionFragment);
+    }
+    state.files[realPath] = {
+      lastModified: stat.mtime.toISOString(),
+      lastSyncedLine: 0,
+      sessionId,
+      syncedSessionIds: syncedIds,
+    };
+  } else {
+    // Regular file path
+    state.files[realPath] = {
+      lastModified: stat.mtime.toISOString(),
+      lastSyncedLine: 0,
+      sessionId,
+    };
+  }
 }
