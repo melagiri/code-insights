@@ -1,11 +1,15 @@
 import type { SessionProvider } from './types.js';
 import { ClaudeCodeProvider } from './claude-code.js';
+import { CursorProvider } from './cursor.js';
 
 const providers = new Map<string, SessionProvider>();
 
 // Register built-in providers
 const claudeCode = new ClaudeCodeProvider();
 providers.set(claudeCode.getProviderName(), claudeCode);
+
+const cursor = new CursorProvider();
+providers.set(cursor.getProviderName(), cursor);
 
 /**
  * Get a provider by name
