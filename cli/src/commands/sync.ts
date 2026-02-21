@@ -18,7 +18,7 @@ interface SyncOptions {
 }
 
 /**
- * Sync Claude Code sessions to Firestore
+ * Sync AI coding sessions to Firestore
  */
 export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   const log = options.quiet ? () => {} : console.log.bind(console);
@@ -55,6 +55,11 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     process.exit(1);
   }
 
+  // Dry-run banner
+  if (options.dryRun) {
+    log(chalk.yellow('\n🔍 Dry run — no changes will be made'));
+  }
+
   // Get providers to sync
   let providers: SessionProvider[];
   if (options.source) {
@@ -77,74 +82,90 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 
   for (const provider of providers) {
     const providerName = provider.getProviderName();
-    if (providers.length > 1) {
-      log(chalk.cyan(`\n📦 Syncing ${providerName}...`));
-    }
-
-    // Discovery
-    spinner.start(`Discovering ${providerName} sessions...`);
-    const sessionFiles = await provider.discover({ projectFilter: options.project });
-    spinner.succeed(`Found ${sessionFiles.length} ${providerName} session files`);
-
-    if (sessionFiles.length === 0) continue;
-
-    // Filter to only new/modified files
-    const filesToSync = filterFilesToSync(sessionFiles, syncState, options.force);
-    log(chalk.gray(`  ${filesToSync.length} files need syncing (${sessionFiles.length - filesToSync.length} already synced)`));
-
-    if (filesToSync.length === 0) continue;
-
-    if (options.dryRun) {
-      for (const file of filesToSync) {
-        log(chalk.gray(`  Would sync: ${path.basename(file)}`));
+    try {
+      if (providers.length > 1) {
+        log(chalk.cyan(`\n📦 Syncing ${providerName}...`));
       }
-      continue;
-    }
 
-    // Process files
-    for (const filePath of filesToSync) {
-      const fileName = path.basename(filePath);
-      spinner.start(`Processing ${fileName}...`);
+      // Discovery
+      spinner.start(`Discovering ${providerName} sessions...`);
+      const sessionFiles = await provider.discover({ projectFilter: options.project });
+      spinner.succeed(`Found ${sessionFiles.length} ${providerName} session files`);
 
-      try {
-        // Parse session
-        const session = await provider.parse(filePath);
-        if (!session) {
-          spinner.warn(`Skipped ${fileName} (no valid data)`);
-          continue;
+      if (sessionFiles.length === 0) continue;
+
+      // Filter to only new/modified files
+      const filesToSync = filterFilesToSync(sessionFiles, syncState, options.force);
+      log(chalk.gray(`  ${filesToSync.length} files need syncing (${sessionFiles.length - filesToSync.length} already synced)`));
+
+      if (filesToSync.length === 0) continue;
+
+      if (options.dryRun) {
+        for (const file of filesToSync) {
+          log(chalk.gray(`  Would sync: ${path.basename(file)}`));
         }
+        continue;
+      }
 
-        // Check if already exists (unless force)
-        if (!options.force) {
-          const exists = await sessionExists(session.id);
-          if (exists) {
-            spinner.info(`Skipped ${fileName} (already synced)`);
-            updateSyncState(syncState, filePath, session.id);
-            saveSyncState(syncState);
+      // Process files
+      for (const filePath of filesToSync) {
+        const fileName = path.basename(filePath);
+        spinner.start(`Processing ${fileName}...`);
+
+        try {
+          // Parse session
+          const session = await provider.parse(filePath);
+          if (!session) {
+            spinner.warn(`Skipped ${fileName} (no valid data)`);
             continue;
           }
-        }
 
-        // Upload session and messages to Firestore
-        await uploadSession(session, !!options.force);
-        await uploadMessages(session);
+          // Check if already exists (unless force)
+          if (!options.force) {
+            const exists = await sessionExists(session.id);
+            if (exists) {
+              spinner.info(`Skipped ${fileName} (already synced)`);
+              updateSyncState(syncState, filePath, session.id);
+              saveSyncState(syncState);
+              continue;
+            }
+          }
 
-        // Update and persist sync state after each file
-        // so progress survives crashes (e.g., Firebase quota exceeded)
-        updateSyncState(syncState, filePath, session.id);
-        saveSyncState(syncState);
+          // Upload session and messages to Firestore
+          await uploadSession(session, !!options.force);
+          await uploadMessages(session);
 
-        totalSyncedCount++;
-        totalMessageCount += session.messages.length;
-        spinner.succeed(`Synced ${fileName} (${session.messages.length} messages)`);
-      } catch (error) {
-        totalErrorCount++;
-        spinner.fail(`Failed to sync ${fileName}`);
-        if (!options.quiet) {
-          console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
+          // Update and persist sync state after each file
+          // so progress survives crashes (e.g., Firebase quota exceeded)
+          updateSyncState(syncState, filePath, session.id);
+          saveSyncState(syncState);
+
+          totalSyncedCount++;
+          totalMessageCount += session.messages.length;
+          spinner.succeed(`Synced ${fileName} (${session.messages.length} messages)`);
+        } catch (error) {
+          totalErrorCount++;
+          spinner.fail(`Failed to sync ${fileName}`);
+          if (!options.quiet) {
+            console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
+          }
         }
       }
+    } catch (error) {
+      totalErrorCount++;
+      spinner.fail(`Failed to sync ${providerName}`);
+      if (!options.quiet) {
+        console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
+      }
     }
+  }
+
+  // Nothing to do — already up to date
+  if (totalSyncedCount === 0 && totalErrorCount === 0 && !options.dryRun) {
+    log(chalk.green('\n✅ Already up to date!'));
+    syncState.lastSync = new Date().toISOString();
+    saveSyncState(syncState);
+    return;
   }
 
   // Reconcile usage stats after force sync
