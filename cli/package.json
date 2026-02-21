@@ -43,6 +43,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
     "firebase-admin": "^13.4.0",
@@ -50,6 +51,7 @@
     "ora": "^8.2.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.30",
     "typescript": "^5.9.3"
   }
