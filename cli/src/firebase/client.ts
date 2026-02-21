@@ -101,7 +101,7 @@ export async function uploadSession(session: ParsedSession, isForceSync = false)
     toolCallCount: session.toolCallCount,
     gitBranch: session.gitBranch,
     claudeVersion: session.claudeVersion,
-    sourceTool: 'claude-code',
+    sourceTool: session.sourceTool ?? 'claude-code',
     // Device info for multi-device tracking
     deviceId: deviceInfo.deviceId,
     deviceHostname: deviceInfo.hostname,

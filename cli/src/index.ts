@@ -24,9 +24,10 @@ program
 
 program
   .command('sync')
-  .description('Sync Claude Code sessions to Firestore')
+  .description('Sync AI coding sessions to Firestore')
   .option('-f, --force', 'Force re-sync all sessions')
   .option('-p, --project <name>', 'Only sync sessions from a specific project')
+  .option('-s, --source <name>', 'Only sync sessions from a specific tool (e.g., claude-code, cursor)')
   .option('--dry-run', 'Show what would be synced without making changes')
   .option('-q, --quiet', 'Suppress output (useful for hooks)')
   .option('--regenerate-titles', 'Regenerate titles for all sessions')

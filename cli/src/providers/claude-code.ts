@@ -25,7 +25,11 @@ export class ClaudeCodeProvider implements SessionProvider {
   }
 
   async parse(filePath: string): Promise<ParsedSession | null> {
-    return parseJsonlFile(filePath);
+    const session = await parseJsonlFile(filePath);
+    if (session) {
+      session.sourceTool = 'claude-code';
+    }
+    return session;
   }
 }
 

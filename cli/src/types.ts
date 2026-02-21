@@ -207,6 +207,7 @@ export interface FileSyncState {
   lastModified: string;
   lastSyncedLine: number;
   sessionId: string;
+  syncedSessionIds?: string[];  // For providers where 1 file = N sessions (e.g., Cursor SQLite)
 }
 
 export interface Project {

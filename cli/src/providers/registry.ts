@@ -24,10 +24,3 @@ export function getProvider(name: string): SessionProvider {
 export function getAllProviders(): SessionProvider[] {
   return [...providers.values()];
 }
-
-/**
- * Get the default provider (claude-code)
- */
-export function getDefaultProvider(): SessionProvider {
-  return claudeCode;
-}
