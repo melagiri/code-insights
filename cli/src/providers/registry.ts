@@ -2,6 +2,7 @@ import type { SessionProvider } from './types.js';
 import { ClaudeCodeProvider } from './claude-code.js';
 import { CursorProvider } from './cursor.js';
 import { CodexProvider } from './codex.js';
+import { CopilotCliProvider } from './copilot-cli.js';
 
 const providers = new Map<string, SessionProvider>();
 
@@ -14,6 +15,9 @@ providers.set(cursor.getProviderName(), cursor);
 
 const codex = new CodexProvider();
 providers.set(codex.getProviderName(), codex);
+
+const copilotCli = new CopilotCliProvider();
+providers.set(copilotCli.getProviderName(), copilotCli);
 
 /**
  * Get a provider by name
