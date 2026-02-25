@@ -27,10 +27,10 @@ You can also run `code-insights init` without flags for an interactive setup wiz
 code-insights sync
 ```
 
-This parses all Claude Code JSONL files in `~/.claude/projects/` and uploads them to your Firestore. The first sync may take a moment depending on how many sessions you have.
+This discovers sessions from all supported tools (Claude Code, Cursor, Codex CLI, Copilot CLI) and uploads them to your Firestore. The first sync may take a moment depending on how many sessions you have.
 
 :::note
-If you have months of Claude Code history, the initial sync may exceed Firebase's free tier write limits. Consider temporarily upgrading to the [Blaze plan](https://firebase.google.com/pricing) (pay-as-you-go) for the initial sync. The cost is negligible. Subsequent syncs are incremental and stay well within the free tier.
+If you have months of session history, the initial sync may exceed Firebase's free tier write limits. Consider temporarily upgrading to the [Blaze plan](https://firebase.google.com/pricing) (pay-as-you-go) for the initial sync. The cost is negligible. Subsequent syncs are incremental and stay well within the free tier.
 :::
 
 ## 3. Open the Dashboard

@@ -3,11 +3,11 @@ title: Introduction
 description: What Code Insights is, why it exists, and how it works.
 ---
 
-Code Insights parses your Claude Code session history — the JSONL files stored in `~/.claude/projects/` — and syncs them to your own Firebase database. From there, a web dashboard lets you browse sessions, generate LLM-powered insights, and track patterns in how you work with AI.
+Code Insights parses session data from multiple AI coding tools — Claude Code, Cursor, Codex CLI, and Copilot CLI — and syncs them to your own Firebase database. From there, a web dashboard lets you browse sessions, generate LLM-powered insights, and track patterns in how you work with AI.
 
 ## Why?
 
-Claude Code stores every conversation as JSONL. That's valuable data: what you built, why you made certain choices, what went wrong and how you fixed it. But raw JSON isn't searchable or browsable. Code Insights makes it useful.
+AI coding tools store every conversation as structured data. That's valuable: what you built, why you made certain choices, what went wrong and how you fixed it. But raw session files aren't searchable or browsable. Code Insights makes them useful.
 
 ## Privacy: Bring Your Own Firebase
 
@@ -24,11 +24,12 @@ You create a Firebase project, point the CLI at it, and your data stays there. T
 ## How It Works
 
 ```
-~/.claude/projects/**/*.jsonl
+Session files from supported tools
+(Claude Code, Cursor, Codex CLI, Copilot CLI)
            |
            v
     +--------------+
-    |   CLI         |  Parse JSONL, extract metadata
+    |   CLI         |  Parse sessions, extract metadata
     |  (Node.js)    |  Upload to YOUR Firestore
     +--------------+
            |
@@ -48,7 +49,7 @@ You create a Firebase project, point the CLI at it, and your data stays there. T
 
 The system has two parts:
 
-- **CLI** (this repo, open source) — Parses JSONL files, generates session titles, classifies session types, and syncs everything to Firestore.
+- **CLI** (this repo, open source) — Discovers and parses sessions from supported tools, generates session titles, classifies session types, and syncs everything to Firestore.
 - **Web Dashboard** (closed source, hosted at Vercel) — Visualizes sessions, runs LLM analysis, and exports data to Markdown.
 
 ## What You Get

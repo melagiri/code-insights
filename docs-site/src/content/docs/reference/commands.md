@@ -32,7 +32,7 @@ Configuration is stored in `~/.code-insights/config.json`. Web config is stored 
 
 ## `code-insights sync`
 
-Sync Claude Code sessions to Firestore.
+Sync sessions from all supported tools (Claude Code, Cursor, Codex CLI, Copilot CLI) to Firestore.
 
 ```bash
 # Sync new/modified sessions
@@ -102,13 +102,13 @@ No flags.
 
 ## `code-insights install-hook`
 
-Install a Claude Code hook for automatic sync after each session.
+Install a Claude Code hook for automatic sync after each session ends.
 
 ```bash
 code-insights install-hook
 ```
 
-This adds a hook that runs `code-insights sync -q` whenever a Claude Code session ends. No flags.
+This adds a hook that runs `code-insights sync -q` whenever a Claude Code session ends, keeping your dashboard up to date automatically. No flags.
 
 ---
 

@@ -11,7 +11,7 @@ All `Timestamp` fields convert to JavaScript `Date` objects when read by the web
 
 ## `projects`
 
-Each project corresponds to a directory under `~/.claude/projects/`. Project IDs are derived from the git remote URL when available, making them stable across devices.
+Each project corresponds to a working directory discovered from a supported AI coding tool. Project IDs are derived from the git remote URL when available, making them stable across devices.
 
 ```typescript
 {
@@ -35,7 +35,7 @@ Each project corresponds to a directory under `~/.claude/projects/`. Project IDs
 
 ## `sessions`
 
-One document per Claude Code session. The session ID comes from the JSONL filename.
+One document per session from any supported tool. The session ID is derived from the source file identifier (e.g., the JSONL filename for Claude Code).
 
 ```typescript
 {
@@ -58,7 +58,7 @@ One document per Claude Code session. The session ID comes from the JSONL filena
   toolCallCount: number
   gitBranch: string | null
   claudeVersion: string | null
-  sourceTool?: string           // 'claude-code' (multi-tool identifier)
+  sourceTool?: string           // 'claude-code' | 'cursor' | 'codex-cli' | 'copilot-cli'
 
   // Device info
   deviceId: string

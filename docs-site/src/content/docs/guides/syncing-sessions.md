@@ -3,14 +3,25 @@ title: Syncing Sessions
 description: How session sync works — incremental updates, filtering, and auto-sync.
 ---
 
-The `sync` command reads Claude Code JSONL files from `~/.claude/projects/` and uploads them to your Firestore.
+The `sync` command discovers sessions from all supported AI coding tools and uploads them to your Firestore.
+
+## Supported Sources
+
+The CLI automatically detects and syncs sessions from:
+
+| Tool | Session location |
+|------|-----------------|
+| **Claude Code** | `~/.claude/projects/` |
+| **Cursor** | Workspace storage (macOS, Linux, Windows) |
+| **OpenAI Codex CLI** | `~/.codex/sessions/` |
+| **GitHub Copilot CLI** | `~/.copilot/session-state/` |
 
 ## How It Works
 
-Each JSONL file represents a Claude Code session. The CLI:
+For each supported source, the CLI:
 
-1. Scans `~/.claude/projects/` for JSONL files
-2. Parses each file to extract messages, metadata, and tool calls
+1. Discovers session files from the tool's storage location
+2. Parses each session to extract messages, metadata, and tool calls
 3. Generates a title for each session (based on content)
 4. Classifies the session character (deep focus, bug hunt, feature build, etc.)
 5. Uploads projects, sessions, and messages to Firestore
@@ -33,7 +44,7 @@ Sync only a specific project:
 code-insights sync --project "my-project"
 ```
 
-The project name matches the directory name under `~/.claude/projects/`.
+The project name matches the directory name of the project being synced.
 
 ## Force Re-Sync
 

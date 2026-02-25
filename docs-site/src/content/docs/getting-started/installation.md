@@ -6,7 +6,11 @@ description: Install the Code Insights CLI and verify it works.
 ## Prerequisites
 
 - **Node.js** 18 or later
-- **Claude Code** installed with existing session history in `~/.claude/projects/`
+- At least one supported AI coding tool with existing session history:
+  - **Claude Code** — `~/.claude/projects/`
+  - **Cursor** — Workspace storage (macOS, Linux, Windows)
+  - **OpenAI Codex CLI** — `~/.codex/sessions/`
+  - **GitHub Copilot CLI** — `~/.copilot/session-state/`
 - A **Google account** (for Firebase — see [Firebase Setup](/guides/firebase-setup/))
 
 ## Install
