@@ -154,23 +154,26 @@ Session files from supported tools
            ▼
     ┌─────────────┐
     │   CLI       │  Discover, parse, extract metadata
-    │  (Node.js)  │  Upload to YOUR Firestore
+    │  (Node.js)  │
     └─────────────┘
            │
-           ▼
-    ┌─────────────┐
-    │  Firestore  │  projects, sessions, messages, insights
-    │  (YOUR DB)  │  ← You own this data
-    └─────────────┘
-           │
-           ▼
-    ┌─────────────────────────────────────┐
-    │  Hosted Dashboard (Vercel)          │
-    │  ├── Auth (Google/GitHub login)     │
-    │  ├── Analytics (anonymous usage)    │
-    │  └── UI connects to YOUR Firestore  │
-    └─────────────────────────────────────┘
+     ┌─────┴─────┐
+     ▼           ▼
+┌──────────┐  ┌─────────────┐
+│  Local   │  │  Firestore  │  projects, sessions, messages
+│  Cache   │  │  (YOUR DB)  │  ← You own this data
+└──────────┘  └─────────────┘
+     │              │
+     ▼              ▼
+┌──────────┐  ┌─────────────────────────────────────┐
+│  stats   │  │  Hosted Dashboard (Vercel)          │
+│ commands │  │  ├── Auth (Google/GitHub login)     │
+│ (CLI)    │  │  ├── Analytics (anonymous usage)    │
+└──────────┘  │  └── UI connects to YOUR Firestore  │
+              └─────────────────────────────────────┘
 ```
+
+The CLI works in two modes: **local-only** (zero-config, no Firebase) or **Firebase** (syncs to Firestore for the web dashboard). Use `code-insights config set-source` to switch.
 
 The CLI and web dashboard are developed in separate repositories:
 - **CLI** (this repo) — Open source, MIT licensed
@@ -179,17 +182,35 @@ The CLI and web dashboard are developed in separate repositories:
 ## CLI Commands
 
 ```bash
-code-insights init                     # Interactive setup wizard
+# Setup & Configuration
+code-insights init                     # Interactive setup (data source + Firebase)
 code-insights init --from-json <path>  # Import service account from JSON file
 code-insights init --web-config <path> # Import web SDK config from JSON file
+code-insights config                   # Show current configuration
+code-insights config set-source local  # Switch to local-only mode (no Firebase needed)
+code-insights config set-source firebase  # Switch to Firebase mode
+code-insights connect                  # Generate dashboard connection URL
+
+# Sync & Status
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions (ignores cache)
 code-insights sync --project <name>    # Sync only a specific project
+code-insights sync --source cursor     # Sync only from a specific tool
 code-insights sync --dry-run           # Preview what would be synced
 code-insights sync -q                  # Quiet mode (for hooks)
-code-insights sync --regenerate-titles # Regenerate all session titles
-code-insights status                   # Show sync statistics
-code-insights connect                  # Generate dashboard connection URL
+code-insights sync --force-remote      # Sync even when data source is local
+code-insights status                   # Show sync statistics and data source preference
+
+# Terminal Analytics (works without Firebase)
+code-insights stats                    # Dashboard overview (sessions, cost, activity)
+code-insights stats cost               # Cost breakdown by project and model
+code-insights stats projects           # Per-project detail cards with sparklines
+code-insights stats today              # Today's sessions with time, cost, model
+code-insights stats models             # Model usage distribution and cost chart
+code-insights stats --local            # Force local data (no Firebase needed)
+code-insights stats --period 30d       # Time range: 7d, 30d, 90d, or all
+
+# Hooks & Maintenance
 code-insights install-hook             # Auto-sync when Claude Code sessions end
 code-insights uninstall-hook           # Remove the auto-sync hook
 code-insights reset --confirm          # Delete all Firestore data and local state
@@ -217,7 +238,7 @@ The hosted dashboard at [code-insights.app](https://code-insights.app) connects 
 
 ## Token Usage & Cost Tracking
 
-The CLI captures token usage, estimated costs, and model information from session data when available. These stats are synced per-session and aggregated per-project, enabling cost analysis on the dashboard.
+The CLI captures token usage, estimated costs, and model information from session data when available. These stats are synced per-session and aggregated per-project, enabling cost analysis on the dashboard and via `code-insights stats cost` in the terminal.
 
 ## Multi-Device Support
 

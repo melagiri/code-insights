@@ -58,19 +58,38 @@ pnpm lint             # Run ESLint (no config file yet - needs setup)
 
 # After building, link for local testing:
 npm link
-code-insights init                     # Interactive Firebase setup wizard
+code-insights init                     # Interactive setup (prompts for data source + Firebase)
 code-insights init --from-json <path>  # Import service account from JSON file
 code-insights init --web-config <path> # Import web SDK config from JSON file
 code-insights sync                     # Sync sessions to Firestore
 code-insights sync --force             # Re-sync all sessions
 code-insights sync --dry-run           # Preview without changes
 code-insights sync -q                  # Quiet mode (for hook usage)
-code-insights sync --regenerate-titles # Regenerate session titles
-code-insights status                   # Show sync statistics
+code-insights sync --source cursor     # Sync only from a specific tool
+code-insights sync --force-remote      # Sync even when data source is local
+code-insights status                   # Show sync statistics + data source preference
 code-insights connect                  # Generate dashboard connection URL
 code-insights install-hook             # Auto-sync on session end
 code-insights uninstall-hook           # Remove auto-sync hook
 code-insights reset --confirm          # Delete all Firestore data
+code-insights config                   # Show current configuration
+code-insights config set-source local  # Switch to local-only mode (no Firebase)
+code-insights config set-source firebase  # Switch to Firebase mode
+
+# Stats — terminal analytics (works without Firebase)
+code-insights stats                    # Dashboard overview (last 7 days)
+code-insights stats cost               # Cost breakdown by project and model
+code-insights stats projects           # Per-project detail cards
+code-insights stats today              # Today's sessions with details
+code-insights stats models             # Model usage distribution
+
+# Stats shared flags:
+#   --local              Force local data source
+#   --remote             Force Firestore data source
+#   --period 7d|30d|90d|all   Time range (default: 7d)
+#   --project <name>     Scope to a specific project
+#   --source <tool>      Filter by source tool
+#   --no-sync            Skip auto-sync before showing stats
 ```
 
 ## Architecture
@@ -78,7 +97,21 @@ code-insights reset --confirm          # Delete all Firestore data
 ### Data Flow
 ```
 Source tool session files → Provider (discover + parse) → Firestore → Web Dashboard (separate repo)
+                                                       ↘ Local stats cache → CLI stats commands
 ```
+
+### Data Source Abstraction
+
+The CLI supports two data sources, selectable via `config set-source` or `--local`/`--remote` flags:
+
+| Source | Class | When Used | Requires Firebase |
+|--------|-------|-----------|-------------------|
+| Local | `LocalDataSource` | Zero-config default, `--local` flag | No |
+| Firestore | `FirestoreDataSource` | `config set-source firebase`, `--remote` flag | Yes |
+
+**Resolution priority:** `--local` flag > `--remote` flag > `config.dataSource` > inferred from Firebase creds > local fallback
+
+Both sources produce identical `SessionRow` arrays consumed by the aggregation layer. The `StatsDataSource` interface (`commands/stats/data/types.ts`) defines the contract.
 
 ### Provider Architecture
 
@@ -98,7 +131,19 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 3. Update web dashboard (see "Adding a new source tool" in web CLAUDE.md)
 
 ### Directory Structure (`/cli/src/`)
-- `commands/` - CLI commands (init, sync, status, connect, reset, install-hook)
+- `commands/` - CLI commands (init, sync, status, connect, reset, install-hook, config)
+- `commands/stats/` - Stats command suite (4-layer architecture):
+  - `data/types.ts` - `StatsDataSource` interface, `SessionRow`, error classes
+  - `data/source.ts` - Data source factory (resolves local vs Firestore)
+  - `data/firestore.ts` - `FirestoreDataSource` implementation
+  - `data/local.ts` - `LocalDataSource` implementation
+  - `data/cache.ts` - Disk-based stats cache (`~/.code-insights/stats-cache.json`)
+  - `data/aggregation.ts` - Pure compute functions (overview, cost, projects, today, models)
+  - `data/fuzzy-match.ts` - Levenshtein distance for `--project` name matching
+  - `render/` - Terminal rendering (colors, format, charts, layout)
+  - `actions/` - Action handlers for each subcommand + shared error handler
+  - `index.ts` - Command tree with lazy imports
+  - `shared.ts` - Shared CLI flags
 - `providers/` - Source tool providers (claude-code, cursor, codex, copilot-cli)
 - `providers/types.ts` - `SessionProvider` interface
 - `providers/registry.ts` - Provider registration and lookup
@@ -107,6 +152,7 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 - `firebase/client.ts` - Firebase Admin SDK for Firestore reads/writes
 - `utils/config.ts` - Configuration management (~/.code-insights/config.json)
 - `utils/device.ts` - Device ID generation, git remote detection, stable project IDs
+- `utils/paths.ts` - Virtual path handling (shared by sync and stats)
 - `types.ts` - TypeScript type definitions
 - `index.ts` - CLI entry point (Commander.js)
 
@@ -366,6 +412,7 @@ Multi-tier fallback: Claude summary → user message (scored) → character-base
 ### Configuration
 - Config stored at `~/.code-insights/config.json` (mode 0o600)
 - Sync state at `~/.code-insights/sync-state.json`
+- Stats cache at `~/.code-insights/stats-cache.json` (mtime-based invalidation)
 - Device ID at `~/.code-insights/device-id`
 
 ### Hook Integration
@@ -378,8 +425,14 @@ Key types defined in `/cli/src/types.ts`:
 - `ParsedSession` - Aggregated session with metadata, title, character
 - `Insight` - Types: summary | decision | learning | technique | prompt_quality; source: 'llm'
 - `SessionCharacter` - 7 session classifications
-- `ClaudeInsightConfig` - Firebase + optional Gemini + sync config
+- `ClaudeInsightConfig` - Config with optional `firebase` credentials and optional `dataSource` preference
+- `DataSourcePreference` - `'local' | 'firebase'` — controls where stats reads data from
 - `SyncState` - File modification tracking for incremental sync
+
+Stats-specific types in `/cli/src/commands/stats/data/types.ts`:
+- `StatsDataSource` - Interface for data source implementations (5 methods + name)
+- `SessionRow` - Universal session shape produced by both data sources
+- `StatsFlags` - Shared CLI flags (period, project, source, local, remote, noSync)
 
 ## Tech Stack
 

@@ -1,13 +1,14 @@
 # Code Insights CLI
 
-Command-line tool that parses Claude Code session history and syncs it to your own Firebase Firestore.
+Command-line tool that parses AI coding session history and provides terminal analytics. Optionally syncs to your own Firebase Firestore for the web dashboard.
 
 Full documentation: [docs.code-insights.app](https://docs.code-insights.app)
 
 ## Prerequisites
 
 - **Node.js** 18 or later
-- A **Firebase project** with Firestore enabled (see [Quick Start](https://docs.code-insights.app/getting-started/quick-start/))
+- **For local-only stats:** No additional setup required
+- **For Firebase sync + web dashboard:** A Firebase project with Firestore enabled (see [Quick Start](https://docs.code-insights.app/getting-started/quick-start/))
 
 ## Installation
 
@@ -25,7 +26,7 @@ code-insights --version
 
 ### `code-insights init`
 
-Configure Code Insights with your Firebase credentials.
+Configure Code Insights with your data source preference and optional Firebase credentials.
 
 ```bash
 # Quick setup — import directly from files (recommended)
@@ -33,17 +34,64 @@ code-insights init \
   --from-json ~/Downloads/serviceAccountKey.json \
   --web-config ~/Downloads/firebase-web-config.js
 
-# Interactive setup — prompts for each value
+# Interactive setup — prompts for data source + credentials
 code-insights init
 ```
 
 **Flags:**
-- `--from-json <path>` — Path to the Firebase service account key (downloaded from Firebase Console > Project Settings > Service Accounts)
-- `--web-config <path>` — Path to the Firebase web SDK config (saved from Firebase Console > Project Settings > General > Your Apps). Accepts both JSON and the JavaScript snippet from Firebase.
+- `--from-json <path>` — Path to the Firebase service account key (auto-sets data source to Firebase)
+- `--web-config <path>` — Path to the Firebase web SDK config (JSON or JS snippet)
 
-You can use one flag, both, or neither. Any values not provided via flags will be collected interactively.
+During interactive setup, the CLI first asks for your preferred data source:
+- **Local** (recommended) — Stats read from local session files. No Firebase required.
+- **Firebase** — Stats read from Firestore. Requires Firebase credentials.
 
 Configuration is stored in `~/.code-insights/config.json`. Web config is stored separately in `~/.code-insights/web-config.json`.
+
+### `code-insights stats`
+
+Terminal analytics for your AI coding sessions. Works without Firebase.
+
+```bash
+# Dashboard overview (default: last 7 days)
+code-insights stats
+
+# Cost breakdown by project and model
+code-insights stats cost
+
+# Per-project detail cards with sparklines
+code-insights stats projects
+
+# Today's sessions with time, cost, model details
+code-insights stats today
+
+# Model usage distribution and cost chart
+code-insights stats models
+```
+
+**Shared flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--local` | | Force local data source (no Firebase) |
+| `--remote` | | Force Firestore data source |
+| `--period <range>` | | Time range: `7d`, `30d`, `90d`, or `all` (default: `7d`) |
+| `--project <name>` | `-p` | Scope to a specific project (fuzzy matching) |
+| `--source <tool>` | `-s` | Filter by source tool (e.g., `claude-code`, `cursor`) |
+| `--no-sync` | | Skip auto-sync before displaying stats |
+
+### `code-insights config`
+
+View and manage CLI configuration.
+
+```bash
+# Show current configuration
+code-insights config
+
+# Set data source preference
+code-insights config set-source local     # Local-only mode
+code-insights config set-source firebase  # Firebase mode
+```
 
 ### `code-insights connect`
 
@@ -57,7 +105,7 @@ The URL includes your Firebase web config base64-encoded as a query parameter. O
 
 ### `code-insights sync`
 
-Sync Claude Code sessions to Firestore.
+Sync sessions from all supported tools to Firestore.
 
 ```bash
 # Sync new/modified sessions
@@ -72,22 +120,31 @@ code-insights sync --dry-run
 # Sync specific project only
 code-insights sync --project "my-project"
 
+# Sync only from a specific tool
+code-insights sync --source cursor
+
 # Quiet mode (for hooks)
 code-insights sync --quiet
 
 # Regenerate titles for all sessions
 code-insights sync --regenerate-titles
+
+# Sync even when data source is set to local
+code-insights sync --force-remote
 ```
+
+> **Note:** When data source is set to `local`, sync shows a warning and exits. Use `--force-remote` to override, or switch with `config set-source firebase`.
 
 ### `code-insights status`
 
-Show sync status and statistics.
+Show sync status, statistics, and data source preference.
 
 ```bash
 code-insights status
 ```
 
 Displays:
+- Data source preference (local or Firebase)
 - Configuration status
 - Total sessions synced
 - Projects tracked
@@ -105,6 +162,8 @@ code-insights reset
 code-insights reset --confirm
 ```
 
+> **Note:** In local mode, this clears the local stats cache only. Firestore data is not affected.
+
 ### `code-insights install-hook`
 
 Install a Claude Code hook for automatic sync after each session.
@@ -112,6 +171,8 @@ Install a Claude Code hook for automatic sync after each session.
 ```bash
 code-insights install-hook
 ```
+
+> **Note:** In local mode, the hook is not installed (sync requires Firebase).
 
 ### `code-insights uninstall-hook`
 

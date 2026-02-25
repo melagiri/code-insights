@@ -72,7 +72,14 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
   - Live updates as sessions complete
   - Custom React hooks: useProjects, useSessions, useInsights, useAnalytics
 
-- [ ] **2.4 Enhanced Filtering**
+- [x] **2.4 CLI Stats Command Suite**
+  - Terminal analytics: `stats`, `stats cost`, `stats projects`, `stats today`, `stats models`
+  - Dual data sources: local (zero-config) and Firestore
+  - Data source preference system (`config set-source local|firebase`)
+  - Unicode sparklines, bar charts, semantic colors, responsive layout
+  - Rich rendering with chalk, responsive to terminal width
+
+- [ ] **2.5 Enhanced Filtering**
   - Full-text search across sessions
   - Filter by: project, git branch, date range, insight type
   - Saved filters / bookmarks
@@ -81,6 +88,7 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 - ✅ Auto-sync via Claude Code hooks
 - Slash commands (pending)
 - ✅ Real-time dashboard updates
+- ✅ CLI stats command suite with local-first analytics
 
 ---
 
@@ -187,7 +195,8 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 | 0.3.0 | 2 | Claude Code hook, real-time updates | ✅ Done |
 | 0.4.0 | 3 | Multi-LLM analysis, bulk analyze | ✅ Done |
 | 0.5.0 | 4 | Markdown export | ✅ Done |
-| 0.6.0 | 4 | Scheduled reports, API access | Planned |
+| 0.6.0 | 2 | CLI stats commands, data source preference | ✅ Done |
+| 0.7.0 | 4 | Scheduled reports, API access | Planned |
 | 1.0.0 | 5 | Plugin architecture, community features | Planned |
 
 ---
