@@ -7,7 +7,7 @@ import { initializeFirebase, uploadSession, uploadMessages, sessionExists, recal
 import { getAllProviders, getProvider } from '../providers/registry.js';
 import type { SessionProvider } from '../providers/types.js';
 import type { SyncState } from '../types.js';
-import { splitVirtualPath } from './stats/data/cache.js';
+import { splitVirtualPath } from '../utils/paths.js';
 
 interface SyncOptions {
   force?: boolean;

@@ -14,6 +14,7 @@ import type { ParsedSession } from '../../../types.js';
 import type { SessionRow } from './types.js';
 import { generateStableProjectId } from '../../../utils/device.js';
 import { ensureConfigDir } from '../../../utils/config.js';
+import { splitVirtualPath } from '../../../utils/paths.js';
 import { getAllProviders } from '../../../providers/registry.js';
 
 // ──────────────────────────────────────────────────────
@@ -56,22 +57,6 @@ function getCachedProjectId(projectPath: string): string {
 // ──────────────────────────────────────────────────────
 // Exported helpers
 // ──────────────────────────────────────────────────────
-
-/**
- * Extract real filesystem path and optional session fragment from a virtual path.
- * Virtual paths use '#' delimiter: "/path/to/state.vscdb#composerId"
- * Regular paths pass through unchanged.
- */
-export function splitVirtualPath(filePath: string): { realPath: string; sessionFragment: string | null } {
-  const hashIndex = filePath.lastIndexOf('#');
-  if (hashIndex > 0) {
-    return {
-      realPath: filePath.slice(0, hashIndex),
-      sessionFragment: filePath.slice(hashIndex + 1),
-    };
-  }
-  return { realPath: filePath, sessionFragment: null };
-}
 
 /**
  * Transform the CLI's ParsedSession into the stats SessionRow shape.

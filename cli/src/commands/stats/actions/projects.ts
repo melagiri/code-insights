@@ -97,10 +97,10 @@ export async function projectsAction(flags: StatsFlags): Promise<void> {
     // Hints
     console.log();
     if (!flags.project && projects.length > 0) {
-      console.log(colors.hint(`Run stats projects --project ${projects[0].projectName} for single project focus`));
+      console.log(colors.hint(`Run stats projects --project "${projects[0].projectName}" for single project focus`));
     }
     if (projects.length > 0) {
-      console.log(colors.hint(`Run stats cost --project ${projects[0].projectName} for project cost breakdown`));
+      console.log(colors.hint(`Run stats cost --project "${projects[0].projectName}" for project cost breakdown`));
     }
     console.log();
   } catch (err) {

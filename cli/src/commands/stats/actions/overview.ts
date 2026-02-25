@@ -67,7 +67,7 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
       const lastSession = await source.getLastSession();
       if (lastSession) {
         const title = resolveTitle(lastSession);
-        console.log(`  Last session: ${formatRelativeDate(lastSession.endedAt)} in ${colors.project(lastSession.projectName)}`);
+        console.log(`  Last session: ${formatRelativeDate(lastSession.endedAt)} in ${colors.project(lastSession.projectName)} — ${colors.value(title)}`);
         console.log();
       }
       console.log(colors.hint(`Run stats --period 30d to expand the time range`));
