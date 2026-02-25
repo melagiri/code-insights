@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { loadConfig, loadSyncState, isConfigured, getConfigDir, getClaudeDir, hasWebConfig, loadWebConfig, resolveDataSourcePreference } from '../utils/config.js';
 import { initializeFirebase, getProjects } from '../firebase/client.js';
+import { trackEvent } from '../utils/telemetry.js';
 import * as fs from 'fs';
 
 /**
@@ -98,6 +99,7 @@ export async function statusCommand(): Promise<void> {
   }
 
   console.log('');
+  trackEvent('status', true);
 }
 
 /**

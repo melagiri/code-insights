@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
+import { trackEvent } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import {
   computeTodayStats,
@@ -132,8 +133,10 @@ export async function todayAction(flags: StatsFlags): Promise<void> {
     console.log();
     console.log(colors.hint('Run stats cost --period 7d for weekly cost trends'));
     console.log();
+    trackEvent('stats', true, 'today');
     showTip('stats today');
   } catch (err) {
+    trackEvent('stats', false, 'today');
     handleStatsError(err);
   }
 }

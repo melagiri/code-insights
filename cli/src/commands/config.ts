@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { loadConfig, saveConfig, isConfigured, resolveDataSourcePreference, isFirebaseConfigured } from '../utils/config.js';
+import { trackEvent } from '../utils/telemetry.js';
 import type { DataSourcePreference } from '../types.js';
 
 /**
@@ -64,6 +65,7 @@ function showConfigAction(): void {
   }
 
   console.log('');
+  trackEvent('config', true);
 }
 
 /**
@@ -128,8 +130,10 @@ configCommand
         saveConfig(config);
       }
       console.log(chalk.green(`\nTelemetry ${value === 'true' ? 'enabled' : 'disabled'}.\n`));
+      trackEvent('config', true, 'set');
     } else if (key === 'source') {
       setSourceAction(value);
+      trackEvent('config', true, 'set');
     } else {
       console.error(chalk.red(`\nUnknown config key "${key}". Available: telemetry, source.\n`));
       process.exit(1);

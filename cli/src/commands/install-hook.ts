@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import chalk from 'chalk';
 import { isConfigured, resolveDataSourcePreference } from '../utils/config.js';
+import { trackEvent } from '../utils/telemetry.js';
 
 const CLAUDE_SETTINGS_DIR = path.join(os.homedir(), '.claude');
 const HOOKS_FILE = path.join(CLAUDE_SETTINGS_DIR, 'settings.json');
@@ -102,6 +103,7 @@ export async function installHookCommand(): Promise<void> {
   console.log(chalk.white('  • When a Claude Code session ends, the hook runs'));
   console.log(chalk.white('  • Sessions are automatically synced to your Firestore'));
   console.log(chalk.white('  • Check your dashboard for new insights'));
+  trackEvent('install-hook', true);
 }
 
 /**

@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
+import { trackEvent } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import {
   periodStartDate,
@@ -104,8 +105,10 @@ export async function projectsAction(flags: StatsFlags): Promise<void> {
       console.log(colors.hint(`Run stats cost --project "${projects[0].projectName}" for project cost breakdown`));
     }
     console.log();
+    trackEvent('stats', true, 'projects');
     showTip('stats projects');
   } catch (err) {
+    trackEvent('stats', false, 'projects');
     handleStatsError(err);
   }
 }

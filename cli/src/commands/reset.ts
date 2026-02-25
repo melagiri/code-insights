@@ -6,6 +6,7 @@ import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import { loadConfig, resolveDataSourcePreference } from '../utils/config.js';
+import { trackEvent } from '../utils/telemetry.js';
 
 const SYNC_STATE_FILE = join(homedir(), '.code-insights', 'sync-state.json');
 
@@ -96,6 +97,7 @@ export const resetCommand = new Command('reset')
     }
 
     console.log(chalk.green('\n✓ Reset complete. Run `code-insights sync` to re-sync all sessions.\n'));
+    trackEvent('reset', true);
     process.exit(0);
   });
 

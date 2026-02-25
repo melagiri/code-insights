@@ -1,6 +1,7 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { saveConfig, saveWebConfig, getConfigDir, isConfigured } from '../utils/config.js';
+import { trackEvent } from '../utils/telemetry.js';
 import {
   readJsonFileWithError,
   readFirebaseConfigFile,
@@ -84,6 +85,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
     console.log(chalk.white('  3. See cost breakdown:'));
     console.log(chalk.gray('     code-insights stats cost\n'));
     console.log(chalk.gray('  To switch to Firebase later: code-insights config set-source firebase\n'));
+    trackEvent('init', true);
     return;
   }
 
@@ -265,4 +267,5 @@ async function initFirebaseFlow(options: InitOptions, dataSource: DataSourcePref
   console.log(chalk.gray('     code-insights sync\n'));
   console.log(chalk.white('  2. Connect the dashboard:'));
   console.log(chalk.gray('     code-insights connect\n'));
+  trackEvent('init', true);
 }

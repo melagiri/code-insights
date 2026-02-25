@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
+import { trackEvent } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import {
   periodStartDate,
@@ -167,8 +168,10 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
     console.log(colors.hint("Run stats today for today's sessions"));
     console.log(colors.hint('Run stats projects for project details'));
     console.log();
+    trackEvent('stats', true);
     showTip('stats');
   } catch (err) {
+    trackEvent('stats', false);
     handleStatsError(err);
   }
 }

@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { isConfigured, loadWebConfig, hasWebConfig } from '../utils/config.js';
+import { trackEvent } from '../utils/telemetry.js';
 import { generateDashboardUrl, validateWebConfig } from '../utils/firebase-json.js';
 import type { FirebaseWebConfig } from '../types.js';
 
@@ -39,4 +40,5 @@ export async function connectCommand(): Promise<void> {
   console.log(chalk.white('Open this URL to connect the dashboard to your Firebase:'));
   console.log(chalk.bold.underline(url));
   console.log('');
+  trackEvent('connect', true);
 }

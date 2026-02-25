@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
+import { trackEvent } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import { periodStartDate, computeModelStats } from '../data/aggregation.js';
 import type { StatsFlags, SessionQueryOptions } from '../data/types.js';
@@ -114,8 +115,10 @@ export async function modelsAction(flags: StatsFlags): Promise<void> {
     console.log();
     console.log(colors.hint('Run stats cost for time-based cost analysis'));
     console.log();
+    trackEvent('stats', true, 'models');
     showTip('stats models');
   } catch (err) {
+    trackEvent('stats', false, 'models');
     handleStatsError(err);
   }
 }
