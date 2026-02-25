@@ -93,6 +93,7 @@ function setSourceAction(source: string): void {
   saveConfig(config);
 
   console.log(chalk.green(`\nData source preference set to "${source}".\n`));
+  trackEvent('config', true, 'set-source');
 }
 
 export const configCommand = new Command('config')

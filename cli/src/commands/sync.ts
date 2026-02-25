@@ -215,6 +215,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     // Summary (only if not quiet)
     if (result.syncedCount === 0 && result.errorCount === 0) {
       log(chalk.green('\n\u2705 Already up to date!'));
+      trackEvent('sync', true);
       return;
     }
     log(chalk.cyan('\n\uD83D\uDCCA Sync Summary'));
