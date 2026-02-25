@@ -114,17 +114,15 @@ export class FirestoreDataSource implements StatsDataSource {
   constructor(private config: ClaudeInsightConfig) {}
 
   async prepare(flags: StatsFlags): Promise<PrepareResult> {
-    // Initialize Firebase
     initializeFirebase(this.config);
 
     if (!flags.noSync) {
       try {
-        // runSync will be available after Phase 6 — for now, just skip sync
-        // const { runSync } = await import('../../sync.js');
-        // const result = await runSync({ quiet: true });
-        // if (result.syncedCount > 0) {
-        //   return { message: `Synced ${result.syncedCount} new sessions`, dataChanged: true };
-        // }
+        const { runSync } = await import('../../sync.js');
+        const result = await runSync({ quiet: true });
+        if (result.syncedCount > 0) {
+          return { message: `Synced ${result.syncedCount} new sessions`, dataChanged: true };
+        }
         return { message: 'Up to date', dataChanged: false };
       } catch {
         return { message: 'Sync failed (showing cached data)', dataChanged: false };

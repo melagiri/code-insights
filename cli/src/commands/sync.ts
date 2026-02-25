@@ -17,10 +17,20 @@ interface SyncOptions {
   source?: string;
 }
 
+export interface SyncResult {
+  syncedCount: number;
+  messageCount: number;
+  errorCount: number;
+}
+
 /**
- * Sync AI coding sessions to Firestore
+ * Core sync logic — reusable from stats commands and other callers.
+ *
+ * Throws on fatal errors (missing config, Firebase connection failure,
+ * unknown provider) instead of calling process.exit().
+ * Returns a SyncResult summary instead of printing one.
  */
-export async function syncCommand(options: SyncOptions = {}): Promise<void> {
+export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   const log = options.quiet ? () => {} : console.log.bind(console);
   const noopSpinner = {
     start: function() { return this; },
@@ -33,13 +43,12 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     ? () => noopSpinner
     : ora;
 
-  log(chalk.cyan('\n📤 Code Insights Sync\n'));
+  log(chalk.cyan('\n\uD83D\uDCE4 Code Insights Sync\n'));
 
   // Load config
   const config = loadConfig();
   if (!config) {
-    log(chalk.red('Not configured. Run `code-insights init` first.'));
-    process.exit(1);
+    throw new Error('Not configured. Run `code-insights init` first.');
   }
 
   // Initialize Firebase
@@ -49,15 +58,12 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     spinner.succeed('Connected to Firebase');
   } catch (error) {
     spinner.fail('Failed to connect to Firebase');
-    if (!options.quiet) {
-      console.error(chalk.red(error instanceof Error ? error.message : 'Unknown error'));
-    }
-    process.exit(1);
+    throw new Error(`Failed to connect to Firebase: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
   // Dry-run banner
   if (options.dryRun) {
-    log(chalk.yellow('\n🔍 Dry run — no changes will be made'));
+    log(chalk.yellow('\n\uD83D\uDD0D Dry run \u2014 no changes will be made'));
   }
 
   // Get providers to sync
@@ -66,8 +72,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     try {
       providers = [getProvider(options.source)];
     } catch {
-      log(chalk.red(`Unknown source: ${options.source}. Available: ${getAllProviders().map(p => p.getProviderName()).join(', ')}`));
-      process.exit(1);
+      throw new Error(`Unknown source: ${options.source}. Available: ${getAllProviders().map(p => p.getProviderName()).join(', ')}`);
     }
   } else {
     providers = getAllProviders();
@@ -84,7 +89,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     const providerName = provider.getProviderName();
     try {
       if (providers.length > 1) {
-        log(chalk.cyan(`\n📦 Syncing ${providerName}...`));
+        log(chalk.cyan(`\n\uD83D\uDCE6 Syncing ${providerName}...`));
       }
 
       // Discovery
@@ -160,16 +165,8 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
     }
   }
 
-  // Nothing to do — already up to date
-  if (totalSyncedCount === 0 && totalErrorCount === 0 && !options.dryRun) {
-    log(chalk.green('\n✅ Already up to date!'));
-    syncState.lastSync = new Date().toISOString();
-    saveSyncState(syncState);
-    return;
-  }
-
-  // Reconcile usage stats after force sync
-  if (options.force) {
+  // Reconcile usage stats after force sync (skip if nothing changed)
+  if (options.force && (totalSyncedCount > 0 || totalErrorCount > 0)) {
     spinner.start('Recalculating usage stats...');
     try {
       const result = await recalculateUsageStats();
@@ -186,14 +183,39 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   syncState.lastSync = new Date().toISOString();
   saveSyncState(syncState);
 
-  // Summary
-  log(chalk.cyan('\n📊 Sync Summary'));
-  log(chalk.white(`  Sessions synced: ${totalSyncedCount}`));
-  log(chalk.white(`  Messages uploaded: ${totalMessageCount}`));
-  if (totalErrorCount > 0) {
-    log(chalk.red(`  Errors: ${totalErrorCount}`));
+  return {
+    syncedCount: totalSyncedCount,
+    messageCount: totalMessageCount,
+    errorCount: totalErrorCount,
+  };
+}
+
+/**
+ * Sync AI coding sessions to Firestore
+ */
+export async function syncCommand(options: SyncOptions = {}): Promise<void> {
+  try {
+    const result = await runSync(options);
+
+    // Summary (only if not quiet)
+    const log = options.quiet ? () => {} : console.log.bind(console);
+    if (result.syncedCount === 0 && result.errorCount === 0) {
+      log(chalk.green('\n\u2705 Already up to date!'));
+      return;
+    }
+    log(chalk.cyan('\n\uD83D\uDCCA Sync Summary'));
+    log(chalk.white(`  Sessions synced: ${result.syncedCount}`));
+    log(chalk.white(`  Messages uploaded: ${result.messageCount}`));
+    if (result.errorCount > 0) {
+      log(chalk.red(`  Errors: ${result.errorCount}`));
+    }
+    log(chalk.green('\n\u2705 Sync complete!'));
+  } catch (error) {
+    if (!options.quiet) {
+      console.error(chalk.red(error instanceof Error ? error.message : 'Sync failed'));
+    }
+    process.exit(1);
   }
-  log(chalk.green('\n✅ Sync complete!'));
 }
 
 /**
