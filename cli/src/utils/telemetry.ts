@@ -5,10 +5,7 @@ import * as crypto from 'crypto';
 import { createRequire } from 'module';
 import { loadConfig, getConfigDir, getClaudeDir } from './config.js';
 
-// Placeholder endpoint — will be replaced with real Supabase Edge Function URL
-// when the function is deployed. Intentionally left as a placeholder to avoid
-// accidentally sending data to a wrong endpoint during development.
-const TELEMETRY_ENDPOINT = 'https://PLACEHOLDER.supabase.co/functions/v1/cli-telemetry';
+const TELEMETRY_ENDPOINT = 'https://xrbkoqjfolxiyfxubiom.supabase.co/functions/v1/cli-telemetry';
 
 // Touch file path that tracks whether the one-time disclosure has been shown
 const NOTICE_FILE = path.join(getConfigDir(), '.telemetry-notice-shown');
