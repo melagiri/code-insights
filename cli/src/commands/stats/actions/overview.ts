@@ -43,7 +43,7 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
 
     // Show welcome message on first ever run (no config file)
     if (!isConfigured()) {
-      showWelcomeIfFirstRun();
+      await showWelcomeIfFirstRun();
     }
 
     // Resolve project filter

@@ -317,14 +317,65 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
   }
 }
 
+// Keys Cursor has used across versions to store the message array.
+// Order matters: check the most common/modern formats first.
+const CURSOR_MESSAGE_ARRAY_KEYS = [
+  'conversation',    // Observed in Cursor ≤0.42 cursorDiskKV entries
+  'messages',        // Earlier workspace DB format
+  'bubbles',         // Observed in some Cursor 0.43+ cursorDiskKV entries
+  'turns',           // Seen in experimental Cursor builds
+  'history',         // Alternate key used in some Cursor forks
+  'richConversation',// Rich-text variant with full markdown blocks
+  'thread',          // Used in agent-mode sessions
+] as const;
+
+/**
+ * Find the message array in a composerData blob, trying all known key names.
+ * Returns [array, keyUsed] so callers can log which key worked.
+ * Returns [[], null] when no recognised key has a non-empty array.
+ */
+function findMessageArray(composerData: Record<string, unknown>): [Array<Record<string, unknown>>, string | null] {
+  for (const key of CURSOR_MESSAGE_ARRAY_KEYS) {
+    const value = composerData[key];
+    if (Array.isArray(value) && value.length > 0) {
+      return [value as Array<Record<string, unknown>>, key];
+    }
+  }
+  return [[], null];
+}
+
 /**
  * Extract parsed messages from Cursor composer data.
  */
 function extractMessages(composerData: Record<string, unknown>, sessionId: string): ParsedMessage[] {
   const messages: ParsedMessage[] = [];
 
-  // Try conversation array (modern format from cursorDiskKV)
-  const conversation = (composerData.conversation || composerData.messages || []) as Array<Record<string, unknown>>;
+  const [conversation, keyUsed] = findMessageArray(composerData);
+
+  if (conversation.length === 0) {
+    // No messages found — log top-level keys to help diagnose future Cursor format changes.
+    // Only log when the composerData has keys but none match our known formats
+    // (empty objects = legitimately empty sessions, not a format issue).
+    const topLevelKeys = Object.keys(composerData);
+    const knownKeys = new Set(CURSOR_MESSAGE_ARRAY_KEYS as readonly string[]);
+    const hasUnknownArrayKeys = topLevelKeys.some(
+      k => !knownKeys.has(k) && Array.isArray(composerData[k])
+    );
+    if (topLevelKeys.length > 0 && hasUnknownArrayKeys) {
+      process.stderr.write(
+        `[code-insights] cursor: session ${sessionId} — unrecognised composerData structure. ` +
+        `Top-level keys: [${topLevelKeys.join(', ')}]\n`
+      );
+    }
+    return messages;
+  }
+
+  // Log which key was used when it's not the primary expected key — helps track format drift
+  if (keyUsed && keyUsed !== 'conversation') {
+    process.stderr.write(
+      `[code-insights] cursor: session ${sessionId} — messages found under key "${keyUsed}"\n`
+    );
+  }
 
   for (let i = 0; i < conversation.length; i++) {
     const bubble = conversation[i];
