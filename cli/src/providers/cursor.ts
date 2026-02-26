@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import type { SessionProvider } from './types.js';
 import type { ParsedSession, ParsedMessage, ToolCall } from '../types.js';
 import { generateTitle, detectSessionCharacter } from '../parser/titles.js';
+import { isVerbose } from './context.js';
 
 /**
  * Cursor IDE session provider.
@@ -389,19 +390,23 @@ function extractMessages(
       k => !knownKeys.has(k) && Array.isArray(composerData[k])
     );
     if (topLevelKeys.length > 0 && hasUnknownArrayKeys) {
-      process.stderr.write(
-        `[code-insights] cursor: session ${sessionId} — unrecognised composerData structure. ` +
-        `Top-level keys: [${topLevelKeys.join(', ')}]\n`
-      );
+      if (isVerbose()) {
+        process.stderr.write(
+          `[code-insights] cursor: session ${sessionId} — unrecognised composerData structure. ` +
+          `Top-level keys: [${topLevelKeys.join(', ')}]\n`
+        );
+      }
     }
     return messages;
   }
 
   // Log which key was used when it's not the primary expected key — helps track format drift
   if (keyUsed && keyUsed !== 'conversation') {
-    process.stderr.write(
-      `[code-insights] cursor: session ${sessionId} — messages found under key "${keyUsed}"\n`
-    );
+    if (isVerbose()) {
+      process.stderr.write(
+        `[code-insights] cursor: session ${sessionId} — messages found under key "${keyUsed}"\n`
+      );
+    }
   }
 
   return parseBubbles(conversation, sessionId);

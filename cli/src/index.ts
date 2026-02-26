@@ -35,6 +35,7 @@ program
   .option('-s, --source <name>', 'Only sync sessions from a specific tool (e.g., claude-code, cursor)')
   .option('--dry-run', 'Show what would be synced without making changes')
   .option('-q, --quiet', 'Suppress output (useful for hooks)')
+  .option('-v, --verbose', 'Show diagnostic warnings from providers')
   .option('--regenerate-titles', 'Regenerate titles for all sessions')
   .option('--force-remote', 'Force sync even when data source is local')
   .action(syncCommand);

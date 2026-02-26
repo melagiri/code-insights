@@ -6,6 +6,7 @@ import { loadConfig, loadSyncState, saveSyncState, resolveDataSourcePreference }
 import { trackEvent } from '../utils/telemetry.js';
 import { initializeFirebase, uploadSession, uploadMessages, sessionExists, recalculateUsageStats } from '../firebase/client.js';
 import { getAllProviders, getProvider } from '../providers/registry.js';
+import { setProviderVerbose } from '../providers/context.js';
 import type { SessionProvider } from '../providers/types.js';
 import type { SyncState } from '../types.js';
 import { splitVirtualPath } from '../utils/paths.js';
@@ -16,6 +17,7 @@ interface SyncOptions {
   project?: string;
   dryRun?: boolean;
   quiet?: boolean;
+  verbose?: boolean;
   regenerateTitles?: boolean;
   source?: string;
 }
@@ -71,6 +73,9 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   if (options.dryRun) {
     log(chalk.yellow('\n\uD83D\uDD0D Dry run \u2014 no changes will be made'));
   }
+
+  // Set verbose flag for providers (e.g., gates Cursor diagnostic warnings)
+  setProviderVerbose(!!options.verbose);
 
   // Get providers to sync
   let providers: SessionProvider[];
