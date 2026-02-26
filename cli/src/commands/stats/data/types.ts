@@ -102,7 +102,7 @@ export interface StatsDataSource {
   getSessions(opts: SessionQueryOptions): Promise<SessionRow[]>;
   getUsageStats(): Promise<UsageStatsDoc | null>;
   resolveProjectId(name: string): Promise<ProjectResolution>;
-  getLastSession(): Promise<SessionRow | null>;
+  getLastSession(opts?: Pick<SessionQueryOptions, 'sourceTool' | 'projectId'>): Promise<SessionRow | null>;
   prepare(flags: StatsFlags): Promise<PrepareResult>;
 }
 

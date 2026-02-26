@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
-import { ensureConfigDir, getClaudeDir, getConfigDir } from './config.js';
+import { ensureConfigDir, getConfigDir } from './config.js';
+import { getAllProviders } from '../providers/registry.js';
 
 const WELCOME_MARKER = '.welcome-shown';
 
@@ -14,7 +15,7 @@ const WELCOME_MARKER = '.welcome-shown';
  *
  * Returns true if the banner was printed, false if already shown.
  */
-export function showWelcomeIfFirstRun(): boolean {
+export async function showWelcomeIfFirstRun(): Promise<boolean> {
   try {
     const markerPath = path.join(getConfigDir(), WELCOME_MARKER);
 
@@ -23,7 +24,7 @@ export function showWelcomeIfFirstRun(): boolean {
       return false;
     }
 
-    const { sessionCount, projectCount } = countClaudeSessions();
+    const sessionCount = await countAllSessions();
 
     console.log('');
     console.log(chalk.bold.cyan('  Welcome to Code Insights!'));
@@ -33,12 +34,10 @@ export function showWelcomeIfFirstRun(): boolean {
       console.log(
         chalk.dim('  Found ') +
         chalk.white.bold(sessionCount) +
-        chalk.dim(` session${sessionCount === 1 ? '' : 's'} across `) +
-        chalk.white.bold(projectCount) +
-        chalk.dim(` project${projectCount === 1 ? '' : 's'} in ~/.claude/projects`)
+        chalk.dim(` session${sessionCount === 1 ? '' : 's'} across your dev tools`)
       );
     } else {
-      console.log(chalk.dim('  No sessions found yet in ~/.claude/projects'));
+      console.log(chalk.dim('  No sessions found yet across your dev tools'));
     }
 
     console.log('');
@@ -54,54 +53,25 @@ export function showWelcomeIfFirstRun(): boolean {
 }
 
 /**
- * Count JSONL sessions and project directories in ~/.claude/projects/.
- * Mirrors the discovery logic in ClaudeCodeProvider without pulling in
- * the full provider dependency chain.
+ * Count total sessions across all registered providers.
+ * Uses discover() which is fast (file/DB scan, no parsing).
  */
-function countClaudeSessions(): { sessionCount: number; projectCount: number } {
-  const baseDir = getClaudeDir();
+async function countAllSessions(): Promise<number> {
+  const providers = getAllProviders();
+  let total = 0;
 
-  if (!fs.existsSync(baseDir)) {
-    return { sessionCount: 0, projectCount: 0 };
-  }
-
-  let sessionCount = 0;
-  let projectCount = 0;
-
-  try {
-    const entries = fs.readdirSync(baseDir);
-
-    for (const entry of entries) {
-      // Skip hidden files/dirs (matches ClaudeCodeProvider behaviour)
-      if (entry.startsWith('.')) continue;
-
-      const entryPath = path.join(baseDir, entry);
-
+  await Promise.allSettled(
+    providers.map(async (provider) => {
       try {
-        const stat = fs.statSync(entryPath);
-        if (!stat.isDirectory()) continue;
+        const paths = await provider.discover();
+        total += paths.length;
       } catch {
-        continue;
+        // Provider unavailable or errored — skip it, keep counting
       }
+    })
+  );
 
-      projectCount++;
-
-      try {
-        const files = fs.readdirSync(entryPath);
-        for (const file of files) {
-          if (file.endsWith('.jsonl')) {
-            sessionCount++;
-          }
-        }
-      } catch {
-        // Can't read this project dir — skip it, keep counting others
-      }
-    }
-  } catch {
-    return { sessionCount: 0, projectCount: 0 };
-  }
-
-  return { sessionCount, projectCount };
+  return total;
 }
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "@code-insights/cli",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Parse and sync AI coding sessions (Claude Code, Cursor, Codex, Copilot) to Firebase for analysis",
   "type": "module",
   "main": "dist/index.js",

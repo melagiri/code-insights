@@ -85,7 +85,30 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   }
 
   // Load sync state
-  const syncState = options.force ? { lastSync: '', files: {} } : loadSyncState();
+  // When --force is used with --source, only clear the targeted provider's entries
+  // instead of nuking the entire sync state.
+  const syncState = loadSyncState();
+  if (options.force) {
+    if (options.source) {
+      // Targeted force: remove only entries belonging to the specified provider's files
+      const targetProviderPaths = new Set<string>();
+      for (const provider of providers) {
+        const discovered = await provider.discover({ projectFilter: options.project });
+        for (const p of discovered) {
+          const { realPath } = splitVirtualPath(p);
+          targetProviderPaths.add(realPath);
+        }
+      }
+      for (const key of Object.keys(syncState.files)) {
+        if (targetProviderPaths.has(key)) {
+          delete syncState.files[key];
+        }
+      }
+    } else {
+      // Full force: reset everything
+      syncState.files = {};
+    }
+  }
 
   let totalSyncedCount = 0;
   let totalMessageCount = 0;

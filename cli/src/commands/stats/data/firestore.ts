@@ -170,15 +170,34 @@ export class FirestoreDataSource implements StatsDataSource {
     );
   }
 
-  async getLastSession(): Promise<SessionRow | null> {
+  async getLastSession(opts?: Pick<SessionQueryOptions, 'sourceTool' | 'projectId'>): Promise<SessionRow | null> {
     const firestore = getDb();
-    const snapshot = await firestore
-      .collection('sessions')
-      .orderBy('startedAt', 'desc')
-      .limit(1)
-      .get();
+    let query: admin.firestore.Query = firestore.collection('sessions');
 
-    if (snapshot.empty) return null;
-    return docToSessionRow(snapshot.docs[0]);
+    if (opts?.sourceTool) {
+      query = query.where('sourceTool', '==', opts.sourceTool);
+    }
+    if (opts?.projectId) {
+      query = query.where('projectId', '==', opts.projectId);
+    }
+
+    query = query.orderBy('startedAt', 'desc').limit(1);
+
+    try {
+      const snapshot = await query.get();
+      if (snapshot.empty) return null;
+      return docToSessionRow(snapshot.docs[0]);
+    } catch (error: unknown) {
+      if (isFirestoreIndexError(error)) {
+        const url = extractIndexUrl(error);
+        throw new FirestoreIndexError(
+          url
+            ? `Missing Firestore index. Create it here: ${url}`
+            : 'Missing Firestore composite index. Check the error details in Firebase console.',
+          url ?? ''
+        );
+      }
+      throw error;
+    }
   }
 }

@@ -62,7 +62,7 @@ export async function todayAction(flags: StatsFlags): Promise<void> {
     if (today.sessionCount === 0) {
       console.log(sectionHeader('TODAY', dateStr));
       console.log(`\n  No sessions yet today.\n`);
-      const lastSession = await source.getLastSession();
+      const lastSession = await source.getLastSession({ sourceTool: opts.sourceTool, projectId: opts.projectId });
       if (lastSession) {
         console.log(`  Last session: ${formatRelativeDate(lastSession.endedAt)} in ${colors.project(lastSession.projectName)}`);
         console.log();

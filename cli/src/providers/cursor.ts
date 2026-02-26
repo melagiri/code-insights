@@ -248,7 +248,9 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
     if (!composerData) return null;
 
     // Extract messages from composer data
-    const messages = extractMessages(composerData, composerId);
+    // Pass db handle for the fullConversationHeadersOnly format where
+    // bubble content is stored in separate cursorDiskKV rows.
+    const messages = extractMessages(composerData, composerId, db);
     if (messages.length === 0) return null;
 
     // Resolve project path from workspace directory
@@ -317,14 +319,128 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
   }
 }
 
+// Keys Cursor has used across versions to store the message array.
+// Order matters: check the most common/modern formats first.
+const CURSOR_MESSAGE_ARRAY_KEYS = [
+  'conversation',    // Observed in Cursor ≤0.42 cursorDiskKV entries
+  'messages',        // Earlier workspace DB format
+  'bubbles',         // Observed in some Cursor 0.43+ cursorDiskKV entries
+  'turns',           // Seen in experimental Cursor builds
+  'history',         // Alternate key used in some Cursor forks
+  'richConversation',// Rich-text variant with full markdown blocks
+  'thread',          // Used in agent-mode sessions
+] as const;
+
+/**
+ * Find the message array in a composerData blob, trying all known key names.
+ * Returns [array, keyUsed] so callers can log which key worked.
+ * Returns [[], null] when no recognised key has a non-empty array.
+ */
+function findMessageArray(composerData: Record<string, unknown>): [Array<Record<string, unknown>>, string | null] {
+  for (const key of CURSOR_MESSAGE_ARRAY_KEYS) {
+    const value = composerData[key];
+    if (Array.isArray(value) && value.length > 0) {
+      return [value as Array<Record<string, unknown>>, key];
+    }
+  }
+  return [[], null];
+}
+
 /**
  * Extract parsed messages from Cursor composer data.
+ *
+ * Handles two storage formats:
+ * 1. Inline: composerData has a `conversation` (or `messages`, etc.) array with full bubble content.
+ * 2. Headers-only (Cursor v3+/v6): composerData has `fullConversationHeadersOnly` with bubble IDs
+ *    and types only. Full bubble content is stored in separate `bubbleId:<composerId>:<bubbleId>`
+ *    rows in the same cursorDiskKV table.
  */
-function extractMessages(composerData: Record<string, unknown>, sessionId: string): ParsedMessage[] {
+function extractMessages(
+  composerData: Record<string, unknown>,
+  sessionId: string,
+  db: InstanceType<typeof Database> | null,
+): ParsedMessage[] {
   const messages: ParsedMessage[] = [];
 
-  // Try conversation array (modern format from cursorDiskKV)
-  const conversation = (composerData.conversation || composerData.messages || []) as Array<Record<string, unknown>>;
+  // Strategy 1: Try fullConversationHeadersOnly (newer Cursor format, ~72% of sessions)
+  const headers = composerData.fullConversationHeadersOnly;
+  if (Array.isArray(headers) && headers.length > 0 && db) {
+    const conversation = loadBubblesFromHeaders(
+      headers as Array<{ bubbleId: string; type: number }>,
+      sessionId,
+      db,
+    );
+    if (conversation.length > 0) {
+      return parseBubbles(conversation, sessionId);
+    }
+    // If all bubble lookups failed, fall through to inline check
+  }
+
+  // Strategy 2: Try inline message arrays (older Cursor format)
+  const [conversation, keyUsed] = findMessageArray(composerData);
+
+  if (conversation.length === 0) {
+    // No messages found — log top-level keys to help diagnose future Cursor format changes.
+    // Only log when the composerData has keys but none match our known formats
+    // (empty objects = legitimately empty sessions, not a format issue).
+    const topLevelKeys = Object.keys(composerData);
+    const knownKeys = new Set<string>([...CURSOR_MESSAGE_ARRAY_KEYS, 'fullConversationHeadersOnly']);
+    const hasUnknownArrayKeys = topLevelKeys.some(
+      k => !knownKeys.has(k) && Array.isArray(composerData[k])
+    );
+    if (topLevelKeys.length > 0 && hasUnknownArrayKeys) {
+      process.stderr.write(
+        `[code-insights] cursor: session ${sessionId} — unrecognised composerData structure. ` +
+        `Top-level keys: [${topLevelKeys.join(', ')}]\n`
+      );
+    }
+    return messages;
+  }
+
+  // Log which key was used when it's not the primary expected key — helps track format drift
+  if (keyUsed && keyUsed !== 'conversation') {
+    process.stderr.write(
+      `[code-insights] cursor: session ${sessionId} — messages found under key "${keyUsed}"\n`
+    );
+  }
+
+  return parseBubbles(conversation, sessionId);
+}
+
+/**
+ * Load full bubble data from individual cursorDiskKV rows.
+ * Each bubble is stored at key `bubbleId:<composerId>:<bubbleId>`.
+ */
+function loadBubblesFromHeaders(
+  headers: Array<{ bubbleId: string; type: number }>,
+  composerId: string,
+  db: InstanceType<typeof Database>,
+): Array<Record<string, unknown>> {
+  const bubbles: Array<Record<string, unknown>> = [];
+  const stmt = db.prepare("SELECT value FROM cursorDiskKV WHERE key = ?");
+
+  for (const header of headers) {
+    if (!header.bubbleId) continue;
+    try {
+      const row = stmt.get(`bubbleId:${composerId}:${header.bubbleId}`) as { value: string } | undefined;
+      if (row?.value) {
+        const bubble = JSON.parse(row.value) as Record<string, unknown>;
+        bubbles.push(bubble);
+      }
+    } catch {
+      // Individual bubble parse failure — skip it, keep loading others
+    }
+  }
+
+  return bubbles;
+}
+
+/**
+ * Parse an array of bubble objects into ParsedMessage[].
+ * Shared by both inline and headers-only code paths.
+ */
+function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: string): ParsedMessage[] {
+  const messages: ParsedMessage[] = [];
 
   for (let i = 0; i < conversation.length; i++) {
     const bubble = conversation[i];

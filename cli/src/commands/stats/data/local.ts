@@ -91,8 +91,10 @@ export class LocalDataSource implements StatsDataSource {
     );
   }
 
-  async getLastSession(): Promise<SessionRow | null> {
-    const rows = this.cache.getAllRows();
+  async getLastSession(opts?: Pick<SessionQueryOptions, 'sourceTool' | 'projectId'>): Promise<SessionRow | null> {
+    let rows = this.cache.getAllRows();
+    if (opts?.sourceTool) rows = rows.filter(r => r.sourceTool === opts.sourceTool);
+    if (opts?.projectId) rows = rows.filter(r => r.projectId === opts.projectId);
     if (rows.length === 0) return null;
     return rows.reduce((latest, row) => (row.startedAt > latest.startedAt ? row : latest));
   }

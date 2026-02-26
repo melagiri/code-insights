@@ -43,7 +43,7 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
 
     // Show welcome message on first ever run (no config file)
     if (!isConfigured()) {
-      showWelcomeIfFirstRun();
+      await showWelcomeIfFirstRun();
     }
 
     // Resolve project filter
@@ -74,7 +74,7 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
       const periodLabel = formatPeriodLabel(flags.period);
       console.log(sectionHeader('CODE INSIGHTS', periodLabel));
       console.log(`\n  No sessions in the ${periodLabel.toLowerCase()}.\n`);
-      const lastSession = await source.getLastSession();
+      const lastSession = await source.getLastSession({ sourceTool: opts.sourceTool, projectId: opts.projectId });
       if (lastSession) {
         const title = resolveTitle(lastSession);
         console.log(`  Last session: ${formatRelativeDate(lastSession.endedAt)} in ${colors.project(lastSession.projectName)} — ${colors.value(title)}`);
