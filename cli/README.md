@@ -103,6 +103,20 @@ code-insights connect
 
 The URL includes your Firebase web config base64-encoded as a query parameter. Open it in a browser to connect the dashboard to your Firestore — no manual configuration needed.
 
+### `code-insights open`
+
+Open the web dashboard in your browser.
+
+```bash
+# Open the dashboard
+code-insights open
+
+# Open filtered to the current project
+code-insights open --project
+```
+
+If Firebase web config is set up, the URL includes your config for automatic connection.
+
 ### `code-insights sync`
 
 Sync sessions from all supported tools to Firestore.
@@ -181,6 +195,23 @@ Remove the automatic sync hook.
 ```bash
 code-insights uninstall-hook
 ```
+
+### `code-insights telemetry`
+
+Manage anonymous usage telemetry. Telemetry is opt-out and helps improve the CLI.
+
+```bash
+# Check telemetry status
+code-insights telemetry status
+
+# Disable telemetry
+code-insights telemetry disable
+
+# Re-enable telemetry
+code-insights telemetry enable
+```
+
+No personally identifiable information is collected. See the [telemetry documentation](https://github.com/melagiri/code-insights) for details.
 
 ## How It Works
 
