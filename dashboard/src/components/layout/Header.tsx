@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
   LayoutDashboard,
@@ -36,7 +35,6 @@ const BOTTOM_TABS = NAV_ITEMS.slice(0, 4);
 
 export function Header() {
   const { pathname } = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (href: string, exact: boolean) =>
     exact ? pathname === href : pathname.startsWith(href);
