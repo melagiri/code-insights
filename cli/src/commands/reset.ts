@@ -23,7 +23,7 @@ export const resetCommand = new Command('reset')
     }
 
     console.log(chalk.red.bold('\n⚠️  WARNING: This will permanently delete ALL data from your Firestore database!'));
-    console.log(chalk.yellow('Collections to be deleted: projects, sessions, insights, messages\n'));
+    console.log(chalk.yellow('Collections to be deleted: projects, sessions, insights, messages, stats\n'));
 
     if (!options.confirm) {
       // Simple confirmation using stdin
@@ -68,7 +68,7 @@ export const resetCommand = new Command('reset')
     }
 
     const db = admin.firestore();
-    const collections = ['projects', 'sessions', 'insights', 'messages'];
+    const collections = ['projects', 'sessions', 'insights', 'messages', 'stats'];
 
     console.log('');
 
