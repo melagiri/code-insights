@@ -5,16 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Code Insights</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- FOUC prevention: apply theme class before React renders to avoid flash -->
+    <!-- FOUC prevention: apply theme class before React renders to avoid flash.
+         Wrapped in try/catch so it silently degrades to light mode in
+         restricted environments where localStorage access is blocked. -->
     <script>
       (function () {
-        var stored = localStorage.getItem('code-insights-theme');
-        var resolved =
-          stored === 'dark' ||
-          ((!stored || stored === 'system') &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches)
+        try {
+          var stored = localStorage.getItem('code-insights-theme');
+          var isDark = stored === 'dark';
+          var isSystem = !stored || stored === 'system' || (stored !== 'light' && stored !== 'dark');
+          var resolved = isDark || (isSystem && window.matchMedia('(prefers-color-scheme: dark)').matches)
             ? 'dark'
             : 'light';
+        } catch (e) {
+          var resolved = 'light';
+        }
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(resolved);
       })();

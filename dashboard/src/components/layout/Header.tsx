@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -65,6 +66,7 @@ export function Header() {
                 <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
                   Code Insights
                 </SheetTitle>
+                <SheetDescription className="sr-only">Navigation menu</SheetDescription>
               </SheetHeader>
               <nav className="px-2 py-2">
                 {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => (
@@ -166,6 +168,7 @@ export function Header() {
           <SheetContent side="bottom" className="h-auto">
             <SheetHeader className="px-4 py-3">
               <SheetTitle className="text-sm font-semibold sr-only">More options</SheetTitle>
+              <SheetDescription className="sr-only">Additional navigation options</SheetDescription>
             </SheetHeader>
             <nav className="px-4 pb-6 grid grid-cols-2 gap-2">
               {NAV_ITEMS.slice(4).map(({ href, label, icon: Icon }) => (

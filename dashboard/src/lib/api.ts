@@ -2,6 +2,8 @@
 // Base URL is relative in production (SPA served by the same server).
 // In Vite dev mode, the proxy forwards /api -> localhost:7890.
 
+import type { Project, Session, Message, Insight, DashboardStats } from '@/lib/types';
+
 const BASE = '/api';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -22,11 +24,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // ── Projects ──────────────────────────────────────────────────────────────────
 
 export function fetchProjects() {
-  return request<{ projects: unknown[] }>('/projects');
+  return request<{ projects: Project[] }>('/projects');
 }
 
 export function fetchProject(id: string) {
-  return request<{ project: unknown }>(`/projects/${id}`);
+  return request<{ project: Project }>(`/projects/${id}`);
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
@@ -43,11 +45,11 @@ export function fetchSessions(params?: {
   if (params?.limit !== undefined) q.set('limit', String(params.limit));
   if (params?.offset !== undefined) q.set('offset', String(params.offset));
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return request<{ sessions: unknown[] }>(`/sessions${qs}`);
+  return request<{ sessions: Session[] }>(`/sessions${qs}`);
 }
 
 export function fetchSession(id: string) {
-  return request<{ session: unknown }>(`/sessions/${id}`);
+  return request<{ session: Session }>(`/sessions/${id}`);
 }
 
 export function patchSession(id: string, body: { customTitle: string }) {
@@ -64,7 +66,7 @@ export function fetchMessages(sessionId: string, params?: { limit?: number; offs
   if (params?.limit !== undefined) q.set('limit', String(params.limit));
   if (params?.offset !== undefined) q.set('offset', String(params.offset));
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return request<{ messages: unknown[] }>(`/messages/${sessionId}${qs}`);
+  return request<{ messages: Message[] }>(`/messages/${sessionId}${qs}`);
 }
 
 // ── Insights ──────────────────────────────────────────────────────────────────
@@ -79,7 +81,7 @@ export function fetchInsights(params?: {
   if (params?.sessionId) q.set('sessionId', params.sessionId);
   if (params?.type) q.set('type', params.type);
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return request<{ insights: unknown[] }>(`/insights${qs}`);
+  return request<{ insights: Insight[] }>(`/insights${qs}`);
 }
 
 export function deleteInsight(id: string) {
@@ -89,7 +91,7 @@ export function deleteInsight(id: string) {
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 export function fetchDashboardStats(range: '7d' | '30d' | '90d' | 'all' = '7d') {
-  return request<{ range: string; stats: unknown }>(`/analytics/dashboard?range=${range}`);
+  return request<{ range: string; stats: DashboardStats }>(`/analytics/dashboard?range=${range}`);
 }
 
 export function fetchUsageStats() {

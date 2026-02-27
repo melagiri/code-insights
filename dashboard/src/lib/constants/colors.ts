@@ -71,6 +71,7 @@ export const CHART_COLORS = {
     summary: '#a855f7',        // purple-500
     decision: '#3b82f6',       // blue-500
     learning: '#22c55e',       // green-500
+    technique: '#22c55e',      // green-500 (same as learning — merged for display)
     prompt_quality: '#f43f5e', // rose-500
   },
   // Activity area chart lines

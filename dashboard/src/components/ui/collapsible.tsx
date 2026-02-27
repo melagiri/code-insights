@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Collapsible as CollapsiblePrimitive } from "radix-ui"
 
 function Collapsible({
