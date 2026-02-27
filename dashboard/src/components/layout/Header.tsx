@@ -10,7 +10,6 @@ import {
   MessageSquare,
   MoreHorizontal,
   Github,
-  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

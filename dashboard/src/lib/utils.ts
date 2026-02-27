@@ -67,8 +67,8 @@ export function formatTokenCount(tokens: number): string {
 }
 
 /**
- * Get display title for a session with priority: customTitle > generatedTitle > summary > fallback
+ * Get display title for a session with priority: custom_title > generated_title > summary > fallback
  */
-export function getSessionTitle(session: Pick<Session, 'customTitle' | 'generatedTitle' | 'summary'>): string {
-  return session.customTitle || session.generatedTitle || session.summary || 'Untitled Session';
+export function getSessionTitle(session: Pick<Session, 'custom_title' | 'generated_title' | 'summary'>): string {
+  return session.custom_title || session.generated_title || session.summary || 'Untitled Session';
 }
