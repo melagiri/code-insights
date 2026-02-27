@@ -1,5 +1,6 @@
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import chalk from 'chalk';
 import ora from 'ora';
 import net from 'net';
@@ -59,6 +60,19 @@ export async function dashboardCommand(options: DashboardOptions): Promise<void>
 
     const serverEntryPath = resolve(workspaceRoot, 'server', 'dist', 'index.js');
     const staticDir = resolve(workspaceRoot, 'dashboard', 'dist');
+
+    // Guard: server must be built before the dashboard command can start.
+    // In a published npm package this would always be present; in a local
+    // dev checkout users must run `pnpm build` first.
+    if (!existsSync(serverEntryPath)) {
+      spinner.fail('Dashboard server not found.');
+      console.error(chalk.dim(
+        '  The dashboard requires a local build of the server package.\n' +
+        '  Run: pnpm build\n' +
+        '  See: https://github.com/melagiri/code-insights#local-development',
+      ));
+      process.exit(1);
+    }
 
     // Dynamic path-based import avoids build-time circular dep
     type ServerModule = { startServer: (opts: { port: number; staticDir: string; openBrowser: boolean }) => Promise<void> };

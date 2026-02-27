@@ -62,36 +62,49 @@ app.post('/', async (c) => {
     }
   }
 
+  // Validate confidence is a finite number if provided
+  if (body.confidence !== undefined && (typeof body.confidence !== 'number' || !Number.isFinite(body.confidence))) {
+    return c.json({ error: 'confidence must be a finite number' }, 400);
+  }
+
   const id = randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO insights (
-      id, session_id, project_id, project_name, type, title, content,
-      summary, bullets, confidence, source, metadata, timestamp, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'llm', ?, ?, ?)
-  `).run(
-    id,
-    body.sessionId,
-    body.projectId,
-    body.projectName ?? '',
-    body.type,
-    body.title,
-    body.content,
-    body.summary ?? '',
-    body.bullets ? JSON.stringify(body.bullets) : null,
-    body.confidence ?? 0,
-    body.metadata ? JSON.stringify(body.metadata) : null,
-    now,
-    now,
-  );
+  try {
+    db.prepare(`
+      INSERT INTO insights (
+        id, session_id, project_id, project_name, type, title, content,
+        summary, bullets, confidence, source, metadata, timestamp, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'llm', ?, ?, ?)
+    `).run(
+      id,
+      body.sessionId,
+      body.projectId,
+      body.projectName ?? '',
+      body.type,
+      body.title,
+      body.content,
+      body.summary ?? '',
+      body.bullets ? JSON.stringify(body.bullets) : null,
+      body.confidence ?? 0,
+      body.metadata ? JSON.stringify(body.metadata) : null,
+      now,
+      now,
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('FOREIGN KEY constraint failed')) {
+      return c.json({ error: 'Invalid sessionId or projectId' }, 400);
+    }
+    throw err;
+  }
 
   return c.json({ id }, 201);
 });
 
 app.delete('/:id', (c) => {
   const db = getDb();
-  db.prepare('DELETE FROM insights WHERE id = ?').run(c.req.param('id'));
+  const result = db.prepare('DELETE FROM insights WHERE id = ?').run(c.req.param('id'));
+  if (result.changes === 0) return c.json({ error: 'Not found' }, 404);
   return c.json({ ok: true });
 });
 

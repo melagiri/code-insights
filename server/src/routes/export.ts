@@ -10,6 +10,12 @@ app.post('/markdown', async (c) => {
 
   const { sessionIds, projectId } = body;
 
+  if (sessionIds !== undefined && !Array.isArray(sessionIds)) {
+    return c.json({ error: 'sessionIds must be an array' }, 400);
+  }
+  if (sessionIds && (sessionIds as unknown[]).some((id) => typeof id !== 'string')) {
+    return c.json({ error: 'sessionIds must contain only strings' }, 400);
+  }
   if (sessionIds && sessionIds.length > 100) {
     return c.json({ error: 'Maximum 100 session IDs per export request' }, 400);
   }

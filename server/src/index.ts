@@ -1,8 +1,9 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { execFile } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
+import { relative } from 'path';
+import { openUrl } from '@code-insights/cli/utils/browser';
 import projectsRouter from './routes/projects.js';
 import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
@@ -57,9 +58,11 @@ export async function startServer(options: ServerOptions): Promise<void> {
   // index.html as 200, which breaks API clients expecting JSON errors.
   app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
 
-  // Static file serving — only if the dashboard has been built
+  // Static file serving — only if the dashboard has been built.
+  // serveStatic requires a path relative to process.cwd(), not an absolute path.
   if (existsSync(staticDir)) {
-    app.use('/*', serveStatic({ root: staticDir }));
+    const relativeStaticDir = relative(process.cwd(), staticDir);
+    app.use('/*', serveStatic({ root: relativeStaticDir }));
 
     // SPA fallback: any non-API route not matched by serveStatic serves index.html
     // so react-router can handle client-side routing.
@@ -101,15 +104,4 @@ export async function startServer(options: ServerOptions): Promise<void> {
       openUrl(url);
     }
   });
-}
-
-function openUrl(url: string): void {
-  const platform = process.platform;
-  if (platform === 'darwin') {
-    execFile('open', [url]);
-  } else if (platform === 'win32') {
-    execFile('cmd', ['/c', 'start', '', url]);
-  } else {
-    execFile('xdg-open', [url]);
-  }
 }

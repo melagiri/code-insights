@@ -63,10 +63,11 @@ app.patch('/:id', async (c) => {
   if (customTitle === undefined) {
     return c.json({ error: 'customTitle is required' }, 400);
   }
-  db.prepare('UPDATE sessions SET custom_title = ? WHERE id = ?').run(
+  const result = db.prepare('UPDATE sessions SET custom_title = ? WHERE id = ?').run(
     customTitle || null,
     c.req.param('id'),
   );
+  if (result.changes === 0) return c.json({ error: 'Not found' }, 404);
   return c.json({ ok: true });
 });
 

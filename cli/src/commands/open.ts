@@ -1,8 +1,8 @@
-import { execFile } from 'child_process';
 import path from 'path';
 import chalk from 'chalk';
 import { loadConfig } from '../utils/config.js';
 import { trackEvent } from '../utils/telemetry.js';
+import { openUrl } from '../utils/browser.js';
 
 // Phase 3: local Hono server will listen on this port.
 // `code-insights dashboard` command will start the server first.
@@ -35,27 +35,12 @@ export async function openCommand(options: OpenOptions): Promise<void> {
   console.log(chalk.gray('  (Run `code-insights dashboard` to start the local server if needed)\n'));
 
   try {
-    openInBrowser(url);
+    openUrl(url);
     trackEvent('open', true);
   } catch {
     console.log(chalk.yellow('  Could not open browser automatically.'));
     console.log(chalk.white(`  Visit: ${chalk.bold.underline(url)}\n`));
     trackEvent('open', false);
-  }
-}
-
-/**
- * Open a URL in the default browser using platform-specific commands.
- * Uses execFile (not exec) to prevent shell injection.
- */
-function openInBrowser(url: string): void {
-  const platform = process.platform;
-  if (platform === 'darwin') {
-    execFile('open', [url]);
-  } else if (platform === 'win32') {
-    execFile('cmd', ['/c', 'start', '', url]);
-  } else {
-    execFile('xdg-open', [url]);
   }
 }
 

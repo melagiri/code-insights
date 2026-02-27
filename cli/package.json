@@ -11,7 +11,8 @@
     "./db/write": "./dist/db/write.js",
     "./db/schema": "./dist/db/schema.js",
     "./types": "./dist/types.js",
-    "./utils/config": "./dist/utils/config.js"
+    "./utils/config": "./dist/utils/config.js",
+    "./utils/browser": "./dist/utils/browser.js"
   },
   "bin": {
     "code-insights": "./dist/index.js"
