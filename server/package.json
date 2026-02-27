@@ -1,0 +1,28 @@
+{
+  "name": "@code-insights/server",
+  "version": "0.1.0",
+  "description": "Hono API server for Code Insights local dashboard",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "@code-insights/cli": "workspace:*",
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.7.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "typescript": "^5.9.3"
+  }
+}

@@ -10,7 +10,8 @@
     "./db/read": "./dist/db/read.js",
     "./db/write": "./dist/db/write.js",
     "./db/schema": "./dist/db/schema.js",
-    "./types": "./dist/types.js"
+    "./types": "./dist/types.js",
+    "./utils/config": "./dist/utils/config.js"
   },
   "bin": {
     "code-insights": "./dist/index.js"
