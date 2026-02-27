@@ -4,6 +4,16 @@
   "description": "Parse and analyze AI coding sessions (Claude Code, Cursor, Codex, Copilot) — local-first, no cloud required",
   "type": "module",
   "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./db/client": "./dist/db/client.js",
+    "./db/read": "./dist/db/read.js",
+    "./db/write": "./dist/db/write.js",
+    "./db/schema": "./dist/db/schema.js",
+    "./types": "./dist/types.js",
+    "./utils/config": "./dist/utils/config.js",
+    "./utils/browser": "./dist/utils/browser.js"
+  },
   "bin": {
     "code-insights": "./dist/index.js"
   },

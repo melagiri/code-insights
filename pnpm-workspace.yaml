@@ -1,0 +1,4 @@
+packages:
+  - 'cli'
+  - 'dashboard'
+  - 'server'

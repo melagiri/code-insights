@@ -6,6 +6,7 @@ import { syncCommand } from './commands/sync.js';
 import { statusCommand } from './commands/status.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
 import { openCommand } from './commands/open.js';
+import { dashboardCommand } from './commands/dashboard.js';
 import { resetCommand } from './commands/reset.js';
 import { statsCommand } from './commands/stats/index.js';
 import { configCommand } from './commands/config.js';
@@ -56,6 +57,13 @@ program
   .description('Open the local dashboard in your browser')
   .option('--project', 'Open filtered to the current project')
   .action(openCommand);
+
+program
+  .command('dashboard')
+  .description('Start the Code Insights dashboard server and open in browser')
+  .option('-p, --port <number>', 'Port number', String(7890))
+  .option('--no-open', 'Do not open browser automatically')
+  .action(dashboardCommand);
 
 program.addCommand(resetCommand);
 program.addCommand(statsCommand);
