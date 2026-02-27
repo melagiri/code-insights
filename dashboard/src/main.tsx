@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import App from './App';
 import './styles/globals.css';
 
@@ -21,7 +22,9 @@ if (!root) throw new Error('Root element not found');
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ThemeProvider defaultTheme="system">
+        <App />
+      </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
 );
