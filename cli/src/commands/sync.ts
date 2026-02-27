@@ -2,9 +2,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { loadConfig, loadSyncState, saveSyncState, resolveDataSourcePreference } from '../utils/config.js';
+import { loadSyncState, saveSyncState } from '../utils/config.js';
 import { trackEvent } from '../utils/telemetry.js';
-import { initializeFirebase, uploadSession, uploadMessages, sessionExists, recalculateUsageStats } from '../firebase/client.js';
+import { insertSessionWithProject, insertMessages, recalculateUsageStats } from '../db/write.js';
+import { sessionExists } from '../db/read.js';
+import { getDb } from '../db/client.js';
 import { getAllProviders, getProvider } from '../providers/registry.js';
 import { setProviderVerbose } from '../providers/context.js';
 import type { SessionProvider } from '../providers/types.js';
@@ -13,7 +15,6 @@ import { splitVirtualPath } from '../utils/paths.js';
 
 interface SyncOptions {
   force?: boolean;
-  forceRemote?: boolean;
   project?: string;
   dryRun?: boolean;
   quiet?: boolean;
@@ -31,9 +32,9 @@ export interface SyncResult {
 /**
  * Core sync logic — reusable from stats commands and other callers.
  *
- * Throws on fatal errors (missing config, Firebase connection failure,
- * unknown provider) instead of calling process.exit().
- * Returns a SyncResult summary instead of printing one.
+ * Parses sessions from all configured providers and writes to local SQLite.
+ * Throws on fatal errors (unknown provider) instead of calling process.exit().
+ * Returns a SyncResult summary.
  */
 export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   const log = options.quiet ? () => {} : console.log.bind(console);
@@ -48,30 +49,21 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
     ? () => noopSpinner
     : ora;
 
-  log(chalk.cyan('\n\uD83D\uDCE4 Code Insights Sync\n'));
+  log(chalk.cyan('\n  Code Insights Sync\n'));
 
-  // Load config
-  const config = loadConfig();
-  if (!config) {
-    throw new Error(
-      'Sync requires Firebase. Run `code-insights init` to set up.\n' +
-      '  For local-only analytics: code-insights stats'
-    );
-  }
-
-  // Initialize Firebase
-  const spinner = createSpinner('Connecting to Firebase...').start();
+  // Initialize database (runs migrations if needed)
+  const spinner = createSpinner('Initializing database...').start();
   try {
-    initializeFirebase(config);
-    spinner.succeed('Connected to Firebase');
+    getDb();
+    spinner.succeed('Database ready');
   } catch (error) {
-    spinner.fail('Failed to connect to Firebase');
-    throw new Error(`Failed to connect to Firebase: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    spinner.fail('Failed to initialize database');
+    throw new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
   // Dry-run banner
   if (options.dryRun) {
-    log(chalk.yellow('\n\uD83D\uDD0D Dry run \u2014 no changes will be made'));
+    log(chalk.yellow('\n  Dry run -- no changes will be made'));
   }
 
   // Set verbose flag for providers (e.g., gates Cursor diagnostic warnings)
@@ -123,7 +115,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
     const providerName = provider.getProviderName();
     try {
       if (providers.length > 1) {
-        log(chalk.cyan(`\n\uD83D\uDCE6 Syncing ${providerName}...`));
+        log(chalk.cyan(`\n  Syncing ${providerName}...`));
       }
 
       // Discovery
@@ -159,9 +151,9 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
             continue;
           }
 
-          // Check if already exists (unless force)
+          // Check if already exists in SQLite (unless force)
           if (!options.force) {
-            const exists = await sessionExists(session.id);
+            const exists = sessionExists(session.id);
             if (exists) {
               spinner.info(`Skipped ${fileName} (already synced)`);
               updateSyncState(syncState, filePath, session.id);
@@ -170,12 +162,12 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
             }
           }
 
-          // Upload session and messages to Firestore
-          await uploadSession(session, !!options.force);
-          await uploadMessages(session);
+          // Write session and messages to SQLite
+          insertSessionWithProject(session, !!options.force);
+          insertMessages(session);
 
           // Update and persist sync state after each file
-          // so progress survives crashes (e.g., Firebase quota exceeded)
+          // so progress survives crashes
           updateSyncState(syncState, filePath, session.id);
           saveSyncState(syncState);
 
@@ -203,7 +195,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   if (options.force && (totalSyncedCount > 0 || totalErrorCount > 0)) {
     spinner.start('Recalculating usage stats...');
     try {
-      const result = await recalculateUsageStats();
+      const result = recalculateUsageStats();
       spinner.succeed(`Usage stats reconciled (${result.sessionsWithUsage} sessions with usage data)`);
     } catch (error) {
       spinner.warn('Could not reconcile usage stats');
@@ -225,34 +217,27 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
 }
 
 /**
- * Sync AI coding sessions to Firestore
+ * Sync AI coding sessions to local SQLite database
  */
 export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   const log = options.quiet ? () => {} : console.log.bind(console);
-  const preference = resolveDataSourcePreference();
-  if (preference === 'local' && !options.forceRemote) {
-    log(chalk.yellow('\n  ⚠ Data source is set to local. Sync is only used with Firebase.\n'));
-    log(chalk.gray('  To switch to Firebase: code-insights config set-source firebase'));
-    log(chalk.gray('  To sync anyway (one-time): code-insights sync --force-remote\n'));
-    return;
-  }
 
   try {
     const result = await runSync(options);
 
     // Summary (only if not quiet)
     if (result.syncedCount === 0 && result.errorCount === 0) {
-      log(chalk.green('\n\u2705 Already up to date!'));
+      log(chalk.green('\n  Already up to date!'));
       trackEvent('sync', true);
       return;
     }
-    log(chalk.cyan('\n\uD83D\uDCCA Sync Summary'));
+    log(chalk.cyan('\n  Sync Summary'));
     log(chalk.white(`  Sessions synced: ${result.syncedCount}`));
-    log(chalk.white(`  Messages uploaded: ${result.messageCount}`));
+    log(chalk.white(`  Messages synced: ${result.messageCount}`));
     if (result.errorCount > 0) {
       log(chalk.red(`  Errors: ${result.errorCount}`));
     }
-    log(chalk.green('\n\u2705 Sync complete!'));
+    log(chalk.green('\n  Sync complete!'));
     trackEvent('sync', true);
   } catch (error) {
     trackEvent('sync', false);

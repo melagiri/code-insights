@@ -4,8 +4,6 @@
 
 import {
   ProjectNotFoundError,
-  FirestoreIndexError,
-  ConfigNotFoundError,
   InvalidPeriodError,
 } from '../data/types.js';
 import { colors } from '../render/colors.js';
@@ -20,10 +18,6 @@ export function handleStatsError(err: unknown): never {
     console.log(colors.hint('Expected: 7d, 30d, 90d, or all'));
     process.exit(1);
   }
-  if (err instanceof ConfigNotFoundError) {
-    console.error(`\n  ${colors.error('\u2717')} ${err.message}`);
-    process.exit(1);
-  }
   if (err instanceof ProjectNotFoundError) {
     console.error(`\n  ${colors.error(`Project "${err.projectName}" not found.`)}`);
     if (err.suggestions.length > 0) {
@@ -36,12 +30,6 @@ export function handleStatsError(err: unknown): never {
     for (const p of err.availableProjects) {
       console.log(`    ${colors.success('\u25CF')} ${p.name}`);
     }
-    process.exit(1);
-  }
-  if (err instanceof FirestoreIndexError) {
-    console.error(`\n  ${colors.error('\u2717')} Failed to load stats`);
-    console.log(`\n  ${colors.error('Error:')} Missing Firestore index for sessions query.`);
-    console.log(`  Create it here: ${err.indexUrl}`);
     process.exit(1);
   }
   throw err;

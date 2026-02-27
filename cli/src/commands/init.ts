@@ -1,35 +1,20 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { saveConfig, saveWebConfig, getConfigDir, isConfigured } from '../utils/config.js';
+import { saveConfig, getConfigDir, isConfigured } from '../utils/config.js';
+import { getDb } from '../db/client.js';
 import { trackEvent } from '../utils/telemetry.js';
-import {
-  readJsonFileWithError,
-  readFirebaseConfigFile,
-  validateServiceAccountJson,
-  validateWebConfig,
-  extractServiceAccountConfig,
-  looksLikeWebConfig,
-  looksLikeServiceAccount,
-} from '../utils/firebase-json.js';
-import type { ClaudeInsightConfig, FirebaseWebConfig, DataSourcePreference } from '../types.js';
-
-const DEFAULT_DASHBOARD_URL = 'https://code-insights.app';
+import type { ClaudeInsightConfig } from '../types.js';
 
 export interface InitOptions {
-  fromJson?: string;
-  webConfig?: string;
+  // No options needed for local-first setup
 }
 
 /**
- * Initialize Code Insights configuration
+ * Initialize Code Insights configuration.
+ * Sets up sync preferences and initializes the local SQLite database.
  */
-export async function initCommand(options: InitOptions): Promise<void> {
-  console.log(chalk.cyan('\n🔧 Code Insights Setup\n'));
-
-  // If --from-json or --web-config provided, auto-set firebase and proceed
-  if (options.fromJson || options.webConfig) {
-    return initFirebaseFlow(options, 'firebase');
-  }
+export async function initCommand(_options: InitOptions = {}): Promise<void> {
+  console.log(chalk.cyan('\n  Code Insights Setup\n'));
 
   if (isConfigured()) {
     const { overwrite } = await inquirer.prompt([
@@ -47,225 +32,31 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
   }
 
-  // --- Data Source Choice ---
-  const { dataSource } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'dataSource',
-      message: 'How would you like to use Code Insights?',
-      choices: [
-        {
-          name: 'Local only (recommended) — stats from local session files, no cloud setup',
-          value: 'local',
-        },
-        {
-          name: 'Firebase — sync sessions to Firestore + web dashboard',
-          value: 'firebase',
-        },
-      ],
-      default: 'local',
-    },
-  ]);
-
-  if (dataSource === 'local') {
-    const config: ClaudeInsightConfig = {
-      sync: { claudeDir: '~/.claude/projects', excludeProjects: [] },
-      dataSource: 'local',
-    };
-    saveConfig(config);
-
-    console.log(chalk.green('\n✅ Configuration saved!'));
-    console.log(chalk.gray(`Config location: ${getConfigDir()}/config.json`));
-
-    console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
-    console.log(chalk.white('  1. View your stats:'));
-    console.log(chalk.gray('     code-insights stats\n'));
-    console.log(chalk.white('  2. Check today\'s activity:'));
-    console.log(chalk.gray('     code-insights stats today\n'));
-    console.log(chalk.white('  3. See cost breakdown:'));
-    console.log(chalk.gray('     code-insights stats cost\n'));
-    console.log(chalk.gray('  To switch to Firebase later: code-insights config set-source firebase\n'));
-    trackEvent('init', true);
-    return;
-  }
-
-  // Firebase flow
-  return initFirebaseFlow(options, 'firebase');
-}
-
-/**
- * Firebase initialization flow — service account + web config
- */
-async function initFirebaseFlow(options: InitOptions, dataSource: DataSourcePreference): Promise<void> {
-  // --- Step 1: Service Account ---
-  let firebaseConfig: { projectId: string; clientEmail: string; privateKey: string };
-
-  if (options.fromJson) {
-    // Read from JSON file
-    const result = readJsonFileWithError<Record<string, unknown>>(options.fromJson);
-
-    if (!result.success) {
-      console.log(chalk.red(`\n❌ ${result.message}`));
-      process.exit(1);
-    }
-
-    // Cross-type detection: did they pass a web config by mistake?
-    if (looksLikeWebConfig(result.data) && !looksLikeServiceAccount(result.data)) {
-      console.log(chalk.red('\n❌ This looks like a web config file, not a service account.'));
-      console.log(chalk.gray('Use --web-config for the web SDK config file.'));
-      console.log(chalk.gray('Use --from-json for the service account key (downloaded from Firebase).\n'));
-      process.exit(1);
-    }
-
-    if (!validateServiceAccountJson(result.data)) {
-      console.log(chalk.red('\n❌ Invalid service account JSON.'));
-      console.log(chalk.gray('Expected a file with: type, project_id, private_key, client_email'));
-      console.log(chalk.gray('Download it from: Firebase Console > Project Settings > Service Accounts\n'));
-      process.exit(1);
-    }
-
-    firebaseConfig = extractServiceAccountConfig(result.data);
-    console.log(chalk.green(`✓ Service account loaded from ${options.fromJson}`));
-    console.log(chalk.gray(`  Project: ${firebaseConfig.projectId}`));
-  } else {
-    // Interactive prompts
-    console.log(chalk.bold('📋 Step 1: Service Account\n'));
-    console.log(chalk.gray('You\'ll need your Firebase service account key JSON file.'));
-    console.log(chalk.gray('Download from: Firebase Console > Project Settings > Service Accounts\n'));
-    console.log(chalk.gray(chalk.bold('Tip:') + ' Use --from-json <path> to skip these prompts:\n'));
-    console.log(chalk.gray('  code-insights init --from-json ~/Downloads/serviceAccountKey.json\n'));
-
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'projectId',
-        message: 'Firebase Project ID:',
-        validate: (input: string) => input.length > 0 || 'Project ID is required',
-      },
-      {
-        type: 'input',
-        name: 'clientEmail',
-        message: 'Service Account Email (client_email from JSON):',
-        validate: (input: string) =>
-          input.includes('@') || 'Please enter a valid service account email',
-      },
-      {
-        type: 'password',
-        name: 'privateKey',
-        message: 'Private Key (private_key from JSON, including BEGIN/END):',
-        validate: (input: string) =>
-          input.includes('PRIVATE KEY') || 'Please paste the complete private key',
-      },
-    ]);
-
-    firebaseConfig = {
-      projectId: answers.projectId,
-      clientEmail: answers.clientEmail,
-      privateKey: answers.privateKey,
-    };
-  }
-
-  // --- Step 2: Web Config ---
-  let webConfig: FirebaseWebConfig;
-
-  if (options.webConfig) {
-    // Read from file — supports both JSON and Firebase JS snippet format
-    const result = readFirebaseConfigFile<Record<string, unknown>>(options.webConfig);
-
-    if (!result.success) {
-      console.log(chalk.red(`\n❌ ${result.message}`));
-      process.exit(1);
-    }
-
-    // Cross-type detection: did they pass a service account by mistake?
-    if (looksLikeServiceAccount(result.data) && !looksLikeWebConfig(result.data)) {
-      console.log(chalk.red('\n❌ This looks like a service account file, not a web config.'));
-      console.log(chalk.gray('Use --from-json for the service account key.'));
-      console.log(chalk.gray('Use --web-config for the web SDK config.\n'));
-      process.exit(1);
-    }
-
-    if (!validateWebConfig(result.data)) {
-      console.log(chalk.red('\n❌ Invalid web config.'));
-      console.log(chalk.gray('Expected: apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId'));
-      console.log(chalk.gray('Get it from: Firebase Console > Project Settings > General > Your Apps'));
-      console.log(chalk.gray('You can paste the JavaScript snippet directly into a file — no need to convert to JSON.\n'));
-      process.exit(1);
-    }
-
-    webConfig = result.data;
-    console.log(chalk.green(`✓ Web config loaded from ${options.webConfig}`));
-  } else {
-    // Interactive prompts
-    console.log(chalk.bold('\n🌐 Step 2: Web Dashboard Config\n'));
-    console.log(chalk.gray('Get these from: Firebase Console > Project Settings > General > Your Apps\n'));
-    console.log(chalk.gray(chalk.bold('Tip:') + ' Save the config as a JSON file and use --web-config <path> to skip these prompts.\n'));
-
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'apiKey',
-        message: 'API Key (apiKey):',
-        validate: (input: string) => input.length > 0 || 'API Key is required',
-      },
-      {
-        type: 'input',
-        name: 'authDomain',
-        message: 'Auth Domain (authDomain):',
-        default: `${firebaseConfig.projectId}.firebaseapp.com`,
-      },
-      {
-        type: 'input',
-        name: 'storageBucket',
-        message: 'Storage Bucket (storageBucket):',
-        default: `${firebaseConfig.projectId}.appspot.com`,
-      },
-      {
-        type: 'input',
-        name: 'messagingSenderId',
-        message: 'Messaging Sender ID (messagingSenderId):',
-        validate: (input: string) => input.length > 0 || 'Messaging Sender ID is required',
-      },
-      {
-        type: 'input',
-        name: 'appId',
-        message: 'App ID (appId):',
-        validate: (input: string) => input.length > 0 || 'App ID is required',
-      },
-    ]);
-
-    webConfig = {
-      apiKey: answers.apiKey,
-      authDomain: answers.authDomain,
-      projectId: firebaseConfig.projectId,
-      storageBucket: answers.storageBucket,
-      messagingSenderId: answers.messagingSenderId,
-      appId: answers.appId,
-    };
-  }
-
-  // --- Save config ---
+  // Save minimal config
   const config: ClaudeInsightConfig = {
-    firebase: firebaseConfig,
-    webConfig,
-    sync: {
-      claudeDir: '~/.claude/projects',
-      excludeProjects: [],
-    },
-    dataSource,
-    dashboardUrl: DEFAULT_DASHBOARD_URL,
+    sync: { claudeDir: '~/.claude/projects', excludeProjects: [] },
   };
-
   saveConfig(config);
-  saveWebConfig(webConfig);
 
-  console.log(chalk.green('\n✅ Configuration saved!'));
-  console.log(chalk.gray(`Config location: ${getConfigDir()}/config.json`));
+  // Initialize database (creates schema if first run)
+  try {
+    getDb();
+    console.log(chalk.green('\n  Database initialized at ~/.code-insights/data.db'));
+  } catch (error) {
+    console.log(chalk.red(`\n  Database initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    process.exit(1);
+  }
 
-  console.log(chalk.cyan('\n🎉 Setup complete! Next steps:\n'));
+  console.log(chalk.green('\n  Configuration saved!'));
+  console.log(chalk.gray(`  Config location: ${getConfigDir()}/config.json`));
+
+  console.log(chalk.cyan('\n  Setup complete! Next steps:\n'));
   console.log(chalk.white('  1. Sync your sessions:'));
   console.log(chalk.gray('     code-insights sync\n'));
-  console.log(chalk.white('  2. Connect the dashboard:'));
-  console.log(chalk.gray('     code-insights connect\n'));
+  console.log(chalk.white('  2. View your stats:'));
+  console.log(chalk.gray('     code-insights stats\n'));
+  console.log(chalk.white('  3. Check today\'s activity:'));
+  console.log(chalk.gray('     code-insights stats today\n'));
+
   trackEvent('init', true);
 }

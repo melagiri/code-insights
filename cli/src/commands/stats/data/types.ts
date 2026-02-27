@@ -49,7 +49,8 @@ export interface SessionRow {
   customTitle?: string;
   summary?: string;
   sessionCharacter?: string;
-  sourceTool?: string;
+  // Required: SQLite schema has source_tool NOT NULL DEFAULT 'claude-code'
+  sourceTool: string;
   usageSource?: string;
 }
 
@@ -87,8 +88,6 @@ export interface StatsFlags {
   project?: string;
   source?: string;
   noSync: boolean;
-  local: boolean;
-  remote: boolean;
 }
 
 /**
@@ -246,14 +245,6 @@ export class StatsError extends Error {
   }
 }
 
-/** Thrown when required configuration is missing */
-export class ConfigNotFoundError extends StatsError {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ConfigNotFoundError';
-  }
-}
-
 /** Thrown when a project name cannot be resolved */
 export class ProjectNotFoundError extends StatsError {
   public readonly projectName: string;
@@ -271,17 +262,6 @@ export class ProjectNotFoundError extends StatsError {
     this.projectName = projectName;
     this.availableProjects = availableProjects;
     this.suggestions = suggestions;
-  }
-}
-
-/** Thrown when a Firestore composite index is required but missing */
-export class FirestoreIndexError extends StatsError {
-  public readonly indexUrl: string;
-
-  constructor(message: string, indexUrl: string) {
-    super(message);
-    this.name = 'FirestoreIndexError';
-    this.indexUrl = indexUrl;
   }
 }
 

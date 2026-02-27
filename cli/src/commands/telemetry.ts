@@ -10,7 +10,6 @@ import type { ClaudeInsightConfig } from '../types.js';
  */
 const MINIMAL_CONFIG: ClaudeInsightConfig = {
   sync: { claudeDir: '~/.claude/projects', excludeProjects: [] },
-  dataSource: 'local',
 };
 
 /**

@@ -1,32 +1,19 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import admin from 'firebase-admin';
 import { existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
-import { loadConfig, resolveDataSourcePreference } from '../utils/config.js';
+import { getDb, getDbPath } from '../db/client.js';
+import { getSyncStatePath } from '../utils/config.js';
 import { trackEvent } from '../utils/telemetry.js';
 
-const SYNC_STATE_FILE = join(homedir(), '.code-insights', 'sync-state.json');
-
 export const resetCommand = new Command('reset')
-  .description('Delete all data from Firestore and reset local sync state')
+  .description('Delete all synced data from the local SQLite database and reset sync state')
   .option('--confirm', 'Skip confirmation prompt')
   .action(async (options) => {
-    const preference = resolveDataSourcePreference();
-    if (preference === 'local') {
-      console.log(chalk.yellow('\n  ⚠ Data source is local. Nothing to reset in Firestore.\n'));
-      console.log(chalk.gray('  To clear the local stats cache:'));
-      console.log(chalk.gray('    rm ~/.code-insights/stats-cache.json\n'));
-      process.exit(0);
-    }
-
-    console.log(chalk.red.bold('\n⚠️  WARNING: This will permanently delete ALL data from your Firestore database!'));
-    console.log(chalk.yellow('Collections to be deleted: projects, sessions, insights, messages, stats\n'));
+    console.log(chalk.red.bold('\n  WARNING: This will permanently delete ALL synced data from your local database!'));
+    console.log(chalk.yellow('  Tables to be cleared: projects, sessions, messages, insights, usage_stats\n'));
 
     if (!options.confirm) {
-      // Simple confirmation using stdin
       const readline = await import('readline');
       const rl = readline.createInterface({
         input: process.stdin,
@@ -44,50 +31,37 @@ export const resetCommand = new Command('reset')
       }
     }
 
-    // Load config
-    const config = loadConfig();
-    if (!config) {
-      console.error(chalk.red('Error: Not configured. Run `code-insights init` first.'));
-      process.exit(1);
-    }
-
-    if (!config.firebase) {
-      console.error(chalk.red('Firebase not configured. Nothing to reset.'));
-      process.exit(1);
-    }
-
-    // Initialize Firebase
-    if (admin.apps.length === 0) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: config.firebase.projectId,
-          clientEmail: config.firebase.clientEmail,
-          privateKey: config.firebase.privateKey.replace(/\\n/g, '\n'),
-        }),
-      });
-    }
-
-    const db = admin.firestore();
-    const collections = ['projects', 'sessions', 'insights', 'messages', 'stats'];
-
     console.log('');
 
-    for (const collectionName of collections) {
-      const spinner = ora(`Deleting ${collectionName}...`).start();
-
-      try {
-        const deleted = await deleteCollection(db, collectionName);
-        spinner.succeed(`Deleted ${deleted} documents from ${collectionName}`);
-      } catch (error) {
-        spinner.fail(`Failed to delete ${collectionName}: ${error}`);
-      }
+    // Delete SQLite data — all 5 DELETEs wrapped in a single transaction.
+    // If any DELETE fails, the transaction rolls back atomically and we do NOT
+    // proceed to delete the sync state file (which would leave them out of sync).
+    const dbSpinner = ora('Clearing database...').start();
+    try {
+      const db = getDb();
+      const clearAll = db.transaction(() => {
+        // Delete in dependency order (FK constraints)
+        db.prepare('DELETE FROM insights').run();
+        db.prepare('DELETE FROM messages').run();
+        db.prepare('DELETE FROM sessions').run();
+        db.prepare('DELETE FROM projects').run();
+        db.prepare('DELETE FROM usage_stats').run();
+      });
+      clearAll();
+      dbSpinner.succeed(`Database cleared (${getDbPath()})`);
+    } catch (error) {
+      dbSpinner.fail(`Failed to clear database: ${error instanceof Error ? error.message : error}`);
+      console.error(chalk.red('\nAborted. Sync state was NOT deleted to avoid inconsistency.'));
+      console.error(chalk.dim('Run `code-insights doctor` if the problem persists.'));
+      process.exit(1);
     }
 
-    // Delete local sync state
+    // Delete local sync state — only reached if DB clear succeeded
+    const syncStatePath = getSyncStatePath();
     const syncSpinner = ora('Removing local sync state...').start();
     try {
-      if (existsSync(SYNC_STATE_FILE)) {
-        unlinkSync(SYNC_STATE_FILE);
+      if (existsSync(syncStatePath)) {
+        unlinkSync(syncStatePath);
         syncSpinner.succeed('Removed local sync state');
       } else {
         syncSpinner.info('No local sync state file found');
@@ -96,31 +70,13 @@ export const resetCommand = new Command('reset')
       syncSpinner.fail(`Failed to remove sync state: ${error}`);
     }
 
-    console.log(chalk.green('\n✓ Reset complete. Run `code-insights sync` to re-sync all sessions.\n'));
-    trackEvent('reset', true);
-    process.exit(0);
-  });
-
-async function deleteCollection(db: admin.firestore.Firestore, collectionName: string): Promise<number> {
-  const collectionRef = db.collection(collectionName);
-  const batchSize = 500;
-  let totalDeleted = 0;
-
-  while (true) {
-    const snapshot = await collectionRef.limit(batchSize).get();
-
-    if (snapshot.empty) {
-      break;
+    // Collect stats for telemetry before resetting
+    try {
+      trackEvent('reset', true);
+    } catch {
+      // non-fatal
     }
 
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-
-    await batch.commit();
-    totalDeleted += snapshot.size;
-  }
-
-  return totalDeleted;
-}
+    console.log(chalk.green('\n  Reset complete. Run `code-insights sync` to re-sync all sessions.\n'));
+    process.exit(0);
+  });

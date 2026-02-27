@@ -167,7 +167,6 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
   - `data/types.ts` - `StatsDataSource` interface, `SessionRow`, error classes
   - `data/source.ts` - Data source factory
   - `data/local.ts` - SQLite data source implementation
-  - `data/cache.ts` - Disk-based stats cache (`~/.code-insights/stats-cache.json`)
   - `data/aggregation.ts` - Pure compute functions (overview, cost, projects, today, models)
   - `data/fuzzy-match.ts` - Levenshtein distance for `--project` name matching
   - `render/` - Terminal rendering (colors, format, charts, layout)
@@ -493,7 +492,6 @@ Multi-tier fallback: Claude summary -> user message (scored) -> character-based 
 ### Configuration
 - Config stored at `~/.code-insights/config.json` (mode 0o600)
 - Sync state at `~/.code-insights/sync-state.json`
-- Stats cache at `~/.code-insights/stats-cache.json` (mtime-based invalidation)
 - Device ID at `~/.code-insights/device-id`
 - SQLite database at `~/.code-insights/data.db`
 

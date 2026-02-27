@@ -184,21 +184,14 @@ export interface InsightMetadata {
   applicability?: string;
 }
 
-export type DataSourcePreference = 'local' | 'firebase';
-
 export interface ClaudeInsightConfig {
-  firebase?: {
-    projectId: string;
-    clientEmail: string;
-    privateKey: string;
-  };
-  webConfig?: FirebaseWebConfig;
   sync: {
     claudeDir: string;
     excludeProjects: string[];
   };
-  dashboardUrl?: string;
-  dataSource?: DataSourcePreference;
+  dashboard?: {
+    port?: number;
+  };
   telemetry?: boolean;              // default true (opt-out)
 }
 
@@ -214,43 +207,3 @@ export interface FileSyncState {
   syncedSessionIds?: string[];  // For providers where 1 file = N sessions (e.g., Cursor SQLite)
 }
 
-export interface Project {
-  id: string;
-  name: string;
-  path: string;
-  sessionCount: number;
-  lastActivity: Date;
-  createdAt: Date;
-}
-
-/**
- * Firebase Service Account JSON file structure
- * Downloaded from Firebase Console > Project Settings > Service Accounts
- */
-export interface FirebaseServiceAccountJson {
-  type: 'service_account';
-  project_id: string;
-  private_key_id: string;
-  private_key: string;
-  client_email: string;
-  client_id: string;
-  auth_uri: string;
-  token_uri: string;
-  auth_provider_x509_cert_url: string;
-  client_x509_cert_url: string;
-  universe_domain?: string;
-}
-
-/**
- * Firebase Web SDK config
- * Found in Firebase Console > Project Settings > General > Your Apps > Web App
- */
-export interface FirebaseWebConfig {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  storageBucket: string;
-  messagingSenderId: string;
-  appId: string;
-  measurementId?: string;
-}

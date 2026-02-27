@@ -1,7 +1,7 @@
 {
   "name": "@code-insights/cli",
   "version": "2.1.0",
-  "description": "Parse and sync AI coding sessions (Claude Code, Cursor, Codex, Copilot) to Firebase for analysis",
+  "description": "Parse and analyze AI coding sessions (Claude Code, Cursor, Codex, Copilot) — local-first, no cloud required",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -31,7 +31,8 @@
     "ai-coding",
     "insights",
     "analytics",
-    "firestore"
+    "sqlite",
+    "local-first"
   ],
   "author": "Srikanth Rao M",
   "repository": {
@@ -51,7 +52,6 @@
     "better-sqlite3": "^12.6.2",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
-    "firebase-admin": "^13.4.0",
     "inquirer": "^12.6.1",
     "ora": "^8.2.0"
   },

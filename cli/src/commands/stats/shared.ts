@@ -11,9 +11,7 @@ export function applySharedFlags(cmd: Command): Command {
     .option('-p, --period <period>', 'Time range: 7d, 30d, 90d, all', '7d')
     .option('--project <name>', 'Scope to a single project')
     .option('--source <tool>', 'Filter by source tool (claude-code, cursor, etc.)')
-    .option('--no-sync', 'Skip auto-sync before displaying stats')
-    .option('--local', 'Use local session files (no Firebase required)')
-    .option('--remote', 'Force Firestore data source (requires Firebase config)');
+    .option('--no-sync', 'Skip auto-sync before displaying stats');
 }
 
 export function parseFlags(options: Record<string, unknown>): StatsFlags {
@@ -26,7 +24,5 @@ export function parseFlags(options: Record<string, unknown>): StatsFlags {
     project: options.project as string | undefined,
     source: options.source as string | undefined,
     noSync: !options.sync,  // Commander's --no-sync sets sync=false
-    local: !!options.local,
-    remote: !!options.remote,
   };
 }

@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import chalk from 'chalk';
-import { isConfigured, resolveDataSourcePreference } from '../utils/config.js';
 import { trackEvent } from '../utils/telemetry.js';
 
 const CLAUDE_SETTINGS_DIR = path.join(os.homedir(), '.claude');
@@ -32,24 +31,6 @@ function getHookCommand(hook: string | { type: string; command: string }): strin
  */
 export async function installHookCommand(): Promise<void> {
   console.log(chalk.cyan('\n🔗 Install Code Insights Hook\n'));
-
-  // Check if configured
-  if (!isConfigured()) {
-    console.log(chalk.yellow('\n  The auto-sync hook requires Firebase to be configured.\n'));
-    console.log(chalk.white('  To set up Firebase:'));
-    console.log(chalk.gray('    code-insights init\n'));
-    console.log(chalk.white('  For local-only analytics (no hook needed):'));
-    console.log(chalk.gray('    code-insights stats\n'));
-    return;
-  }
-
-  const preference = resolveDataSourcePreference();
-  if (preference === 'local') {
-    console.log(chalk.yellow('\n  ⚠ Data source is local. The auto-sync hook is only useful with Firebase.\n'));
-    console.log(chalk.gray('  Stats refresh automatically when you run `code-insights stats`.'));
-    console.log(chalk.gray('  To switch to Firebase: code-insights config set-source firebase\n'));
-    return;
-  }
 
   // Get CLI path
   const cliPath = process.argv[1];
@@ -97,12 +78,12 @@ export async function installHookCommand(): Promise<void> {
   fs.mkdirSync(CLAUDE_SETTINGS_DIR, { recursive: true });
   fs.writeFileSync(HOOKS_FILE, JSON.stringify(settings, null, 2));
 
-  console.log(chalk.green('✅ Hook installed successfully!'));
+  console.log(chalk.green('Hook installed successfully!'));
   console.log(chalk.gray(`\nConfiguration saved to: ${HOOKS_FILE}`));
   console.log(chalk.cyan('\nHow it works:'));
-  console.log(chalk.white('  • When a Claude Code session ends, the hook runs'));
-  console.log(chalk.white('  • Sessions are automatically synced to your Firestore'));
-  console.log(chalk.white('  • Check your dashboard for new insights'));
+  console.log(chalk.white('  When a Claude Code session ends, the hook runs automatically'));
+  console.log(chalk.white('  Sessions are synced to your local database (~/.code-insights/data.db)'));
+  console.log(chalk.white('  Run `code-insights stats` anytime to see your analytics'));
   trackEvent('install-hook', true);
 }
 

@@ -21,7 +21,7 @@ export interface TelemetryEvent {
   arch: string;               // process.arch
   providers: string[];        // detected from filesystem (which AI tool dirs exist)
   sessionCountBucket: string; // '0' | '1-10' | '11-50' | '51-200' | '200+'
-  dataSource: string;         // 'local' | 'firebase' | 'none'
+  dataSource: string;         // 'local' | 'none'
   hasHook: boolean;
   timestamp: string;          // YYYY-MM-DD only (day precision — no time, no timezone)
 }
@@ -274,15 +274,12 @@ function getSessionCountBucket(): string {
 }
 
 /**
- * Determine the configured data source preference.
- * Returns 'none' if no config exists at all.
+ * Determine the configured data source.
+ * Always 'local' in Phase 2+ (SQLite-only).
  */
 function getDataSource(): string {
   const config = loadConfig();
   if (!config) return 'none';
-  if (config.dataSource) return config.dataSource;
-  // Infer from credentials: if Firebase is configured, they're likely using it
-  if (config.firebase?.projectId) return 'firebase';
   return 'local';
 }
 

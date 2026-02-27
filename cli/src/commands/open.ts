@@ -4,18 +4,22 @@ import chalk from 'chalk';
 import { loadConfig } from '../utils/config.js';
 import { trackEvent } from '../utils/telemetry.js';
 
-const DEFAULT_DASHBOARD_URL = 'https://code-insights.app';
+// Phase 3: local Hono server will listen on this port.
+// `code-insights dashboard` command will start the server first.
+const DEFAULT_DASHBOARD_PORT = 7890;
 
 interface OpenOptions {
   project?: boolean;
 }
 
 /**
- * Open the web dashboard in the default browser.
+ * Open the local dashboard in the default browser.
+ * Note: requires `code-insights dashboard` server to be running (Phase 3).
  */
 export async function openCommand(options: OpenOptions): Promise<void> {
   const config = loadConfig();
-  const baseUrl = config?.dashboardUrl || DEFAULT_DASHBOARD_URL;
+  const port = config?.dashboard?.port ?? DEFAULT_DASHBOARD_PORT;
+  const baseUrl = `http://localhost:${port}`;
 
   let url = baseUrl;
 
@@ -28,6 +32,7 @@ export async function openCommand(options: OpenOptions): Promise<void> {
   }
 
   console.log(chalk.cyan(`\n  Opening ${url}\n`));
+  console.log(chalk.gray('  (Run `code-insights dashboard` to start the local server if needed)\n'));
 
   try {
     openInBrowser(url);
