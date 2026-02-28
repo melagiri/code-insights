@@ -181,7 +181,7 @@ SHADCN COMPONENTS:
 ## User Flow: [Flow Name]
 
 **Trigger:** [What starts this flow]
-**Actor:** [Dev/Taylor persona]
+**Actor:** [Developer Dev persona]
 **Goal:** [What they want to accomplish]
 
 ### Happy Path

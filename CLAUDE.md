@@ -49,7 +49,7 @@ code-insights/
 │       ├── utils/          # Config, device, paths
 │       ├── types.ts        # Type definitions (SINGLE SOURCE OF TRUTH)
 │       └── index.ts        # CLI entry point
-├── dashboard/              # Vite + React SPA (to be created in Phase 3)
+├── dashboard/              # Vite + React SPA
 │   └── src/
 │       ├── components/     # React components (shadcn/ui)
 │       ├── hooks/          # React Query hooks

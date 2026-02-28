@@ -247,8 +247,7 @@ When spawned as a team member:
 
 ## Constraints
 
-- Code Insights is a free, open-source, local-first tool helping developers analyze AI coding sessions, collect insights, and build knowledge over time — no monetization, no cloud dependencies
-- This is a personal learning tool — team/org features are not the vision
+- Code Insights is a free, open-source, local-first personal learning tool helping developers analyze AI coding sessions and build knowledge over time — no monetization, no cloud dependencies, no team/org features
 - CLI is open source (`@code-insights/cli`), dashboard is embedded in the CLI package
 - CLI binary: `code-insights`
 - Multi-source support: parses sessions from Claude Code, Cursor, Codex CLI, Copilot CLI

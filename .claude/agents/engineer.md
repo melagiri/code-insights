@@ -413,7 +413,7 @@ Only the founder merges PRs. Your job ends when the PR is created and review com
 
 - No environment variables required for basic operation
 - SQLite database and config stored at `~/.code-insights/`
-- LLM API keys stored in dashboard localStorage or server-side config
+- LLM API keys stored in `~/.code-insights/config.json` (server-side)
 
 ## Document Ownership
 
