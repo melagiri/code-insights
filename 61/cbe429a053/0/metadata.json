@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "61cbe429a053",
+  "session_id": "23fea10c-b466-470b-8e03-e3c550086002",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-28T17:16:56.146791Z",
+  "branch": "feature/test-suite",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "pnpm-lock.yaml",
+    "server/package.json",
+    "server/src/index.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2d1e442d3491",
+  "token_usage": {
+    "input_tokens": 40,
+    "cache_creation_tokens": 43327,
+    "cache_read_tokens": 1365489,
+    "output_tokens": 6470,
+    "api_call_count": 28
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-28T17:16:56.106281Z",
+    "agent_lines": 0,
+    "human_added": 21,
+    "human_modified": 6,
+    "human_removed": 0,
+    "total_committed": 21,
+    "agent_percentage": 0
+  }
+}

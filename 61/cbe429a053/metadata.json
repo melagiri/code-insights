@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "61cbe429a053",
+  "strategy": "manual-commit",
+  "branch": "feature/test-suite",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "pnpm-lock.yaml",
+    "server/package.json",
+    "server/src/index.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/61/cbe429a053/0/metadata.json",
+      "transcript": "/61/cbe429a053/0/full.jsonl",
+      "context": "/61/cbe429a053/0/context.md",
+      "content_hash": "/61/cbe429a053/0/content_hash.txt",
+      "prompt": "/61/cbe429a053/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 40,
+    "cache_creation_tokens": 43327,
+    "cache_read_tokens": 1365489,
+    "output_tokens": 6470,
+    "api_call_count": 28
+  }
+}
