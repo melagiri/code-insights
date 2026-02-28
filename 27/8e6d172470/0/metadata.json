@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "278e6d172470",
+  "session_id": "23fea10c-b466-470b-8e03-e3c550086002",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-28T17:17:18.797768Z",
+  "branch": "feature/test-suite",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/routes/insights.test.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2d1e442d3491",
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 49734,
+    "cache_read_tokens": 1485976,
+    "output_tokens": 6773,
+    "api_call_count": 30
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-28T17:17:18.749428Z",
+    "agent_lines": 191,
+    "human_added": 736,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 927,
+    "agent_percentage": 20.604099244875947
+  }
+}

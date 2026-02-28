@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "278e6d172470",
+  "strategy": "manual-commit",
+  "branch": "feature/test-suite",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/routes/insights.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/27/8e6d172470/0/metadata.json",
+      "transcript": "/27/8e6d172470/0/full.jsonl",
+      "context": "/27/8e6d172470/0/context.md",
+      "content_hash": "/27/8e6d172470/0/content_hash.txt",
+      "prompt": "/27/8e6d172470/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 42,
+    "cache_creation_tokens": 49734,
+    "cache_read_tokens": 1485976,
+    "output_tokens": 6773,
+    "api_call_count": 30
+  }
+}
