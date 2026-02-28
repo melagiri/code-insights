@@ -2,7 +2,7 @@
 // Base URL is relative in production (SPA served by the same server).
 // In Vite dev mode, the proxy forwards /api -> localhost:7890.
 
-import type { Project, Session, Message, Insight, DashboardStats } from '@/lib/types';
+import type { Project, Session, Message, Insight, DashboardStats, LLMConfig } from '@/lib/types';
 
 const BASE = '/api';
 
@@ -110,13 +110,52 @@ export function analyzeSession(sessionId: string) {
 // ── Config ────────────────────────────────────────────────────────────────────
 
 export function fetchLlmConfig() {
-  return request<{ dashboardPort: number }>('/config/llm');
+  return request<LLMConfig>('/config/llm');
 }
 
-export function saveLlmConfig(body: { dashboardPort?: number }) {
+export function saveLlmConfig(body: {
+  dashboardPort?: number;
+  provider?: string;
+  model?: string;
+  apiKey?: string;
+  baseUrl?: string;
+}) {
   return request<{ ok: boolean }>('/config/llm', {
     method: 'PUT',
     body: JSON.stringify(body),
+  });
+}
+
+export function testLlmConfig(body?: {
+  provider?: string;
+  model?: string;
+  apiKey?: string;
+  baseUrl?: string;
+}) {
+  return request<{ success: boolean; error?: string }>('/config/llm/test', {
+    method: 'POST',
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export function fetchOllamaModels(baseUrl?: string) {
+  const qs = baseUrl ? `?baseUrl=${encodeURIComponent(baseUrl)}` : '';
+  return request<{ models: Array<{ name: string; size: number; modifiedAt: string }> }>(
+    `/config/llm/ollama-models${qs}`
+  );
+}
+
+export function analyzePromptQuality(sessionId: string) {
+  return request<unknown>('/analysis/prompt-quality', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId }),
+  });
+}
+
+export function findRecurringInsights(body?: { projectId?: string; limit?: number }) {
+  return request<unknown>('/analysis/recurring', {
+    method: 'POST',
+    body: JSON.stringify(body ?? {}),
   });
 }
 

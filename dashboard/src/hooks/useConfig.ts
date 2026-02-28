@@ -13,7 +13,13 @@ export function useLlmConfig() {
 export function useSaveLlmConfig() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { dashboardPort?: number }) => saveLlmConfig(body),
+    mutationFn: (body: {
+      dashboardPort?: number;
+      provider?: string;
+      model?: string;
+      apiKey?: string;
+      baseUrl?: string;
+    }) => saveLlmConfig(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config', 'llm'] });
     },

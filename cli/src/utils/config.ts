@@ -45,7 +45,10 @@ export function saveConfig(config: ClaudeInsightConfig): void {
     sync: config.sync,
   };
   if (config.dashboard !== undefined) {
-    clean.dashboard = config.dashboard;
+    clean.dashboard = {
+      ...(config.dashboard.port !== undefined ? { port: config.dashboard.port } : {}),
+      ...(config.dashboard.llm !== undefined ? { llm: config.dashboard.llm } : {}),
+    };
   }
   if (config.telemetry !== undefined) {
     clean.telemetry = config.telemetry;
