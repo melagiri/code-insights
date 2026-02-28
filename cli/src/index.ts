@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name('code-insights')
   .description('AI coding session analytics — sync, stats, and insights')
-  .version('2.1.0');
+  .version('3.0.0');
 
 program
   .command('init')

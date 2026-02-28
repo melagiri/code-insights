@@ -64,18 +64,23 @@ export async function dashboardCommand(options: DashboardOptions): Promise<void>
 
     // cli/dist/commands/dashboard.js -> workspace root is 3 levels up
     const workspaceRoot = resolve(__dirname, '..', '..', '..');
+    // cli/dist/commands/dashboard.js -> CLI package root is 2 levels up
+    const cliRoot = resolve(__dirname, '..', '..');
 
-    const serverEntryPath = resolve(workspaceRoot, 'server', 'dist', 'index.js');
-    const staticDir = resolve(workspaceRoot, 'dashboard', 'dist');
+    // Try workspace layout first (dev), then npm-installed layout (production)
+    let serverEntryPath = resolve(workspaceRoot, 'server', 'dist', 'index.js');
+    let staticDir = resolve(workspaceRoot, 'dashboard', 'dist');
 
-    // Guard: server must be built before the dashboard command can start.
-    // Running `npm install -g @code-insights/cli` does not include server/dist
-    // because the package is structured for local workspace use only.
+    if (!existsSync(serverEntryPath)) {
+      serverEntryPath = resolve(cliRoot, 'server-dist', 'index.js');
+      staticDir = resolve(cliRoot, 'dashboard-dist');
+    }
+
     if (!existsSync(serverEntryPath)) {
       spinner.fail('Dashboard server not found.');
       console.error(chalk.dim(
-        '  The dashboard requires a full workspace checkout.\n' +
-        '  Clone the repo and run: pnpm install && pnpm build\n' +
+        '  Run from a workspace checkout: pnpm install && pnpm build\n' +
+        '  Or install globally: npm install -g @code-insights/cli\n' +
         '  See: https://github.com/melagiri/code-insights#development',
       ));
       process.exit(1);

@@ -2,6 +2,38 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [3.0.0] - 2026-02-28
+
+See [MIGRATION.md](../MIGRATION.md) for the full upgrade guide from v2.
+
+### Breaking Changes
+
+- **Firebase removed** — No Firestore sync, no Firebase credentials, no service account required. All data is stored locally in SQLite at `~/.code-insights/data.db`.
+- **`connect` command removed** — Generated Firebase connection URLs. No longer needed.
+- **`init` config format changed** — v2 config had Firebase credentials fields. v3 config has only sync settings and optional LLM config. Re-run `code-insights init` after upgrading.
+- **Data source changed to SQLite** — v2 wrote to Firestore. v3 writes to local SQLite. Existing Firestore data is not migrated. Re-sync with `code-insights sync --force`.
+- **Hosted dashboard removed** — The dashboard at code-insights.app is no longer maintained.
+
+### Added
+
+- **`dashboard` command** — Starts a local Hono server and opens the built-in React SPA at `localhost:7890`. Replaces the hosted dashboard.
+- **Embedded Vite + React SPA** — Full browser dashboard for session browsing, analytics, and insights. No external URL required.
+- **Server-side LLM analysis** — API keys are stored and used server-side. No key exposure to the browser.
+- **Multi-tool support** — Session providers for Cursor, Codex CLI, and Copilot CLI (in addition to Claude Code).
+- **`config llm` command** — Interactive and non-interactive LLM provider configuration (Anthropic, OpenAI, Gemini, Ollama).
+- **`--source <tool>` flag on `sync`** — Sync only from a specific tool.
+- **`--verbose` flag on `sync`** — Show diagnostic warnings from providers.
+- **`--regenerate-titles` flag on `sync`** — Regenerate session titles from content.
+- **`--no-sync` flag on `stats`** — Skip auto-sync before displaying analytics.
+
+### Changed
+
+- **`init`** — No longer requires Firebase credentials. Sets up local SQLite database and config only.
+- **`open`** — Now opens `localhost:7890` (local dashboard server) instead of code-insights.app.
+- **`reset`** — Clears local SQLite database and sync state instead of Firestore data.
+- **`sync`** — Writes to local SQLite instead of Firestore.
+- **`status`** — Reports SQLite session counts and local sync state.
+
 ## [2.1.0] - 2026-02-27
 
 ### Added

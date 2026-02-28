@@ -6,7 +6,6 @@ Thanks for your interest in contributing! This guide covers everything you need 
 
 - **Node.js** 18 or later
 - **pnpm** >= 9
-- A Firebase project (for testing sync — see [Quick Start](README.md#quick-start))
 
 ## Getting Started
 
@@ -15,34 +14,33 @@ Thanks for your interest in contributing! This guide covers everything you need 
 git clone https://github.com/melagiri/code-insights.git
 cd code-insights
 
-# Install dependencies
-cd cli
+# Install dependencies (workspace root)
 pnpm install
 
-# Build
+# Build all packages
 pnpm build
 
-# Link for local testing
-npm link
+# Link CLI for local testing
+cd cli && npm link
 ```
 
 ## Project Structure
 
 ```
 code-insights/
-├── cli/              # CLI tool (open source)
-│   ├── src/
-│   │   ├── commands/ # CLI commands (init, sync, status, insights, open, reset, install-hook)
-│   │   ├── parser/   # JSONL parsing and session title generation
-│   │   ├── firebase/ # Firestore client operations
-│   │   ├── utils/    # Config and device utilities
-│   │   ├── types.ts  # TypeScript type definitions
-│   │   └── index.ts  # CLI entry point
-│   └── dist/         # Compiled output (not committed)
-└── docs/             # Product docs, roadmap, architecture
+├── cli/              # Node.js CLI — parses sessions, syncs to SQLite
+│   └── src/
+│       ├── commands/ # CLI commands (init, sync, status, stats, dashboard, config, reset)
+│       ├── providers/# Source tool providers (claude-code, cursor, codex, copilot-cli)
+│       ├── parser/   # JSONL parsing and session title generation
+│       ├── db/       # SQLite schema, migrations, queries
+│       ├── utils/    # Config, device, paths
+│       ├── types.ts  # TypeScript type definitions
+│       └── index.ts  # CLI entry point
+├── dashboard/        # Vite + React SPA (embedded local dashboard)
+├── server/           # Hono API server (serves dashboard + REST API)
+└── docs/             # Product docs, plans, architecture
 ```
-
-> **Note:** The web dashboard is developed in a separate closed-source repository (`code-insights-web`). This repo contains the CLI tool only.
 
 ## Development Workflow
 
@@ -61,22 +59,30 @@ Branch naming conventions:
 ### 2. Make changes
 
 ```bash
-cd cli
-pnpm dev    # Watch mode — recompiles on save
+# Watch mode for the CLI
+cd cli && pnpm dev
+
+# Watch mode for the dashboard
+cd dashboard && pnpm dev
+
+# Watch mode for the server
+cd server && pnpm dev
 ```
 
 ### 3. Verify your changes
 
 ```bash
-pnpm build  # Ensure clean compile
-pnpm lint   # Check for lint errors
+# From the workspace root — builds all 3 packages
+pnpm build
 ```
 
 ### 4. Test locally
 
 ```bash
-# After building, test your changes with a real sync
+# Test CLI commands
 code-insights sync --dry-run
+code-insights stats
+code-insights dashboard
 ```
 
 ### 5. Submit a PR
@@ -127,7 +133,7 @@ type(scope): short description
 feat(cli): add export command for session data
 fix(parser): handle empty JSONL files gracefully
 docs: update CLI README with troubleshooting section
-chore(cli): update firebase-admin dependency
+chore(cli): update better-sqlite3 dependency
 ```
 
 Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`

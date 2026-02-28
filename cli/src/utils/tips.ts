@@ -20,7 +20,7 @@ const TIPS: Record<string, string[]> = {
     'Try `code-insights stats today` to see only today\'s activity',
     'Try `code-insights stats models` to compare usage across AI models',
     'Try `code-insights stats projects` to see which projects you\'ve worked on most',
-    'Run `code-insights init` to sync sessions to Firebase and unlock the web dashboard',
+    'Run `code-insights dashboard` to explore your sessions in the built-in dashboard',
   ],
   'stats cost': [
     'Use `--period 30d` to see cost over the last 30 days (default is 7d)',
