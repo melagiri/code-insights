@@ -21,13 +21,11 @@ export interface ServerOptions {
 }
 
 /**
- * Start the Code Insights local dashboard server.
- * Serves the Hono API and the pre-built Vite SPA from staticDir.
- * Called by the CLI `dashboard` command.
+ * Create the Hono app with all API routes mounted.
+ * Does NOT add static file serving or call serve() — that's startServer's job.
+ * Exported so tests can use app.request() without starting a real server.
  */
-export async function startServer(options: ServerOptions): Promise<void> {
-  const { port, staticDir, openBrowser } = options;
-
+export function createApp(): Hono {
   const app = new Hono();
 
   // Global error handler — prevents stack trace leakage to clients.
@@ -57,6 +55,20 @@ export async function startServer(options: ServerOptions): Promise<void> {
   // Without this, unmatched /api/* routes fall through to the SPA fallback and return
   // index.html as 200, which breaks API clients expecting JSON errors.
   app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
+
+  return app;
+}
+
+/**
+ * Start the Code Insights local dashboard server.
+ * Calls createApp(), adds static file serving + SPA fallback if staticDir exists,
+ * then calls serve().
+ * Called by the CLI `dashboard` command.
+ */
+export async function startServer(options: ServerOptions): Promise<void> {
+  const { port, staticDir, openBrowser } = options;
+
+  const app = createApp();
 
   // Static file serving — only if the dashboard has been built.
   // serveStatic requires a path relative to process.cwd(), not an absolute path.
