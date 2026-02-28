@@ -3,10 +3,16 @@
   "private": true,
   "scripts": {
     "build": "pnpm --filter @code-insights/cli build && pnpm --filter @code-insights/server build && pnpm --filter @code-insights/dashboard build",
-    "dev": "pnpm --filter @code-insights/cli dev"
+    "dev": "pnpm --filter @code-insights/cli dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }
