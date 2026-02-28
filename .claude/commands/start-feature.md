@@ -41,25 +41,28 @@ TeamCreate {
 
 ---
 
-## Step 3: Spawn PM as Team Lead
+## Step 3: Spawn PM Agent
 
-The PM agent is the **team lead**. It owns the entire ceremony from here — scoping, GitHub Issues, task graph creation, agent spawning, and coordination.
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
 
 ```
 Task {
   name: "pm-agent",
   subagent_type: "product-manager",
   team_name: "feat-<slugified-arguments>",
-  prompt: "You are the PM and TEAM LEAD for this feature team.
+  prompt: "You are the PM for this feature team.
 
 FEATURE REQUEST: $ARGUMENTS
 WORKTREE: ../code-insights-<slugified-arguments>/
 BRANCH: feature/<slugified-arguments>
 TEAM: feat-<slugified-arguments>
 
-You own the entire development ceremony. Follow your Team Lead protocol:
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
 
-1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, use SendMessage to ask the user (team lead can message the orchestrator) for clarification before proceeding.
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
 
 2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
 
@@ -73,39 +76,25 @@ You own the entire development ceremony. Follow your Team Lead protocol:
    - Task: 'Review: Triple-layer code review' (blockedBy: above)
    - Task: 'Post review summary to GitHub PR' (blockedBy: above)
 
-4. SPAWN TA (if needed): After creating tasks, spawn the TA agent:
-   Task {
-     name: 'ta-agent',
-     subagent_type: 'technical-architect',
-     team_name: 'feat-<slugified-arguments>',
-     prompt: 'You are the TA for feature team feat-<slugified-arguments>. Feature: $ARGUMENTS. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.',
-     mode: 'bypassPermissions'
-   }
-   Assign the TA architecture review task to ta-agent.
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
 
    SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
 
-5. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+6. MONITOR: Check TaskList periodically. When Dev creates a PR, message the orchestrator to trigger /start-review on the PR number.
 
-6. SPAWN DEV: When prerequisites are completed, spawn the Dev agent:
-   Task {
-     name: 'dev-agent',
-     subagent_type: 'engineer',
-     team_name: 'feat-<slugified-arguments>',
-     prompt: 'You are the Dev for feature team feat-<slugified-arguments>. Feature: $ARGUMENTS. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with ta-agent for consensus. Mark tasks in_progress/completed.',
-     mode: 'bypassPermissions'
-   }
-   Assign the next unblocked dev task to dev-agent.
-
-7. MONITOR: Check TaskList periodically. When Dev creates a PR (Task 6 complete), message the orchestrator to trigger /start-review on the PR number.
-
-8. REPORT: When review is posted (Task 8 complete), message the orchestrator: 'PR #XX for $ARGUMENTS is ready for founder review and merge.'
+7. REPORT: When review is posted, message the orchestrator: 'PR #XX for $ARGUMENTS is ready for founder review and merge.'
 
 IMPORTANT RULES:
 - NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
 - All dev work happens in the worktree
 - If you need user clarification, message the orchestrator who will ask the user
-- You can message teammates directly via SendMessage for routine coordination
+- You can message existing teammates directly via SendMessage for routine coordination
 - Task dependencies enforce ceremony order -- don't skip steps
 - CI gate for this project: pnpm build (no test framework yet)",
   mode: "bypassPermissions"
@@ -114,16 +103,47 @@ IMPORTANT RULES:
 
 ---
 
-## Step 4: Supervise
+## Step 4: Orchestrator Spawns Agents on PM Request
 
-After spawning PM, your role shifts to supervisor:
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
 
-1. **PM will handle everything** — task graph, GitHub Issues, spawning TA and Dev
-2. **Intervene only when**:
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: $ARGUMENTS. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: $ARGUMENTS. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed. CI gate: pnpm build must pass.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
    - PM messages you asking for user clarification -> relay to user
    - An agent is stuck or reports a blocker -> help unblock
    - PM requests `/start-review` -> run the review command on the PR
-3. **When PM reports "ready for merge"** -> inform the user
+4. **When PM reports "ready for merge"** -> inform the user
 
 ---
 
@@ -144,8 +164,9 @@ git worktree remove ../code-insights-<slugified-arguments>
 ## Important Rules
 
 - **NEVER merge the PR** — founder-only
-- **PM is the team lead** — it creates tasks, spawns agents, and coordinates the ceremony
-- **Orchestrator supervises** — relay user messages, handle exceptions, run /start-review when requested
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
 - **All dev work happens in the worktree**
 - **Task dependencies enforce ceremony order** — agents can't skip steps
 - **TA is optional** for internal-only changes — PM decides based on scope
