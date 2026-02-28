@@ -5,7 +5,14 @@ import * as crypto from 'crypto';
 import { createRequire } from 'module';
 import { loadConfig, getConfigDir, getClaudeDir } from './config.js';
 
-const TELEMETRY_ENDPOINT = 'https://xrbkoqjfolxiyfxubiom.supabase.co/functions/v1/cli-telemetry';
+const TELEMETRY_ENDPOINT = 'https://xrbkoqjfolxiyfxubiom.supabase.co/functions/v1/cli-telemetry-v2';
+
+// HMAC signing key for request integrity.
+// This is a deterrent, NOT a security boundary — npm packages are public and this key
+// is extractable. The real security is enforced server-side in the Edge Function.
+// Rotation: bump the endpoint version (cli-telemetry-v3) to rotate the key.
+// The Edge Function accepts keys as a Supabase secret (HMAC_KEYS env var), not hardcoded.
+const HMAC_KEY = 'fb73eabc121b8fe0bde2eb6f8a2d09c21bf74708d2148d7a520bb00661f03b7f';
 
 // Touch file path that tracks whether the one-time disclosure has been shown
 const NOTICE_FILE = path.join(getConfigDir(), '.telemetry-notice-shown');
@@ -302,6 +309,19 @@ function detectHook(): boolean {
 }
 
 /**
+ * Sign the request body with HMAC-SHA256.
+ * Returns the hex digest prefixed with 'sha256=' for the X-Signature header.
+ *
+ * Note: the key is public (extractable from the npm package) — this is a deterrent
+ * against casual data poisoning, not a cryptographic secret. Security is enforced
+ * server-side in the Edge Function using constant-time comparison.
+ */
+function signPayload(body: string): string {
+  const digest = crypto.createHmac('sha256', HMAC_KEY).update(body).digest('hex');
+  return `sha256=${digest}`;
+}
+
+/**
  * Internal: Send the event to the telemetry endpoint.
  * AbortController ensures we don't hang longer than 2 seconds.
  * All errors are swallowed — telemetry failures must never propagate.
@@ -312,10 +332,17 @@ async function sendEvent(event: TelemetryEvent): Promise<void> {
   const timer = setTimeout(() => controller.abort(), 2000);
 
   try {
+    const body = JSON.stringify(event);
     await fetch(TELEMETRY_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(event),
+      headers: {
+        'Content-Type': 'application/json',
+        // HMAC signature — lets the Edge Function verify the payload wasn't tampered.
+        // The v2 endpoint accepts but does not require this header initially, allowing
+        // older CLI versions (which don't send it) to continue working.
+        'X-Signature': signPayload(body),
+      },
+      body,
       signal: controller.signal,
     });
   } catch {
