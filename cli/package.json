@@ -23,7 +23,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
-    "prepublishOnly": "pnpm -r build && cp -r ../dashboard/dist ./dashboard-dist && cp -r ../server/dist ./server-dist"
+    "prepublishOnly": "cd .. && pnpm -r build && cp -r dashboard/dist cli/dashboard-dist && cp -r server/dist cli/server-dist"
   },
   "files": [
     "dist",

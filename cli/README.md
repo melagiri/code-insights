@@ -152,7 +152,7 @@ code-insights stats models
 # Show sync statistics (sessions, projects, last sync)
 code-insights status
 
-# Open the local dashboard in your browser (alias for dashboard)
+# Open the local dashboard in your browser (server must already be running)
 code-insights open
 
 # Delete all local data and reset sync state

@@ -40,7 +40,7 @@ code-insights --version
 code-insights init
 ```
 
-This creates `~/.code-insights/config.json` and initializes the SQLite database at `~/.code-insights/data.db`. No Firebase credentials are required — just confirm your Claude projects directory when prompted.
+This creates `~/.code-insights/config.json` and initializes the SQLite database at `~/.code-insights/data.db`. No Firebase credentials are required.
 
 ### Step 3: Re-sync All Sessions
 
