@@ -1,6 +1,6 @@
 {
   "name": "@code-insights/cli",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "AI coding session analytics with built-in dashboard",
   "type": "module",
   "main": "dist/index.js",
@@ -63,9 +63,11 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@hono/node-server": "^1.13.7",
     "better-sqlite3": "^12.6.2",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
+    "hono": "^4.7.4",
     "inquirer": "^12.6.1",
     "ora": "^8.2.0"
   },
