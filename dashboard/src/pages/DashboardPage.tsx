@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { useDashboardStats, useUsageStats } from '@/hooks/useAnalytics';
 import { useSessions } from '@/hooks/useSessions';
@@ -13,6 +13,7 @@ import { ErrorCard } from '@/components/ErrorCard';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDurationMinutes } from '@/lib/utils';
+import type { DailyStats } from '@/lib/types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 type DashboardRange = '30d' | '90d' | 'all';
@@ -29,7 +30,7 @@ export default function DashboardPage() {
 
   const { data: dashStats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useDashboardStats(range);
   const { data: usageStats } = useUsageStats();
-  const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError, refetch: refetchSessions } = useSessions({ limit: 20 });
+  const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError, refetch: refetchSessions } = useSessions();
   const { data: insights = [], isLoading: insightsLoading } = useInsights();
   const { data: projects = [] } = useProjects();
 
@@ -44,6 +45,35 @@ export default function DashboardPage() {
   // Sessions not yet analyzed
   const analyzedSessionIds = new Set(insights.map((i) => i.session_id));
   const unanalyzedSessions = sessions.filter((s) => !analyzedSessionIds.has(s.id));
+
+  // Build daily stats for activity chart
+  const dailyStats: DailyStats[] = useMemo(() => {
+    const now = Date.now();
+    const rangeDays = range === '30d' ? 30 : range === '90d' ? 90 : Infinity;
+    const cutoff = rangeDays === Infinity ? 0 : now - rangeDays * 86_400_000;
+
+    const grouped: Record<string, { session_count: number; insight_count: number }> = {};
+    for (const s of sessions) {
+      if (new Date(s.started_at).getTime() < cutoff) continue;
+      const date = s.started_at.slice(0, 10);
+      if (!grouped[date]) grouped[date] = { session_count: 0, insight_count: 0 };
+      grouped[date].session_count++;
+    }
+    for (const i of insights) {
+      if (new Date(i.timestamp).getTime() < cutoff) continue;
+      const date = i.timestamp.slice(0, 10);
+      if (!grouped[date]) grouped[date] = { session_count: 0, insight_count: 0 };
+      grouped[date].insight_count++;
+    }
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, counts]) => ({
+        date,
+        session_count: counts.session_count,
+        message_count: 0,
+        insight_count: counts.insight_count,
+      }));
+  }, [sessions, insights, range]);
 
   // Compute stats for hero
   const usageStatsData = usageStats as {
@@ -133,7 +163,7 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 delay-150">
-          <DashboardActivityChart data={[]} range={range} onRangeChange={setRange} />
+          <DashboardActivityChart data={dailyStats} range={range} onRangeChange={setRange} />
         </div>
       )}
 
