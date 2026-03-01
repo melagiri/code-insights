@@ -285,8 +285,18 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
         }
 
         case 'tool.execution_complete': {
-          const toolOutput = (data.output as string) || (data.result as string) || '';
-          const toolId = (data.id as string) || (currentToolCalls.length > 0
+          // data.result may be an object like {content: "..."} or a plain string
+          const rawResult = data.result;
+          let toolOutput: string;
+          if (typeof rawResult === 'string') {
+            toolOutput = rawResult;
+          } else if (rawResult && typeof rawResult === 'object') {
+            const resultObj = rawResult as Record<string, unknown>;
+            toolOutput = (resultObj.content as string) || JSON.stringify(rawResult);
+          } else {
+            toolOutput = (data.output as string) || '';
+          }
+          const toolId = (data.toolCallId as string) || (data.id as string) || (currentToolCalls.length > 0
             ? currentToolCalls[currentToolCalls.length - 1].id
             : `copilot-tool-${toolCounter}`);
           if (toolOutput) {
