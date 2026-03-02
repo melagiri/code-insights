@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { AnalysisProvider } from '@/components/analysis/AnalysisContext';
 import App from './App';
 import './styles/globals.css';
+import { initTelemetry } from '@/lib/telemetry';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,6 +15,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Initialize PostHog telemetry — fire-and-forget, does not block render
+void initTelemetry();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found');

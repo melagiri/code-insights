@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router';
+import { capturePageView, captureDashboardLoaded } from '@/lib/telemetry';
 import { Layout } from '@/components/layout/Layout';
 import DashboardPage from '@/pages/DashboardPage';
 import SessionsPage from '@/pages/SessionsPage';
@@ -22,17 +23,29 @@ const ROUTE_TITLES: Record<string, string> = {
 
 function RouteEffects() {
   const { pathname } = useLocation();
+  const navStartRef = useRef<number>(Date.now());
 
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  // Update document.title per route
+  // Update document.title per route, track page views, and capture dashboard_loaded
   useEffect(() => {
     const segment = '/' + pathname.split('/')[1];
     const page = ROUTE_TITLES[segment];
     document.title = page ? `${page} — Code Insights` : 'Code Insights';
+
+    // Track page view on every route change
+    capturePageView(pathname);
+
+    // Capture dashboard_loaded with time since navigation started
+    if (page) {
+      const loadTimeMs = Date.now() - navStartRef.current;
+      captureDashboardLoaded(page.toLowerCase(), loadTimeMs);
+    }
+    // Reset nav start for next navigation
+    navStartRef.current = Date.now();
   }, [pathname]);
 
   return null;

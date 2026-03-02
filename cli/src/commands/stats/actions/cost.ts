@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
-import { trackEvent } from '../../../utils/telemetry.js';
+import { trackEvent, identifyUser } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import { periodStartDate, computeCostBreakdown } from '../data/aggregation.js';
 import type { StatsFlags, SessionQueryOptions } from '../data/types.js';
@@ -21,6 +21,7 @@ import { sectionHeader, metricGrid, getBarWidth } from '../render/layout.js';
 import { showTip } from '../../../utils/tips.js';
 
 export async function costAction(flags: StatsFlags): Promise<void> {
+  const startTime = Date.now();
   try {
     const source = await resolveDataSource(flags);
 
@@ -31,6 +32,9 @@ export async function costAction(flags: StatsFlags): Promise<void> {
     } catch {
       spinner.warn('Sync failed (showing cached data)');
     }
+
+    // Identify user now that DB is open (updates total_sessions person property)
+    void identifyUser();
 
     // Resolve project filter
     const opts: SessionQueryOptions = {
@@ -155,10 +159,10 @@ export async function costAction(flags: StatsFlags): Promise<void> {
     console.log(colors.hint(`Run stats cost --period 30d for monthly trends`));
     console.log(colors.hint('Run stats models for detailed model analysis'));
     console.log();
-    trackEvent('stats', true, 'cost');
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'cost', period: flags.period, source_filter: flags.source ?? null, success: true });
     showTip('stats cost');
   } catch (err) {
-    trackEvent('stats', false, 'cost');
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'cost', period: flags.period, source_filter: flags.source ?? null, success: false });
     handleStatsError(err);
   }
 }

@@ -3,8 +3,8 @@ import { streamSSE } from 'hono/streaming';
 import { getDb } from '@code-insights/cli/db/client';
 import { trackEvent } from '@code-insights/cli/utils/telemetry';
 import { parseIntParam } from '../utils.js';
+import { loadLLMConfig, isLLMConfigured } from '../llm/client.js';
 import { analyzeSession, analyzePromptQuality, findRecurringInsights } from '../llm/analysis.js';
-import { isLLMConfigured } from '../llm/client.js';
 import type { SQLiteMessageRow, SessionData } from '../llm/analysis.js';
 
 const app = new Hono();
@@ -41,8 +41,22 @@ app.post('/session', async (c) => {
     FROM messages WHERE session_id = ? ORDER BY timestamp ASC
   `).all(body.sessionId) as SQLiteMessageRow[];
 
+  const llmConfig = loadLLMConfig();
+  const startTime = Date.now();
   const result = await analyzeSession(session, messages);
-  if (result.success) trackEvent('analysis', true, 'session');
+  trackEvent('analysis_run', {
+    type: 'session',
+    llm_provider: llmConfig?.provider,
+    llm_model: llmConfig?.model,
+    duration_ms: Date.now() - startTime,
+    success: result.success,
+  });
+  if (result.success) {
+    trackEvent('insight_generated', {
+      type: 'session',
+      count: result.insights.length,
+    });
+  }
   return c.json(result, result.success ? 200 : 422);
 });
 
@@ -79,7 +93,9 @@ app.get('/session/stream', async (c) => {
     FROM messages WHERE session_id = ? ORDER BY timestamp ASC
   `).all(sessionId) as SQLiteMessageRow[];
 
+  const llmConfig = loadLLMConfig();
   return streamSSE(c, async (stream) => {
+    const streamStart = Date.now();
     try {
       const abortSignal = c.req.raw.signal;
 
@@ -103,8 +119,18 @@ app.get('/session/stream', async (c) => {
         },
       });
 
+      trackEvent('analysis_run', {
+        type: 'session',
+        llm_provider: llmConfig?.provider,
+        llm_model: llmConfig?.model,
+        duration_ms: Date.now() - streamStart,
+        success: result.success,
+      });
       if (result.success) {
-        trackEvent('analysis', true, 'session');
+        trackEvent('insight_generated', {
+          type: 'session',
+          count: result.insights.length,
+        });
         const summaryInsight = result.insights.find(i => i.type === 'summary');
         await stream.writeSSE({
           event: 'complete',
@@ -163,8 +189,22 @@ app.post('/prompt-quality', async (c) => {
     FROM messages WHERE session_id = ? ORDER BY timestamp ASC
   `).all(body.sessionId) as SQLiteMessageRow[];
 
+  const llmConfig = loadLLMConfig();
+  const pqStart = Date.now();
   const result = await analyzePromptQuality(session, messages);
-  if (result.success) trackEvent('analysis', true, 'prompt-quality');
+  trackEvent('analysis_run', {
+    type: 'prompt-quality',
+    llm_provider: llmConfig?.provider,
+    llm_model: llmConfig?.model,
+    duration_ms: Date.now() - pqStart,
+    success: result.success,
+  });
+  if (result.success) {
+    trackEvent('insight_generated', {
+      type: 'prompt_quality',
+      count: result.insights.length,
+    });
+  }
   return c.json(result, result.success ? 200 : 422);
 });
 
@@ -201,7 +241,9 @@ app.get('/prompt-quality/stream', async (c) => {
     FROM messages WHERE session_id = ? ORDER BY timestamp ASC
   `).all(sessionId) as SQLiteMessageRow[];
 
+  const llmConfig = loadLLMConfig();
   return streamSSE(c, async (stream) => {
+    const pqStreamStart = Date.now();
     try {
       const abortSignal = c.req.raw.signal;
 
@@ -223,8 +265,18 @@ app.get('/prompt-quality/stream', async (c) => {
         },
       });
 
+      trackEvent('analysis_run', {
+        type: 'prompt-quality',
+        llm_provider: llmConfig?.provider,
+        llm_model: llmConfig?.model,
+        duration_ms: Date.now() - pqStreamStart,
+        success: result.success,
+      });
       if (result.success) {
-        trackEvent('analysis', true, 'prompt-quality');
+        trackEvent('insight_generated', {
+          type: 'prompt_quality',
+          count: result.insights.length,
+        });
         await stream.writeSSE({
           event: 'complete',
           data: JSON.stringify({
@@ -290,8 +342,22 @@ app.post('/recurring', async (c) => {
     session_id: string;
   }>;
 
+  const llmConfig = loadLLMConfig();
+  const recurringStart = Date.now();
   const result = await findRecurringInsights(insights);
-  if (result.success) trackEvent('analysis', true, 'recurring');
+  trackEvent('analysis_run', {
+    type: 'recurring',
+    llm_provider: llmConfig?.provider,
+    llm_model: llmConfig?.model,
+    duration_ms: Date.now() - recurringStart,
+    success: result.success,
+  });
+  if (result.success) {
+    trackEvent('insight_generated', {
+      type: 'recurring',
+      count: result.groups.length,
+    });
+  }
   return c.json(result, result.success ? 200 : 422);
 });
 

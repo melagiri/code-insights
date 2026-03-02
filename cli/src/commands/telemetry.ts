@@ -32,32 +32,28 @@ function statusAction(): void {
     console.log(chalk.gray('  (Disabled via DO_NOT_TRACK env var)'));
   }
 
-  console.log(chalk.white('\n  What we collect (and nothing else):'));
+  const preview = buildEventPreview();
 
-  const preview = buildEventPreview('telemetry');
+  console.log(chalk.white('\n  What we collect (and nothing else):'));
   const fields: [string, string][] = [
-    ['command', 'The command you ran (e.g., "sync", "stats")'],
-    ['subcommand', 'Subcommand if any (e.g., "cost", "today")'],
-    ['success', 'Whether it succeeded'],
-    ['cliVersion', preview.cliVersion],
-    ['nodeVersion', preview.nodeVersion],
+    ['distinct_id', `${preview.distinct_id} (stable hash of hostname+username, never transmitted as PII)`],
+    ['cli_version', String(preview.cli_version)],
+    ['node_version', String(preview.node_version)],
     ['os', `${preview.os} (${preview.arch})`],
-    ['providers', `[${preview.providers.join(', ')}]`],
-    ['sessionBucket', preview.sessionCountBucket],
-    ['dataSource', preview.dataSource],
-    ['hasHook', String(preview.hasHook)],
+    ['providers', JSON.stringify(preview.installed_providers)],
+    ['total_sessions', String(preview.total_sessions)],
+    ['has_hook', String(preview.has_hook)],
   ];
 
   for (const [key, value] of fields) {
-    console.log(chalk.gray(`    ${key.padEnd(16)} ${value}`));
+    console.log(chalk.gray(`    ${key.padEnd(18)} ${value}`));
   }
 
   console.log(chalk.white('\n  What we NEVER collect:'));
   console.log(chalk.gray('    File paths, project names, session content, API keys,'));
-  console.log(chalk.gray('    git URLs, hostnames, or anything personally identifiable.'));
+  console.log(chalk.gray('    git URLs, raw hostnames/usernames, or anything personally identifiable.'));
 
-  // Only show the live event preview when telemetry is on — if it's off there
-  // is nothing to preview and showing it could be confusing.
+  // Only show the live event preview when telemetry is on
   if (enabled) {
     console.log(chalk.white('\n  Event preview (what would be sent now):'));
     console.log(chalk.gray(`    ${JSON.stringify(preview, null, 2).split('\n').join('\n    ')}`));

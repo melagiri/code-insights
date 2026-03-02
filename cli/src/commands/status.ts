@@ -78,5 +78,5 @@ export async function statusCommand(): Promise<void> {
   }
 
   console.log('');
-  trackEvent('status', true);
+  trackEvent('cli_status', { success: true });
 }

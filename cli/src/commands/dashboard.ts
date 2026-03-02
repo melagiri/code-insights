@@ -93,7 +93,7 @@ export async function dashboardCommand(options: DashboardOptions): Promise<void>
 
     spinner.stop();
 
-    trackEvent('dashboard', true, 'started');
+    trackEvent('cli_dashboard', { port: port, success: true });
     await startServer({ port, staticDir, openBrowser: options.open });
   } catch (err) {
     spinner.fail('Failed to start dashboard server.');

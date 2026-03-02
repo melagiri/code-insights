@@ -54,7 +54,7 @@ app.post('/markdown', async (c) => {
   }
 
   const markdown = lines.join('\n');
-  trackEvent('export', true, 'markdown');
+  trackEvent('export_run', { format: 'markdown', session_count: sessions.length, success: true });
   c.header('Content-Type', 'text/markdown');
   return c.body(markdown);
 });

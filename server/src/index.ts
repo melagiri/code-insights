@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { existsSync, readFileSync } from 'fs';
 import { relative, join } from 'path';
 import { openUrl } from '@code-insights/cli/utils/browser';
+import { shutdownTelemetry } from '@code-insights/cli/utils/telemetry';
 import projectsRouter from './routes/projects.js';
 import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
@@ -12,6 +13,7 @@ import analysisRouter from './routes/analysis.js';
 import analyticsRouter from './routes/analytics.js';
 import configRouter from './routes/config.js';
 import exportRouter from './routes/export.js';
+import telemetryRouter from './routes/telemetry.js';
 
 export interface ServerOptions {
   port: number;
@@ -47,6 +49,7 @@ export function createApp(): Hono {
   app.route('/api/analytics', analyticsRouter);
   app.route('/api/config', configRouter);
   app.route('/api/export', exportRouter);
+  app.route('/api/telemetry', telemetryRouter);
 
   // Health check
   app.get('/api/health', (c) => c.json({ ok: true, version: '0.1.0' }));
@@ -102,14 +105,18 @@ export async function startServer(options: ServerOptions): Promise<void> {
     );
   }
 
-  // Graceful shutdown: just call process.exit(0).
-  // The process 'exit' handler in cli/src/db/client.ts already calls closeDb()
-  // which runs WAL checkpoint. Calling closeDb() here would double-close.
-  const shutdown = () => {
+  // Graceful shutdown: flush PostHog events before exit, then let the process
+  // 'exit' handler in cli/src/db/client.ts run WAL checkpoint via closeDb().
+  // 3s timeout guards against PostHog SDK stalling on network issues.
+  const shutdown = async () => {
+    await Promise.race([
+      shutdownTelemetry(),
+      new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+    ]);
     process.exit(0);
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => { void shutdown(); });
+  process.on('SIGTERM', () => { void shutdown(); });
 
   serve({ fetch: app.fetch, port }, (info) => {
     const url = `http://localhost:${info.port}`;
