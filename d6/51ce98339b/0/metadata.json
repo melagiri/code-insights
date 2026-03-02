@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d651ce98339b",
+  "session_id": "695ea4b4-f904-4d7f-bfac-1fab3774471a",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-02T11:13:56.003432Z",
+  "branch": "fix/dashboard-stats-and-posthog",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/llm/prompts.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "33d2042bc470",
+  "token_usage": {
+    "input_tokens": 339,
+    "cache_creation_tokens": 199572,
+    "cache_read_tokens": 13582322,
+    "output_tokens": 46325,
+    "api_call_count": 124
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-02T11:13:55.28417Z",
+    "agent_lines": 0,
+    "human_added": 40,
+    "human_modified": 14,
+    "human_removed": 0,
+    "total_committed": 40,
+    "agent_percentage": 0
+  }
+}

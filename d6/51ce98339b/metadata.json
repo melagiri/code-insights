@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d651ce98339b",
+  "strategy": "manual-commit",
+  "branch": "fix/dashboard-stats-and-posthog",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/llm/prompts.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d6/51ce98339b/0/metadata.json",
+      "transcript": "/d6/51ce98339b/0/full.jsonl",
+      "context": "/d6/51ce98339b/0/context.md",
+      "content_hash": "/d6/51ce98339b/0/content_hash.txt",
+      "prompt": "/d6/51ce98339b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 339,
+    "cache_creation_tokens": 199572,
+    "cache_read_tokens": 13582322,
+    "output_tokens": 46325,
+    "api_call_count": 124
+  }
+}
