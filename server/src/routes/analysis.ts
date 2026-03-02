@@ -356,7 +356,7 @@ app.post('/recurring', async (c) => {
     });
     trackEvent('insight_generated', {
       type: 'recurring',
-      count: result.insights.length,
+      count: result.groups.length,
     });
   }
   return c.json(result, result.success ? 200 : 422);
