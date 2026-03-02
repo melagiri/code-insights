@@ -1,0 +1,266 @@
+We enabled posthog recently for capturing errors and exceptions.. but looks like it is not working..
+
+Log:
+code-insights dashboard
+
+   ____          _        ___           _       _     _
+  / ___|___   __| | ___  |_ _|_ __  ___(_) __ _| |__ | |_ ___
+ | |   / _ \ / _` |/ _ \  | || '_ \/ __| |/ _` | '_ \| __/ __|
+ | |__| (_) | (_| |  __/  | || | | \__ \ | (_| | | | | |_\__ \
+  \____\___/ \__,_|\___| |___|_| |_|___/_|\__, |_| |_|\__|___/
+                                           |___/ v3.3.1
+
+  Dashboard:  http://localhost:7890
+  Press Ctrl+C to stop
+
+  Code Insights dashboard running at http://localhost:7890
+Failed to parse analysis response: SyntaxError: Expected ',' or ']' after array element in JSON at position 5219 (line 54 column 6)
+    at JSON.parse (<anonymous>)
+    at parseAnalysisResponse (file:///Users/melagiri/.nvm/versions/node/v22.21.1/lib/node_modules/@code-insights/cli/server-dist/llm/prompts.js:144:23)
+    at analyzeSession (file:///Users/melagiri/.nvm/versions/node/v22.21.1/lib/node_modules/@code-insights/cli/server-dist/llm/analysis.js:84:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/melagiri/.nvm/versions/node/v22.21.1/lib/node_modules/@code-insights/cli/server-dist/routes/analysis.js:99:28
+    at async run (file:///Users/melagiri/.nvm/versions/node/v22.21.1/lib/node_modules/@code-insights/cli/node_modules/hono/dist/helper/streaming/sse.js:25:5)
+
+this did not generate anything on posthog site... investigate
+
+---
+
+also, we may be need some additional data for these errors to pin point exact problem.. can we capture first few and last few lines of llm response to make our investigations better?
+
+---
+
+yes
+
+---
+
+Also, the dashboard cards aren't working properly.. the tool calls count and coding time shows 0. fix these 2 and also verify if others are showing values accurately
+
+---
+
+yes
+
+---
+
+[Request interrupted by user]
+
+---
+
+fix them all now. the current changes are not committed yet.. so create a fix branch and push all of them and then work on the newly identified issues as well in same branch.. let this be a test issues fix branch
+
+---
+
+I also think the 30d filter is a stretch, can we also introduce 7d filter and set that as default in dashboard and analytics page as well?
+
+---
+
+create a PR for all the changes and run a round of review
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 88
+
+You are setting up a triple-layer code review for PR `88`. This can be used standalone or as part of a `/start-feature` team workflow.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 88` to get PR title, description, and diff stats.
+Use `gh pr diff 88` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Decide if Wild Card reviewer is needed (see criteria below)
+
+---
+
+## Step 2: Determine Review Scope
+
+**Invoke Wild Card (3rd reviewer) if ANY of these apply:**
+- New feature with multiple files changed
+- Complex business logic
+- Schema impact (types.ts, SQLite migrations, server API changes)
+- Architectural changes
+- 200+ lines of changes
+
+**Skip Wild Card if ALL of these apply:**
+- Simple bug fix (< 50 lines)
+- Single file change
+- Straightforward UI/component change
+- Config/CI changes only
+
+---
+
+## Step 3: Run Parallel Independent Reviews
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+**Launch TA Insider Review:**
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #88 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 88
+  Also fetch the PR details: gh pr view 88
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Outsider Review:**
+```
+Task {
+  name: "outsider-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent OUTSIDER review of PR #88 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 88
+
+  Review for:
+  - Security issues (XSS, injection, auth bypass)
+  - Best practices (React, TypeScript, Node.js)
+  - Logic bugs and edge cases
+  - Performance concerns
+  - Accessibility issues
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Wild Card Review (if applicable):**
+```
+Task {
+  name: "wildcard-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent WILD CARD review of PR #88 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 88
+
+  Your role is to provide a fresh perspective with NO constraints:
+  - Challenge assumptions in the implementation
+  - Look for edge cases others might miss
+  - Question whether the approach is the simplest that could work
+  - Check for hidden complexity or tech debt being introduced
+  - Look at error handling from a user's perspective
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #88.
+
+  The orchestrator will provide you with the independent review outputs.
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - FIX NOW items
+  - NOT APPLICABLE items with technical rationale
+  - ESCALATE TO FOUNDER items with reason
+  ### Final Verdict",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results
+
+After synthesis is complete:
+
+1. **If part of a /start-feature team**: Send the consolidated review to the dev-agent via SendMessage. Mark the review task as completed.
+
+2. **If standalone**: Present the consolidated review to the user. Ask if they want to:
+   - Have the review summary posted to the GitHub PR
+   - Have fixes implemented automatically
+
+3. **Post review summary to GitHub PR** using `gh pr comment`:
+
+```bash
+gh pr comment 88 --body "$(cat <<'EOF'
+## Triple-Layer Code Review Summary
+
+### Reviewers
+| Role | Focus |
+|------|-------|
+| TA (Insider) | Pattern compliance, schema impact, architecture |
+| Outsider | Security, best practices, logic bugs |
+| Wild Card | Edge cases, fresh perspective |
+
+### Issues Found & Resolution
+#### FIX NOW
+[List from synthesis]
+
+#### NOT APPLICABLE
+[List with technical rationale]
+
+### Verification
+[Status of fixes if any were applied]
+
+**Review complete. [Ready for merge / Changes required].**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark outsider comments as "NOT APPLICABLE" with technical justification
+- **Always post summary to GitHub PR** — this creates the audit trail

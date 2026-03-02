@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "c8600ae7c7ea",
+  "strategy": "manual-commit",
+  "branch": "fix/dashboard-stats-and-posthog",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "dashboard/src/pages/DashboardPage.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c8/600ae7c7ea/0/metadata.json",
+      "transcript": "/c8/600ae7c7ea/0/full.jsonl",
+      "context": "/c8/600ae7c7ea/0/context.md",
+      "content_hash": "/c8/600ae7c7ea/0/content_hash.txt",
+      "prompt": "/c8/600ae7c7ea/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 315,
+    "cache_creation_tokens": 143760,
+    "cache_read_tokens": 11454685,
+    "output_tokens": 37149,
+    "api_call_count": 104
+  }
+}
