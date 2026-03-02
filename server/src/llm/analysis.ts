@@ -28,7 +28,7 @@ export type { SQLiteMessageRow };
 
 // Maximum tokens to send to LLM (leaving room for response)
 const MAX_INPUT_TOKENS = 80000;
-const ANALYSIS_VERSION = '2.0.0';
+const ANALYSIS_VERSION = '3.0.0';
 
 export interface AnalysisProgress {
   phase: 'loading_messages' | 'analyzing' | 'saving';
@@ -499,7 +499,7 @@ function chunkMessages(
     const messageText = [
       message.content,
       message.thinking?.slice(0, 1000) ?? '',
-      ...toolResults.map(r => (r.output || '').slice(0, 200)),
+      ...toolResults.map(r => (r.output || '').slice(0, 500)),
     ].join(' ');
     const messageTokens = estimateTokens(messageText);
 
@@ -574,7 +574,9 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
     bullets: JSON.stringify(response.summary.bullets),
     confidence: 0.9,
     source: 'llm',
-    metadata: null,
+    metadata: response.summary.outcome
+      ? JSON.stringify({ outcome: response.summary.outcome })
+      : null,
     timestamp: session.ended_at,
     created_at: now,
     scope: 'session',
@@ -585,6 +587,18 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
     const confidence = decision.confidence ?? 85;
     if (confidence < 70) continue;
 
+    // Compose content from decomposed fields (with fallback to old flat content)
+    const content = decision.situation && decision.choice
+      ? `${decision.situation} → ${decision.choice}`
+      : decision.content || decision.choice || '';
+
+    // Format alternatives for bullets display
+    const altBullets = Array.isArray(decision.alternatives)
+      ? decision.alternatives.map(a =>
+          typeof a === 'string' ? a : `${a.option}: ${a.rejected_because}`
+        )
+      : [];
+
     insights.push({
       id: randomUUID(),
       session_id: session.id,
@@ -592,14 +606,18 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
       project_name: session.project_name,
       type: 'decision',
       title: decision.title,
-      content: decision.content,
-      summary: decision.content.slice(0, 200),
-      bullets: JSON.stringify(decision.alternatives || []),
+      content,
+      summary: (decision.choice || content).slice(0, 200),
+      bullets: JSON.stringify(altBullets),
       confidence: confidence / 100,
       source: 'llm',
       metadata: JSON.stringify({
+        situation: decision.situation,
+        choice: decision.choice,
         reasoning: decision.reasoning,
         alternatives: decision.alternatives,
+        trade_offs: decision.trade_offs,
+        revisit_when: decision.revisit_when,
         evidence: decision.evidence,
       }),
       timestamp: session.ended_at,
@@ -613,6 +631,11 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
     const confidence = learning.confidence ?? 80;
     if (confidence < 70) continue;
 
+    // Compose content from decomposed fields (with fallback to old flat content)
+    const content = learning.takeaway
+      ? learning.takeaway
+      : learning.content || '';
+
     insights.push({
       id: randomUUID(),
       session_id: session.id,
@@ -620,12 +643,17 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
       project_name: session.project_name,
       type: 'learning',
       title: learning.title,
-      content: learning.content,
-      summary: learning.content.slice(0, 200),
+      content,
+      summary: content.slice(0, 200),
       bullets: JSON.stringify([]),
       confidence: confidence / 100,
       source: 'llm',
       metadata: JSON.stringify({
+        symptom: learning.symptom,
+        root_cause: learning.root_cause,
+        takeaway: learning.takeaway,
+        applies_when: learning.applies_when,
+        // Backward compat fields
         context: learning.context,
         evidence: learning.evidence,
       }),
