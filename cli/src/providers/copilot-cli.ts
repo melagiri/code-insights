@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import type { SessionProvider } from './types.js';
-import type { ParsedSession, ParsedMessage, ToolCall, ToolResult } from '../types.js';
+import type { ParsedSession, ParsedMessage, ToolCall, ToolResult, SessionUsage } from '../types.js';
 import { generateTitle, detectSessionCharacter } from '../parser/titles.js';
 
 /**
@@ -214,15 +214,24 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
         continue;
       }
 
+      // Extract timestamp from event root first (Copilot CLI stores timestamp at
+      // the envelope level, not inside data). parseTimestamp checks .timestamp,
+      // .createdAt, and .time, so this handles both root and nested formats.
+      const rootTs = parseTimestamp(event as unknown as Record<string, unknown>);
+      if (rootTs) {
+        lastTimestamp = rootTs;
+        if (!firstTimestamp) firstTimestamp = rootTs;
+      }
+
       // Unwrap envelope: support both {type, data} and bare event formats
       const eventType = event.type;
       const data = (event.data || event) as Record<string, unknown>;
 
-      // Extract timestamp if present
-      const ts = parseTimestamp(data);
-      if (ts) {
-        lastTimestamp = ts;
-        if (!firstTimestamp) firstTimestamp = ts;
+      // Also check data-level timestamp as fallback (some events nest it inside data)
+      const dataTs = parseTimestamp(data);
+      if (dataTs) {
+        lastTimestamp = dataTs;
+        if (!firstTimestamp) firstTimestamp = dataTs;
       }
 
       switch (eventType) {
@@ -261,6 +270,26 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
           if (text) {
             currentAssistantText += text + '\n';
           }
+          // Extract tool calls from toolRequests array — this gives canonical IDs
+          // from the assistant turn, before tool.execution_start fires separately.
+          const toolRequests = data.toolRequests as Array<Record<string, unknown>> | undefined;
+          if (toolRequests) {
+            for (const tr of toolRequests) {
+              const tcId = (tr.toolCallId as string) || `copilot-tool-${++toolCounter}`;
+              const tcName = (tr.name as string) || 'unknown_tool';
+              let tcInput: Record<string, unknown> = {};
+              if (typeof tr.arguments === 'string') {
+                try {
+                  tcInput = JSON.parse(tr.arguments);
+                } catch {
+                  tcInput = { raw: tr.arguments };
+                }
+              } else if (tr.arguments && typeof tr.arguments === 'object') {
+                tcInput = tr.arguments as Record<string, unknown>;
+              }
+              currentToolCalls.push({ id: tcId, name: tcName, input: tcInput });
+            }
+          }
           break;
         }
 
@@ -273,11 +302,17 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
         }
 
         case 'tool.execution_start': {
+          // toolCallId is the correct field; data.id doesn't exist in the Copilot CLI format
+          const toolCallId = (data.toolCallId as string) || (data.id as string) || '';
+          // Skip if already tracked from assistant.message toolRequests to avoid duplicates
+          if (toolCallId && currentToolCalls.some(tc => tc.id === toolCallId)) {
+            break;
+          }
           toolCounter++;
           const toolName = (data.toolName as string) || (data.name as string) || 'unknown_tool';
           const toolInput = (data.parameters || data.arguments || {}) as Record<string, unknown>;
           currentToolCalls.push({
-            id: (data.id as string) || `copilot-tool-${toolCounter}`,
+            id: toolCallId || `copilot-tool-${toolCounter}`,
             name: toolName,
             input: toolInput,
           });
@@ -285,6 +320,10 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
         }
 
         case 'tool.execution_complete': {
+          // Extract model info if present in tool completion events
+          if (!model && data.model) {
+            model = data.model as string;
+          }
           // data.result may be an object like {content: "..."} or a plain string
           const rawResult = data.result;
           let toolOutput: string;
@@ -362,6 +401,22 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
     const projectPath = cwd || 'copilot://unknown';
     const projectName = sessionName || path.basename(projectPath);
 
+    // Build usage object if model info was extracted from events.
+    // write.ts reads session.usage?.modelsUsed and session.usage?.primaryModel,
+    // so without this the model columns stay null in SQLite.
+    const sessionUsage: SessionUsage | undefined = model
+      ? {
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          cacheCreationTokens: 0,
+          cacheReadTokens: 0,
+          estimatedCostUsd: 0,
+          modelsUsed: [model],
+          primaryModel: model,
+          usageSource: 'session',
+        }
+      : undefined;
+
     const session: ParsedSession = {
       id: sessionId,
       projectPath,
@@ -379,6 +434,7 @@ function parseCopilotSession(filePath: string): ParsedSession | null {
       gitBranch: null,
       claudeVersion: model || null,
       sourceTool: 'copilot-cli',
+      usage: sessionUsage,
       messages,
     };
 
