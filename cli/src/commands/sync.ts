@@ -111,6 +111,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   let totalSyncedCount = 0;
   let totalMessageCount = 0;
   let totalErrorCount = 0;
+  let totalUpdatedExisting = 0;
 
   for (const provider of providers) {
     const providerName = provider.getProviderName();
@@ -156,16 +157,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
             continue;
           }
 
-          // Check if already exists in SQLite (unless force)
-          if (!options.force) {
-            const exists = sessionExists(session.id);
-            if (exists) {
-              updateSyncState(syncState, filePath, session.id);
-              saveSyncState(syncState);
-              providerSkippedCount++;
-              continue;
-            }
-          }
+          const exists = sessionExists(session.id);
 
           // Write session and messages to SQLite
           insertSessionWithProject(session, !!options.force);
@@ -175,6 +167,10 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
           // so progress survives crashes
           updateSyncState(syncState, filePath, session.id);
           saveSyncState(syncState);
+
+          if (exists && !options.force) {
+            totalUpdatedExisting++;
+          }
 
           providerSyncedCount++;
           providerMessageCount += session.messages.length;
@@ -210,7 +206,11 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   }
 
   // Reconcile usage stats after force sync (skip if nothing changed)
-  if (options.force && (totalSyncedCount > 0 || totalErrorCount > 0)) {
+  const shouldRecalculateUsageStats = options.force
+    ? (totalSyncedCount > 0 || totalErrorCount > 0)
+    : totalUpdatedExisting > 0;
+
+  if (shouldRecalculateUsageStats) {
     spinner.start('Recalculating usage stats...');
     try {
       const result = recalculateUsageStats();
@@ -281,17 +281,21 @@ function filterFilesToSync(files: string[], syncState: SyncState, force?: boolea
     // If file was never synced, sync it
     if (!fileState) return true;
 
-    // For virtual paths (multi-session files), check if this specific session was synced
-    if (sessionFragment && fileState.syncedSessionIds) {
-      return !fileState.syncedSessionIds.includes(sessionFragment);
-    }
-
-    // For regular files, check if modified since last sync
     if (sessionFragment) {
+      // Virtual path (multi-session DB).
+      // If the DB file changed, re-sync all sessions from it.
+      if (fileState.lastModified !== lastModified) return true;
+
+      // Otherwise only sync sessions we haven't seen yet.
+      if (fileState.syncedSessionIds) {
+        return !fileState.syncedSessionIds.includes(sessionFragment);
+      }
+
       // Virtual path but no syncedSessionIds tracked yet — needs sync
       return true;
     }
 
+    // For regular files, check if modified since last sync
     return fileState.lastModified !== lastModified;
   });
 }
