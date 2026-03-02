@@ -182,6 +182,12 @@ export interface ParseError {
   error_type: 'json_parse_error' | 'no_json_found' | 'invalid_structure';
   error_message: string;
   response_length: number;
+  response_preview: string;
+}
+
+function buildResponsePreview(text: string, head = 200, tail = 200): string {
+  if (text.length <= head + tail + 20) return text;
+  return `${text.slice(0, head)}\n...[${text.length - head - tail} chars omitted]...\n${text.slice(-tail)}`;
 }
 
 export type ParseResult<T> =
@@ -201,12 +207,14 @@ function extractJsonPayload(response: string): string | null {
 export function parseAnalysisResponse(response: string): ParseResult<AnalysisResponse> {
   const response_length = response.length;
 
+  const preview = buildResponsePreview(response);
+
   const jsonPayload = extractJsonPayload(response);
   if (!jsonPayload) {
     console.error('No JSON found in analysis response');
     return {
       success: false,
-      error: { error_type: 'no_json_found', error_message: 'No JSON found in analysis response', response_length },
+      error: { error_type: 'no_json_found', error_message: 'No JSON found in analysis response', response_length, response_preview: preview },
     };
   }
 
@@ -218,7 +226,7 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
     console.error('Failed to parse analysis response:', err);
     return {
       success: false,
-      error: { error_type: 'json_parse_error', error_message: msg, response_length },
+      error: { error_type: 'json_parse_error', error_message: msg, response_length, response_preview: preview },
     };
   }
 
@@ -226,7 +234,7 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
     console.error('Invalid analysis response structure');
     return {
       success: false,
-      error: { error_type: 'invalid_structure', error_message: 'Missing or invalid summary field', response_length },
+      error: { error_type: 'invalid_structure', error_message: 'Missing or invalid summary field', response_length, response_preview: preview },
     };
   }
 
@@ -331,12 +339,14 @@ export interface PromptQualityResponse {
 export function parsePromptQualityResponse(response: string): ParseResult<PromptQualityResponse> {
   const response_length = response.length;
 
+  const preview = buildResponsePreview(response);
+
   const jsonPayload = extractJsonPayload(response);
   if (!jsonPayload) {
     console.error('No JSON found in prompt quality response');
     return {
       success: false,
-      error: { error_type: 'no_json_found', error_message: 'No JSON found in prompt quality response', response_length },
+      error: { error_type: 'no_json_found', error_message: 'No JSON found in prompt quality response', response_length, response_preview: preview },
     };
   }
 
@@ -348,7 +358,7 @@ export function parsePromptQualityResponse(response: string): ParseResult<Prompt
     console.error('Failed to parse prompt quality response:', err);
     return {
       success: false,
-      error: { error_type: 'json_parse_error', error_message: msg, response_length },
+      error: { error_type: 'json_parse_error', error_message: msg, response_length, response_preview: preview },
     };
   }
 
@@ -356,7 +366,7 @@ export function parsePromptQualityResponse(response: string): ParseResult<Prompt
     console.error('Invalid prompt quality response: missing efficiencyScore');
     return {
       success: false,
-      error: { error_type: 'invalid_structure', error_message: 'Missing or invalid efficiencyScore field', response_length },
+      error: { error_type: 'invalid_structure', error_message: 'Missing or invalid efficiencyScore field', response_length, response_preview: preview },
     };
   }
 

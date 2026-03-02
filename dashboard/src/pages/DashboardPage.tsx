@@ -134,8 +134,8 @@ export default function DashboardPage() {
           <StatsHero
             totalSessions={dashStats?.session_count ?? sessions.length}
             totalMessages={dashStats?.total_messages ?? 0}
-            totalToolCalls={0}
-            totalDurationMin={0}
+            totalToolCalls={dashStats?.total_tool_calls ?? 0}
+            totalDurationMin={dashStats?.total_duration_min ?? 0}
             totalProjects={projects.length}
             isExact={true}
             totalTokens={totalTokens > 0 ? totalTokens : undefined}

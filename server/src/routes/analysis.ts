@@ -56,6 +56,7 @@ app.post('/session', async (c) => {
       ...baseProperties,
       error_type: result.error_type,
       error_message: result.error,
+      response_preview: result.response_preview,
     };
     trackEvent('analysis_run', errorProperties);
     captureError(new Error(result.error ?? 'analysis_run failed'), errorProperties);
@@ -140,6 +141,7 @@ app.get('/session/stream', async (c) => {
           ...streamBaseProperties,
           error_type: result.error_type,
           error_message: result.error,
+          response_preview: result.response_preview,
         };
         trackEvent('analysis_run', streamErrorProperties);
         captureError(new Error(result.error ?? 'analysis_run stream failed'), streamErrorProperties);
@@ -222,6 +224,7 @@ app.post('/prompt-quality', async (c) => {
       ...pqBaseProperties,
       error_type: result.error_type,
       error_message: result.error,
+      response_preview: result.response_preview,
     };
     trackEvent('analysis_run', pqErrorProperties);
     captureError(new Error(result.error ?? 'prompt_quality analysis failed'), pqErrorProperties);
@@ -304,6 +307,7 @@ app.get('/prompt-quality/stream', async (c) => {
           ...pqStreamBaseProperties,
           error_type: result.error_type,
           error_message: result.error,
+          response_preview: result.response_preview,
         };
         trackEvent('analysis_run', pqStreamErrorProperties);
         captureError(new Error(result.error ?? 'prompt_quality stream failed'), pqStreamErrorProperties);

@@ -32,6 +32,13 @@ app.get('/dashboard', (c) => {
     SELECT
       COUNT(*) AS session_count,
       SUM(message_count) AS total_messages,
+      SUM(tool_call_count) AS total_tool_calls,
+      CAST(COALESCE(SUM(
+        CASE WHEN ended_at IS NOT NULL AND started_at IS NOT NULL
+          THEN (julianday(ended_at) - julianday(started_at)) * 1440
+          ELSE 0
+        END
+      ), 0) AS INTEGER) AS total_duration_min,
       SUM(total_input_tokens) AS total_input_tokens,
       SUM(total_output_tokens) AS total_output_tokens,
       SUM(estimated_cost_usd) AS estimated_cost_usd

@@ -47,6 +47,7 @@ export interface AnalysisResult {
   error?: string;
   error_type?: string;
   response_length?: number;
+  response_preview?: string;
   usage?: {
     inputTokens: number;
     outputTokens: number;
@@ -187,6 +188,7 @@ export async function analyzeSession(
           error: 'Failed to parse LLM response. Please try again.',
           error_type: parsed.error.error_type,
           response_length: parsed.error.response_length,
+          response_preview: parsed.error.response_preview,
         };
       }
 
@@ -286,6 +288,7 @@ export async function analyzePromptQuality(
         error: 'Failed to parse prompt quality analysis. Please try again.',
         error_type: parsed.error.error_type,
         response_length: parsed.error.response_length,
+        response_preview: parsed.error.response_preview,
       };
     }
 

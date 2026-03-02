@@ -168,12 +168,20 @@ export function captureError(error: unknown, properties?: Record<string, unknown
 
   try {
     const { error_type, error_message } = classifyError(error);
+    const exceptionType = error instanceof Error ? error.constructor.name : error_type;
     ph.capture({
       distinctId: getStableMachineId(),
       event: '$exception',
       properties: {
         $exception_message: error_message,
-        $exception_type: error_type,
+        $exception_type: exceptionType,
+        $exception_list: [
+          {
+            type: exceptionType,
+            value: error_message,
+            mechanism: { type: 'generic', handled: true },
+          },
+        ],
         ...(properties ?? {}),
       },
     });

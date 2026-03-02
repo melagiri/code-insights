@@ -137,6 +137,8 @@ export function parseJsonField<T>(value: string | null | undefined, defaultValue
 export interface DashboardStats {
   session_count: number;
   total_messages: number | null;
+  total_tool_calls: number | null;
+  total_duration_min: number | null;
   total_input_tokens: number | null;
   total_output_tokens: number | null;
   estimated_cost_usd: number | null;
