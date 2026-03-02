@@ -20,6 +20,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { ThemeToggle } from './ThemeToggle';
+import { Logo } from '@/components/brand/Logo';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
@@ -64,6 +65,7 @@ export function Header() {
             <SheetContent side="left" className="w-72 p-0 flex flex-col">
               <SheetHeader className="px-4 py-3 border-b">
                 <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
+                  <Logo className="h-4 w-4" />
                   Code Insights
                 </SheetTitle>
                 <SheetDescription className="sr-only">Navigation menu</SheetDescription>
@@ -94,6 +96,7 @@ export function Header() {
 
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
+            <Logo className="h-5 w-5" />
             <span className="font-semibold">Code Insights</span>
           </Link>
 
