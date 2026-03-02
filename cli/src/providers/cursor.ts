@@ -129,7 +129,7 @@ function resolveWorkspacePath(wsDir: string): string | null {
         // folder is a file:// URI like "file:///Users/name/projects/my-app"
         try {
           const url = new URL(data.folder);
-          return url.pathname;
+          return decodeURIComponent(url.pathname);
         } catch {
           // Not a valid URL, try using it as-is
           return data.folder;
@@ -139,6 +139,142 @@ function resolveWorkspacePath(wsDir: string): string | null {
       // Ignore parse errors
     }
   }
+  return null;
+}
+
+/**
+ * Extract the filesystem path from a VSCode URI object.
+ *
+ * Cursor stores code block file references as VSCode URI objects like:
+ *   {"scheme":"file","path":"/abs/path.ts","_fsPath":"/abs/path.ts","fsPath":"/abs/path.ts"}
+ *
+ * Field presence varies across Cursor versions — prefer the most explicit field.
+ */
+function extractFilePath(uri: unknown): string {
+  if (typeof uri === 'string') return uri;
+  if (uri && typeof uri === 'object') {
+    const obj = uri as Record<string, unknown>;
+    // Prefer explicit fs path fields over the generic 'path' which could be URL-encoded
+    if (typeof obj._fsPath === 'string' && obj._fsPath) return obj._fsPath;
+    if (typeof obj.fsPath === 'string' && obj.fsPath) return obj.fsPath;
+    if (typeof obj.path === 'string' && obj.path) return obj.path;
+    // _formatted and external are file:// URLs — extract the path component
+    for (const urlField of ['_formatted', 'external'] as const) {
+      const val = obj[urlField];
+      if (typeof val === 'string' && val.startsWith('file://')) {
+        try {
+          return decodeURIComponent(new URL(val).pathname);
+        } catch {
+          // Fall through to next field
+        }
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Extract plain text from a Lexical editor JSON structure.
+ *
+ * Cursor's composer uses the Lexical editor for user input. When a user message
+ * is stored as `richText`, it's a Lexical JSON tree rather than plain text:
+ *   {"root":{"children":[{"children":[{"text":"actual message"}],"type":"paragraph"}]}}
+ *
+ * We recursively collect all "text" leaf nodes and join them with newlines.
+ * Returns null if the input is not valid Lexical JSON.
+ */
+function extractLexicalText(input: unknown): string | null {
+  // Accept both pre-parsed objects and JSON strings
+  let parsed: unknown = input;
+  if (typeof input === 'string') {
+    // Quick guard: Lexical JSON always starts with {"root"
+    if (!input.startsWith('{"root"')) return null;
+    try {
+      parsed = JSON.parse(input);
+    } catch {
+      return null;
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return null;
+  const obj = parsed as Record<string, unknown>;
+  if (!obj.root || typeof obj.root !== 'object') return null;
+  const root = obj.root as Record<string, unknown>;
+  if (!Array.isArray(root.children)) return null;
+
+  const text = collectLexicalText(root.children as Array<Record<string, unknown>>).trim();
+  return text.length > 0 ? text : null;
+}
+
+function collectLexicalText(nodes: Array<Record<string, unknown>>): string {
+  const parts: string[] = [];
+  for (const node of nodes) {
+    if (typeof node.text === 'string' && node.text) {
+      parts.push(node.text);
+    }
+    if (node.type === 'linebreak') {
+      parts.push('\n');
+    }
+    if (Array.isArray(node.children)) {
+      const childText = collectLexicalText(node.children as Array<Record<string, unknown>>);
+      if (childText) {
+        parts.push(childText);
+        // Preserve paragraph boundaries for block-level nodes
+        if (typeof node.type === 'string' && ['paragraph', 'heading', 'list-item', 'quote'].includes(node.type)) {
+          parts.push('\n');
+        }
+      }
+    }
+  }
+  return parts.join('');
+}
+
+/**
+ * Extract a project path from composerData by inspecting file paths in code blocks
+ * and matching against relative file paths in relevantFiles.
+ *
+ * This is the fallback for sessions in the global DB where workspace.json is unavailable.
+ * We find absolute paths in codeBlock URIs, then strip the relative portion to get the root.
+ *
+ * Example:
+ *   codeBlock uri.path = "/Users/name/projects/crm/backend/auth.ts"
+ *   relevantFile = "backend/auth.ts"
+ *   → project root = "/Users/name/projects/crm"
+ */
+function extractProjectPathFromComposerData(composerData: Record<string, unknown>): string | null {
+  const conversation = composerData.conversation;
+  if (!Array.isArray(conversation)) return null;
+  return extractProjectPathFromBubbles(conversation as Array<Record<string, unknown>>);
+}
+
+/**
+ * Extract a project path from raw bubble objects.
+ *
+ * Works the same way as extractProjectPathFromComposerData but operates on a
+ * pre-loaded bubble array. Used for fullConversationHeadersOnly sessions where
+ * codeBlocks live in individual bubbleId rows (not inline in composerData).
+ */
+function extractProjectPathFromBubbles(bubbles: Array<Record<string, unknown>>): string | null {
+  for (const bubble of bubbles) {
+    const codeBlocks = bubble.codeBlocks;
+    const relevantFiles = bubble.relevantFiles;
+
+    if (Array.isArray(codeBlocks) && Array.isArray(relevantFiles) && relevantFiles.length > 0) {
+      for (const block of codeBlocks as Array<Record<string, unknown>>) {
+        const absPath = extractFilePath(block.uri);
+        if (!absPath || !path.isAbsolute(absPath)) continue;
+
+        for (const rel of relevantFiles as string[]) {
+          if (typeof rel !== 'string') continue;
+          const normalRel = rel.replace(/\\/g, '/');
+          const normalAbs = absPath.replace(/\\/g, '/');
+          if (normalAbs.endsWith('/' + normalRel)) {
+            return normalAbs.slice(0, normalAbs.length - normalRel.length - 1);
+          }
+        }
+      }
+    }
+  }
+
   return null;
 }
 
@@ -271,7 +407,8 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
     // Extract messages from composer data.
     // Pass db handle for the fullConversationHeadersOnly format where
     // bubble content is stored in separate cursorDiskKV rows.
-    let messages = extractMessages(composerData, composerId, db);
+    // rawBubbles is retained for project path inference (extractProjectPathFromBubbles).
+    let [messages, rawBubbles] = extractMessages(composerData, composerId, db);
 
     // Workspace DBs only store composer metadata (composerId, name, timestamps) in ItemTable.
     // Full conversation data (with bubbles) lives in the global DB's cursorDiskKV table.
@@ -286,7 +423,7 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
 
           if (globalRow?.value) {
             const globalComposerData = JSON.parse(globalRow.value) as Record<string, unknown>;
-            messages = extractMessages(globalComposerData, composerId, globalDb);
+            [messages, rawBubbles] = extractMessages(globalComposerData, composerId, globalDb);
             // Prefer composerData from global DB for richer metadata
             if (messages.length > 0) {
               composerData = globalComposerData;
@@ -300,10 +437,22 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
 
     if (messages.length === 0) return null;
 
-    // Resolve project path from workspace directory
-    const wsDir = path.dirname(dbPath); // e.g., workspaceStorage/<hash>/
-    const projectPath = resolveWorkspacePath(wsDir) || 'cursor://global';
-    const projectName = path.basename(projectPath);
+    // Resolve project path — try multiple strategies in order of reliability:
+    //   1. workspace.json in the workspace hash directory (works for workspace DB sessions)
+    //   2. Extract from codeBlock URIs + relevantFiles in inline composerData.conversation
+    //   3. Extract from raw bubbles (covers fullConversationHeadersOnly where codeBlocks
+    //      live in individual bubbleId DB rows, not inline in composerData)
+    //   4. Fallback to cursor://workspace-<hash8> so sessions stay distinct per-workspace
+    const wsDir = path.dirname(dbPath); // workspaceStorage/<hash>/ or globalStorage/
+    const workspaceHash = path.basename(wsDir); // the hash directory name (or "globalStorage")
+    const projectPath =
+      resolveWorkspacePath(wsDir) ||
+      extractProjectPathFromComposerData(composerData) ||
+      extractProjectPathFromBubbles(rawBubbles) ||
+      `cursor://workspace-${workspaceHash.slice(0, 8)}`;
+    const projectName = projectPath.startsWith('cursor://')
+      ? projectPath.replace('cursor://', '')
+      : path.basename(projectPath);
 
     // Build timestamps from messages
     const timestamps = messages.map(m => m.timestamp.getTime()).filter(t => t > 0);
@@ -401,32 +550,33 @@ function findMessageArray(composerData: Record<string, unknown>): [Array<Record<
  * 2. Headers-only (Cursor v3+/v6): composerData has `fullConversationHeadersOnly` with bubble IDs
  *    and types only. Full bubble content is stored in separate `bubbleId:<composerId>:<bubbleId>`
  *    rows in the same cursorDiskKV table.
+ *
+ * Returns [parsedMessages, rawBubbles]. rawBubbles is the unprocessed bubble array used by
+ * extractProjectPathFromBubbles() for project path inference.
  */
 function extractMessages(
   composerData: Record<string, unknown>,
   sessionId: string,
   db: InstanceType<typeof Database> | null,
-): ParsedMessage[] {
-  const messages: ParsedMessage[] = [];
-
+): [ParsedMessage[], Array<Record<string, unknown>>] {
   // Strategy 1: Try fullConversationHeadersOnly (newer Cursor format, ~72% of sessions)
   const headers = composerData.fullConversationHeadersOnly;
   if (Array.isArray(headers) && headers.length > 0 && db) {
-    const conversation = loadBubblesFromHeaders(
+    const rawBubbles = loadBubblesFromHeaders(
       headers as Array<{ bubbleId: string; type: number }>,
       sessionId,
       db,
     );
-    if (conversation.length > 0) {
-      return parseBubbles(conversation, sessionId);
+    if (rawBubbles.length > 0) {
+      return [parseBubbles(rawBubbles, sessionId), rawBubbles];
     }
     // If all bubble lookups failed, fall through to inline check
   }
 
   // Strategy 2: Try inline message arrays (older Cursor format)
-  const [conversation, keyUsed] = findMessageArray(composerData);
+  const [rawBubbles, keyUsed] = findMessageArray(composerData);
 
-  if (conversation.length === 0) {
+  if (rawBubbles.length === 0) {
     // No messages found — log top-level keys to help diagnose future Cursor format changes.
     // Only log when the composerData has keys but none match our known formats
     // (empty objects = legitimately empty sessions, not a format issue).
@@ -443,7 +593,7 @@ function extractMessages(
         );
       }
     }
-    return messages;
+    return [[], []];
   }
 
   // Log which key was used when it's not the primary expected key — helps track format drift
@@ -455,7 +605,7 @@ function extractMessages(
     }
   }
 
-  return parseBubbles(conversation, sessionId);
+  return [parseBubbles(rawBubbles, sessionId), rawBubbles];
 }
 
 /**
@@ -506,8 +656,35 @@ function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: s
       type = 'system';
     }
 
-    // Extract content — prefer richText (markdown), fall back to text
-    const content = ((bubble.richText || bubble.text || bubble.content || '') as string).toString();
+    // Extract content.
+    //
+    // Cursor stores user messages with both `text` (plain string) and `richText`
+    // (a Lexical editor JSON tree). We prefer `text` when it exists since it's
+    // already the plain-text equivalent. Only fall back to parsing the Lexical
+    // JSON when `text` is absent or empty.
+    //
+    // Assistant messages typically only have `text` or `content`.
+    let content: string;
+    const textField = (bubble.text as string | undefined) || '';
+    const contentField = (bubble.content as string | undefined) || '';
+
+    if (textField) {
+      content = textField;
+    } else if (bubble.richText) {
+      // richText may be a Lexical JSON object (user bubbles) or a plain string (older formats).
+      // Try Lexical extraction first; fall back to coercing whatever value we have to a string.
+      const lexical = extractLexicalText(bubble.richText);
+      if (lexical !== null) {
+        content = lexical;
+      } else {
+        content = typeof bubble.richText === 'string'
+          ? bubble.richText
+          : '';
+      }
+    } else {
+      content = contentField;
+    }
+
     if (!content && type !== 'system') continue; // Skip empty messages
 
     // Truncate to 10,000 chars (same as Claude Code parser)
@@ -540,17 +717,19 @@ function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: s
       }
     }
 
-    // Extract tool calls from codeBlocks if they look like file edits
-    // (Cursor stores applied code edits as codeBlocks)
+    // Extract tool calls from codeBlocks if they look like file edits.
+    // Cursor stores applied code edits as codeBlocks where `uri` is a VSCode URI
+    // object (not a plain string). We use extractFilePath() to get the actual path.
     if (bubble.codeBlocks && Array.isArray(bubble.codeBlocks)) {
       for (const block of bubble.codeBlocks as Array<Record<string, unknown>>) {
-        if (block.uri || block.filePath) {
+        const filePath = extractFilePath(block.uri) || (typeof block.filePath === 'string' ? block.filePath : '');
+        if (filePath) {
           toolCalls.push({
             id: `codeblock-${i}-${toolCalls.length}`,
             name: 'Edit',
             input: {
-              file_path: (block.uri || block.filePath || '') as string,
-              code: ((block.code || '') as string).slice(0, 1000),
+              file_path: filePath,
+              code: ((block.code || block.content || '') as string).slice(0, 1000),
             },
           });
         }
