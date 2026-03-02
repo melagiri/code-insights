@@ -210,28 +210,23 @@ export interface AnalysisResponse {
   };
   decisions: Array<{
     title: string;
-    situation: string;
-    choice: string;
+    situation?: string;
+    choice?: string;
     reasoning: string;
     alternatives?: Array<{ option: string; rejected_because: string }>;
     trade_offs?: string;
     revisit_when?: string;
     confidence?: number;
     evidence?: string[];
-    // Backward compat: old responses may have flat content/alternatives
-    content?: string;
   }>;
   learnings: Array<{
     title: string;
-    symptom: string;
-    root_cause: string;
-    takeaway: string;
+    symptom?: string;
+    root_cause?: string;
+    takeaway?: string;
     applies_when?: string;
     confidence?: number;
     evidence?: string[];
-    // Backward compat: old responses may have flat content/context
-    content?: string;
-    context?: string;
   }>;
 }
 
@@ -313,14 +308,18 @@ export const PROMPT_QUALITY_SYSTEM_PROMPT = `You are a prompt engineering coach 
 You will identify:
 1. **Wasted turns**: User messages that led to clarifications, corrections, or repeated instructions because the original prompt was unclear, missing context, or too vague.
 2. **Anti-patterns**: Recurring bad habits in the user's prompting style, with specific fixes.
-3. **Efficiency score**: A 0-100 rating of how optimally the user communicated.
-4. **Actionable tips**: Specific improvements the user can make.
+3. **Session traits**: Higher-level behavioral patterns about how the session was structured and managed.
+4. **Efficiency score**: A 0-100 rating of how optimally the user communicated.
+5. **Actionable tips**: Specific improvements the user can make.
 
 Before evaluating, mentally walk through the conversation and identify:
 1. Each time the assistant asked for clarification that could have been avoided
 2. Each time the user corrected the assistant's interpretation
 3. Each time the user repeated an instruction they gave earlier
-These are your candidate wasted turns. Only include them if the information was reasonably available to the user at the time they wrote the original message.
+4. Whether the session covers too many unrelated objectives (context drift / session bloat)
+5. Whether the user provided critical context or requirements late that should have been mentioned upfront
+6. Whether the user discussed the plan/approach before jumping into implementation, or dove straight into code
+These are your candidate findings. Only include them if they are genuinely actionable.
 
 Guidelines:
 - Focus on USER messages only — don't critique the assistant's responses
@@ -332,10 +331,10 @@ Guidelines:
 - A score of 50 means about half the messages could have been more efficient
 
 Length Guidance:
-- Max 5 wasted turns, max 3 anti-patterns, max 5 tips
+- Max 5 wasted turns, max 3 anti-patterns, max 3 session traits, max 5 tips
 - suggestedRewrite must be a complete, usable prompt — not vague meta-advice
 - overallAssessment: 2-3 sentences
-- Total response: stay under 1500 tokens
+- Total response: stay under 2000 tokens
 
 Respond with valid JSON only, wrapped in <json>...</json> tags. Do not include any other text.`;
 
@@ -376,11 +375,27 @@ Evaluate the user's prompting quality and respond with this JSON format:
       "fix": "Include the file path, function name, and expected vs actual behavior in the initial request"
     }
   ],
+  "sessionTraits": [
+    {
+      "trait": "context_drift | objective_bloat | late_context | no_planning | good_structure",
+      "severity": "high | medium | low",
+      "description": "What was observed and why it matters",
+      "evidence": "User#3 switched from auth to styling, then back to auth at User#12",
+      "suggestion": "Break into separate sessions: one for auth, one for styling"
+    }
+  ],
   "tips": [
     "Always include file paths when asking to modify code",
     "Provide error messages verbatim when reporting bugs"
   ]
 }
+
+Session trait definitions:
+- **context_drift**: Session covers too many unrelated objectives, causing the AI to lose context and produce lower quality output
+- **objective_bloat**: Too many different tasks crammed into one session instead of focused, single-purpose sessions
+- **late_context**: Critical requirements, constraints, or context provided late in the conversation that should have been mentioned upfront — causing rework or wasted turns
+- **no_planning**: User jumped straight into implementation without discussing approach, requirements, or plan — leading to course corrections mid-session
+- **good_structure**: Session was well-structured with clear objectives, upfront context, and logical flow (only include this if truly exemplary)
 
 Rules:
 - messageIndex refers to the 0-based index of the USER message, as labeled in the conversation (e.g., User#0)
@@ -398,8 +413,6 @@ export interface WastedTurn {
   whatWentWrong?: string;
   suggestedRewrite: string;
   turnsWasted?: number;
-  // Backward compat
-  reason?: string;
 }
 
 export interface AntiPattern {
@@ -410,12 +423,21 @@ export interface AntiPattern {
   fix?: string;
 }
 
+export interface SessionTrait {
+  trait: 'context_drift' | 'objective_bloat' | 'late_context' | 'no_planning' | 'good_structure';
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+  evidence?: string;
+  suggestion?: string;
+}
+
 export interface PromptQualityResponse {
   efficiencyScore: number;
   potentialMessageReduction: number;
   overallAssessment: string;
   wastedTurns: WastedTurn[];
   antiPatterns: AntiPattern[];
+  sessionTraits: SessionTrait[];
   tips: string[];
 }
 
@@ -462,6 +484,7 @@ export function parsePromptQualityResponse(response: string): ParseResult<Prompt
   parsed.overallAssessment = parsed.overallAssessment || '';
   parsed.wastedTurns = parsed.wastedTurns || [];
   parsed.antiPatterns = parsed.antiPatterns || [];
+  parsed.sessionTraits = parsed.sessionTraits || [];
   parsed.tips = parsed.tips || [];
 
   return { success: true, data: parsed };

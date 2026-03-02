@@ -114,14 +114,46 @@ export function InsightListItem({ insight, showProject = false, allInsightIds }:
 
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span>Confidence: {Math.round(insight.confidence * 100)}%</span>
-            {Array.isArray(metadata.alternatives) && (metadata.alternatives as string[]).length > 0 && (
+            {Array.isArray(metadata.alternatives) && (metadata.alternatives as unknown[]).length > 0 && (
               <span>
-                Alternatives: {(metadata.alternatives as string[]).join(', ')}
+                Alternatives: {(metadata.alternatives as Array<string | { option: string; rejected_because: string }>)
+                  .map(a => typeof a === 'string' ? a : `${a.option} (${a.rejected_because})`)
+                  .join(', ')}
               </span>
             )}
             {typeof metadata.reasoning === 'string' && metadata.reasoning && (
               <span className="flex-1 min-w-full">
                 Reasoning: {metadata.reasoning}
+              </span>
+            )}
+            {typeof metadata.situation === 'string' && metadata.situation && (
+              <span className="flex-1 min-w-full">
+                Situation: {metadata.situation as string}
+              </span>
+            )}
+            {typeof metadata.trade_offs === 'string' && metadata.trade_offs && (
+              <span className="flex-1 min-w-full">
+                Trade-offs: {metadata.trade_offs as string}
+              </span>
+            )}
+            {typeof metadata.revisit_when === 'string' && metadata.revisit_when && metadata.revisit_when !== 'N/A' && (
+              <span className="flex-1 min-w-full">
+                Revisit when: {metadata.revisit_when as string}
+              </span>
+            )}
+            {typeof metadata.symptom === 'string' && metadata.symptom && (
+              <span className="flex-1 min-w-full">
+                Symptom: {metadata.symptom as string}
+              </span>
+            )}
+            {typeof metadata.root_cause === 'string' && metadata.root_cause && (
+              <span className="flex-1 min-w-full">
+                Root cause: {metadata.root_cause as string}
+              </span>
+            )}
+            {typeof metadata.applies_when === 'string' && metadata.applies_when && (
+              <span className="flex-1 min-w-full">
+                Applies when: {metadata.applies_when as string}
               </span>
             )}
             {Array.isArray(metadata.evidence) && (metadata.evidence as string[]).length > 0 && (

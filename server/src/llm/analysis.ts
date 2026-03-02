@@ -587,17 +587,13 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
     const confidence = decision.confidence ?? 85;
     if (confidence < 70) continue;
 
-    // Compose content from decomposed fields (with fallback to old flat content)
     const content = decision.situation && decision.choice
       ? `${decision.situation} → ${decision.choice}`
-      : decision.content || decision.choice || '';
+      : decision.choice || decision.situation || decision.title;
 
-    // Format alternatives for bullets display
-    const altBullets = Array.isArray(decision.alternatives)
-      ? decision.alternatives.map(a =>
-          typeof a === 'string' ? a : `${a.option}: ${a.rejected_because}`
-        )
-      : [];
+    const altBullets = (decision.alternatives || []).map(
+      a => `${a.option}: ${a.rejected_because}`
+    );
 
     insights.push({
       id: randomUUID(),
@@ -631,10 +627,7 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
     const confidence = learning.confidence ?? 80;
     if (confidence < 70) continue;
 
-    // Compose content from decomposed fields (with fallback to old flat content)
-    const content = learning.takeaway
-      ? learning.takeaway
-      : learning.content || '';
+    const content = learning.takeaway || learning.title;
 
     insights.push({
       id: randomUUID(),
@@ -653,8 +646,6 @@ function convertToInsightRows(response: AnalysisResponse, session: SessionData):
         root_cause: learning.root_cause,
         takeaway: learning.takeaway,
         applies_when: learning.applies_when,
-        // Backward compat fields
-        context: learning.context,
         evidence: learning.evidence,
       }),
       timestamp: session.ended_at,
@@ -686,6 +677,7 @@ function convertPromptQualityToInsightRow(response: PromptQualityResponse, sessi
       efficiencyScore: response.efficiencyScore,
       wastedTurns: response.wastedTurns,
       antiPatterns: response.antiPatterns,
+      sessionTraits: response.sessionTraits,
       potentialMessageReduction: response.potentialMessageReduction,
     }),
     timestamp: session.ended_at,
