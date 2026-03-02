@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "9743a31c4b2a",
+  "session_id": "4b4b6503-e360-49f2-80e0-51820d414eb9",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-02T10:12:15.337262Z",
+  "branch": "feature/test-suite-ci-gate",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "cli/src/db/read-write.test.ts",
+    "cli/src/utils/config.test.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    "server/src/llm/prompts.test.ts",
+    "server/src/routes/config.test.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "9a1d792fcd97",
+  "token_usage": {
+    "input_tokens": 29,
+    "cache_creation_tokens": 92156,
+    "cache_read_tokens": 1587514,
+    "output_tokens": 7212,
+    "api_call_count": 21
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-02T10:12:15.196616Z",
+    "agent_lines": 837,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 837,
+    "agent_percentage": 100
+  }
+}

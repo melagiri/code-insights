@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "9743a31c4b2a",
+  "strategy": "manual-commit",
+  "branch": "feature/test-suite-ci-gate",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "cli/src/db/read-write.test.ts",
+    "cli/src/utils/config.test.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    "server/src/llm/prompts.test.ts",
+    "server/src/routes/config.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/97/43a31c4b2a/0/metadata.json",
+      "transcript": "/97/43a31c4b2a/0/full.jsonl",
+      "context": "/97/43a31c4b2a/0/context.md",
+      "content_hash": "/97/43a31c4b2a/0/content_hash.txt",
+      "prompt": "/97/43a31c4b2a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 29,
+    "cache_creation_tokens": 92156,
+    "cache_read_tokens": 1587514,
+    "output_tokens": 7212,
+    "api_call_count": 21
+  }
+}
