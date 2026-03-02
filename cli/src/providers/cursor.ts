@@ -188,7 +188,7 @@ function extractLexicalText(input: unknown): string | null {
   let parsed: unknown = input;
   if (typeof input === 'string') {
     // Quick guard: Lexical JSON always starts with {"root"
-    if (!input.startsWith('{') || !input.includes('"root"')) return null;
+    if (!input.startsWith('{"root"')) return null;
     try {
       parsed = JSON.parse(input);
     } catch {
@@ -201,7 +201,7 @@ function extractLexicalText(input: unknown): string | null {
   const root = obj.root as Record<string, unknown>;
   if (!Array.isArray(root.children)) return null;
 
-  const text = collectLexicalText(root.children as Array<Record<string, unknown>>);
+  const text = collectLexicalText(root.children as Array<Record<string, unknown>>).trim();
   return text.length > 0 ? text : null;
 }
 
@@ -216,7 +216,13 @@ function collectLexicalText(nodes: Array<Record<string, unknown>>): string {
     }
     if (Array.isArray(node.children)) {
       const childText = collectLexicalText(node.children as Array<Record<string, unknown>>);
-      if (childText) parts.push(childText);
+      if (childText) {
+        parts.push(childText);
+        // Preserve paragraph boundaries for block-level nodes
+        if (typeof node.type === 'string' && ['paragraph', 'heading', 'list-item', 'quote'].includes(node.type)) {
+          parts.push('\n');
+        }
+      }
     }
   }
   return parts.join('');
@@ -673,7 +679,7 @@ function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: s
       } else {
         content = typeof bubble.richText === 'string'
           ? bubble.richText
-          : String(bubble.richText ?? '');
+          : '';
       }
     } else {
       content = contentField;
