@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "c383a5c757d7",
+  "session_id": "695ea4b4-f904-4d7f-bfac-1fab3774471a",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-02T11:31:19.716048Z",
+  "branch": "feature/richer-analysis-prompts",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/llm/analysis.ts",
+    "server/src/llm/prompts.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "61da3ca211d5",
+  "token_usage": {
+    "input_tokens": 418,
+    "cache_creation_tokens": 274505,
+    "cache_read_tokens": 21876903,
+    "output_tokens": 73721,
+    "api_call_count": 191
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-02T11:31:18.613244Z",
+    "agent_lines": 0,
+    "human_added": 120,
+    "human_modified": 31,
+    "human_removed": 0,
+    "total_committed": 120,
+    "agent_percentage": 0
+  }
+}
