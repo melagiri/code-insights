@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d24adcc2f862",
+  "strategy": "manual-commit",
+  "branch": "chore/cleanup-transient-docs",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "CLAUDE.md",
+    "docs/MULTI-TOOL-VISION.md",
+    "docs/ROADMAP.md",
+    "docs/VISION.md",
+    "docs/archive/agent-memories/devtools-cofounder-memory.md",
+    "docs/archive/agent-memories/technical-architect-memory.md",
+    "docs/archive/agent-memories/ux-engineer-memory.md",
+    "docs/plans/2026-02-26-cli-v1.2.0-launch-design.md",
+    "docs/plans/2026-02-26-cli-v1.2.0-launch.md",
+    "docs/plans/2026-02-27-local-first-migration.md",
+    "docs/plans/2026-02-27-phase4-feature-parity-design.md",
+    "docs/plans/2026-02-27-phase4-implementation-plan.md",
+    "docs/plans/2026-02-28-agent-prompt-alignment-design.md",
+    "docs/plans/2026-03-02-posthog-telemetry-migration-design.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d2/4adcc2f862/0/metadata.json",
+      "transcript": "/d2/4adcc2f862/0/full.jsonl",
+      "context": "/d2/4adcc2f862/0/context.md",
+      "content_hash": "/d2/4adcc2f862/0/content_hash.txt",
+      "prompt": "/d2/4adcc2f862/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 53,
+    "cache_creation_tokens": 66312,
+    "cache_read_tokens": 2968758,
+    "output_tokens": 13188,
+    "api_call_count": 44
+  }
+}
