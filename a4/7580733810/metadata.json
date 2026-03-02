@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "a47580733810",
+  "strategy": "manual-commit",
+  "branch": "master",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/plans/2026-03-02-analysis-flow-fix-design.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/a4/7580733810/0/metadata.json",
+      "transcript": "/a4/7580733810/0/full.jsonl",
+      "context": "/a4/7580733810/0/context.md",
+      "content_hash": "/a4/7580733810/0/content_hash.txt",
+      "prompt": "/a4/7580733810/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 114,
+    "cache_creation_tokens": 181416,
+    "cache_read_tokens": 6306234,
+    "output_tokens": 16912,
+    "api_call_count": 82
+  }
+}
