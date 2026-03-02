@@ -66,7 +66,7 @@ export function DashboardActivityChart({ data, range, onRangeChange }: Dashboard
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[250px]">
+        <div className="h-[200px]">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>

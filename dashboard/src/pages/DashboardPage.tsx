@@ -93,13 +93,13 @@ export default function DashboardPage() {
     : undefined;
 
   return (
-    <div className="p-4 lg:p-6 space-y-3">
+    <div className="p-3 lg:p-4 space-y-2">
       {/* Greeting header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{getGreeting()}.</h1>
+          <h1 className="text-lg font-bold">{getGreeting()}.</h1>
           {!loading && (
-            <p className="text-muted-foreground text-sm mt-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <p className="text-muted-foreground text-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
               {sessions.length} session{sessions.length !== 1 ? 's' : ''} loaded
               {' '}&middot; {projects.length} project{projects.length !== 1 ? 's' : ''}
             </p>
@@ -147,7 +147,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-[250px] w-full rounded" />
+            <Skeleton className="h-[200px] w-full rounded" />
           </CardContent>
         </Card>
       ) : (
@@ -159,7 +159,7 @@ export default function DashboardPage() {
       {/* Needs Attention banner */}
       {unanalyzedSessions.length > 0 && (
         <Card className="border-amber-500/20 bg-amber-500/5 hover:shadow-md transition-shadow animate-in fade-in slide-in-from-bottom-2 duration-300 delay-75">
-          <CardContent className="flex items-center justify-between py-4">
+          <CardContent className="flex items-center justify-between py-2.5">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-600" />
               <div>
@@ -183,8 +183,8 @@ export default function DashboardPage() {
           loading ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-300 delay-300'
         }
       >
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold">Recent Activity</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xs font-semibold">Recent Activity</h2>
           <Link
             to="/sessions"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"

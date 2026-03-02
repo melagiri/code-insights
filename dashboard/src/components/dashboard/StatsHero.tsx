@@ -63,13 +63,13 @@ export function StatsHero({
   ) => (
     <div
       key={key}
-      className="flex-1 min-w-[100px] px-4 py-3 border-r border-border last:border-r-0"
+      className="flex-1 min-w-[100px] px-3 py-2 border-r border-border last:border-r-0"
     >
-      <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+      <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
         <Icon className="h-3 w-3" />
         <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
       </div>
-      <div className="text-lg font-bold text-primary">{value}</div>
+      <div className="text-base font-bold text-primary">{value}</div>
     </div>
   );
 
@@ -82,19 +82,19 @@ export function StatsHero({
           {coreCell('toolCalls', 'Tool Calls', `${!isExact ? '~' : ''}${formatCompact(totalToolCalls)}`, Wrench)}
           {coreCell('duration', 'Coding Time', `${!isExact ? '~' : ''}${formatDurationMinutes(totalDurationMin)}`, Clock)}
           <div
-            className={`flex-1 min-w-[100px] px-4 py-3 ${showUsage ? 'border-r border-border' : ''}`}
+            className={`flex-1 min-w-[100px] px-3 py-2 ${showUsage ? 'border-r border-border' : ''}`}
           >
-            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
               <FolderOpen className="h-3 w-3" />
               <span className="text-[11px] font-medium uppercase tracking-wide">Projects</span>
             </div>
-            <div className="text-lg font-bold text-primary">{totalProjects}</div>
+            <div className="text-base font-bold text-primary">{totalProjects}</div>
           </div>
 
           {showUsage && (
             <>
-              <div className="flex-1 min-w-[100px] px-4 py-3 border-r border-border last:border-r-0">
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <div className="flex-1 min-w-[100px] px-3 py-2 border-r border-border last:border-r-0">
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <Coins className="h-3 w-3" />
                   <span className="text-[11px] font-medium uppercase tracking-wide">Tokens</span>
                 </div>
@@ -102,7 +102,7 @@ export function StatsHero({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
-                        className="text-lg font-bold text-primary cursor-default"
+                        className="text-base font-bold text-primary cursor-default"
                         aria-label="Token breakdown"
                       >
                         {formatTokenCount(totalTokens ?? 0)}
@@ -116,29 +116,29 @@ export function StatsHero({
                     </TooltipContent>
                   </Tooltip>
                 ) : (
-                  <div className="text-lg font-bold text-primary">
+                  <div className="text-base font-bold text-primary">
                     {formatTokenCount(totalTokens ?? 0)}
                   </div>
                 )}
               </div>
 
-              <div className="flex-1 min-w-[100px] px-4 py-3 border-r border-border last:border-r-0">
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <div className="flex-1 min-w-[100px] px-3 py-2 border-r border-border last:border-r-0">
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                   <DollarSign className="h-3 w-3" />
                   <span className="text-[11px] font-medium uppercase tracking-wide">Cost</span>
                 </div>
-                <div className="text-lg font-bold text-primary">
+                <div className="text-base font-bold text-primary">
                   ${(totalCost ?? 0).toFixed(2)}
                 </div>
               </div>
 
               {topModel && (
-                <div className="flex-1 min-w-[100px] px-4 py-3 last:border-r-0">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <div className="flex-1 min-w-[100px] px-3 py-2 last:border-r-0">
+                  <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                     <Cpu className="h-3 w-3" />
                     <span className="text-[11px] font-medium uppercase tracking-wide">Top Model</span>
                   </div>
-                  <div className="text-lg font-bold text-primary">
+                  <div className="text-base font-bold text-primary">
                     {formatModelName(topModel)}
                   </div>
                 </div>
