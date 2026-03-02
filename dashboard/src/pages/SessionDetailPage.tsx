@@ -300,7 +300,7 @@ export default function SessionDetailPage() {
           ) : (
             <span>{session.project_name}</span>
           )}
-          {session.source_tool && session.source_tool !== 'claude-code' && (
+          {session.source_tool && (
             <>
               <span>·</span>
               <Badge

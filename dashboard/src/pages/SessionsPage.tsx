@@ -283,7 +283,7 @@ function SessionRow({ session, isAnalyzed }: { session: Session; isAnalyzed: boo
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {session.source_tool && session.source_tool !== 'claude-code' && (
+            {session.source_tool && (
               <Badge
                 variant="outline"
                 className={`text-xs capitalize ${SOURCE_TOOL_COLORS[session.source_tool] ?? 'bg-muted text-muted-foreground'}`}

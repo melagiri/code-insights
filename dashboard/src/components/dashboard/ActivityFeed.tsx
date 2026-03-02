@@ -80,7 +80,7 @@ function SessionFeedItem({ session }: { session: Session }) {
             <p className="text-sm font-medium line-clamp-1 group-hover:text-primary transition-colors min-w-0">
               {displayTitle}
             </p>
-            {session.source_tool && session.source_tool !== 'claude-code' && (
+            {session.source_tool && (
               <Badge
                 variant="outline"
                 className={`text-xs capitalize shrink-0 ${SOURCE_TOOL_COLORS[session.source_tool] ?? 'bg-muted text-muted-foreground'}`}
