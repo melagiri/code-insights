@@ -1,0 +1,28 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+we pushed multiple changes like posthog exception capture, tests enhancement, logo update to cli and dashboard. i think it is time for a version bump. Mark the new one as v3.3.1 and publish github release and npm publish
+
+### Prompt 2
+
+the branch feature/test-suite-ci-gate is already merged to master, perform the rest
+
+### Prompt 3
+
+[Request interrupted by user]
+
+### Prompt 4
+
+the branch feature/test-suite-ci-gate is already merged to master, perform the rest. may be you haven't pulled the latest in local.. clean up local and ensure latest master is checkedout
+
+### Prompt 5
+
+[Request interrupted by user for tool use]
+
+### Prompt 6
+
+one more thing is the @cli/README.md seems to be outdated.. ensure that is up to date before npm publish
+
