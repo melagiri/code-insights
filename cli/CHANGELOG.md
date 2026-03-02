@@ -2,6 +2,21 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [3.3.1] - 2026-03-02
+
+### Added
+
+- **Error telemetry with PostHog `captureException`** — All CLI commands (sync, dashboard, init, status, reset, install-hook) and server analysis routes now capture exceptions with classified error types and enriched context via `captureError()`.
+- **Structured parse errors** — Server analysis routes use `ParseResult<T>` type for structured LLM response parsing with error classification (`error_type`, `response_length`).
+- **CLI ASCII art banner** — Branded ASCII banner displayed on `code-insights init` welcome message and `code-insights dashboard` launch.
+- **Logo integration** — Monochrome logo component added to dashboard header and mobile nav. Favicon replaced with branded logo. Logo assets added to READMEs.
+- **CI gate** — GitHub Actions workflow for automated build + test on push/PR to master.
+- **Test coverage expansion** — New tests for `config.ts` utilities and `config.test.ts` server route. Existing `read-write.test.ts` and `prompts.test.ts` tests enhanced.
+
+### Fixed
+
+- **Server chunked analysis** — Guard against all chunks failing in chunked analysis path, preventing unhandled errors.
+
 ## [3.3.0] - 2026-03-02
 
 ### Changed

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../docs/assets/logo.svg" width="80" height="80" alt="Code Insights logo" />
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/logo.svg" width="80" height="80" alt="Code Insights logo" />
 </p>
 
 <h1 align="center">Code Insights CLI</h1>
@@ -59,12 +59,11 @@ Opens the built-in React dashboard at `http://localhost:7890`. The dashboard pro
 - **LLM Insights** — AI-generated summaries, decisions, learnings, and techniques
 - **Settings** — configure your LLM provider for analysis
 
-> **Screenshot:** _Coming soon_
-
-### Custom Port
+### Options
 
 ```bash
-code-insights dashboard --port 8080
+code-insights dashboard --port 8080    # Custom port
+code-insights dashboard --no-open      # Start server without opening browser
 ```
 
 ## CLI Commands
@@ -156,8 +155,9 @@ code-insights stats models
 # Show sync statistics (sessions, projects, last sync)
 code-insights status
 
-# Open the local dashboard in your browser (server must already be running)
+# Open the local dashboard in your browser
 code-insights open
+code-insights open --project           # Open filtered to the current project
 
 # Delete all local data and reset sync state
 code-insights reset --confirm
