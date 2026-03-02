@@ -2,6 +2,14 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [3.1.1] - 2026-03-02
+
+### Fixed
+
+- **Sync now updates existing sessions** — Previously, modified session files (e.g., active sessions gaining new messages) were skipped during sync because the session ID already existed in SQLite. Message counts, token usage, costs, and end times would remain stale after the initial sync. The sync now upserts session data and recalculates usage stats when existing sessions are updated.
+- **Cursor virtual-path sessions re-sync on DB change** — When the backing `state.vscdb` file was modified (new messages in an existing composer), virtual-path sessions were incorrectly skipped. Now re-syncs all sessions from a multi-session DB when the file changes.
+- **Improved sync summary** — Reports "new" vs "updated" session counts instead of a single "synced" number.
+
 ## [3.0.3] - 2026-02-28
 
 ### Fixed
