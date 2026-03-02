@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSessions } from '@/hooks/useSessions';
 import { useInsights } from '@/hooks/useInsights';
 import { useProjects } from '@/hooks/useProjects';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorCard } from '@/components/ErrorCard';
 import { formatTokenCount, formatModelName } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { CHART_COLORS } from '@/lib/constants/colors';
 import {
   BarChart,
@@ -21,7 +22,16 @@ import {
 import type { DailyStats } from '@/lib/types';
 import { useThemeColors } from '@/lib/hooks/useThemeColors';
 
+type AnalyticsRange = '7d' | '30d' | '90d' | 'all';
+const rangeOptions: { value: AnalyticsRange; label: string }[] = [
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+  { value: '90d', label: '90d' },
+  { value: 'all', label: 'All' },
+];
+
 export default function AnalyticsPage() {
+  const [range, setRange] = useState<AnalyticsRange>('7d');
   const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError, refetch: refetchSessions } = useSessions({ limit: 500 });
   const { data: insights = [], isLoading: insightsLoading, isError: insightsError, refetch: refetchInsights } = useInsights();
   const { data: projects = [], isLoading: projectsLoading, isError: projectsError, refetch: refetchProjects } = useProjects();
@@ -29,15 +39,31 @@ export default function AnalyticsPage() {
 
   const loading = sessionsLoading || insightsLoading || projectsLoading;
 
-  // Build daily stats from sessions
+  // Filter by selected range
+  const cutoff = useMemo(() => {
+    if (range === 'all') return 0;
+    const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
+    return Date.now() - days * 86_400_000;
+  }, [range]);
+
+  const filteredSessions = useMemo(
+    () => cutoff === 0 ? sessions : sessions.filter((s) => new Date(s.started_at).getTime() >= cutoff),
+    [sessions, cutoff]
+  );
+  const filteredInsights = useMemo(
+    () => cutoff === 0 ? insights : insights.filter((i) => new Date(i.timestamp).getTime() >= cutoff),
+    [insights, cutoff]
+  );
+
+  // Build daily stats from filtered sessions
   const dailyStats: DailyStats[] = useMemo(() => {
     const grouped: Record<string, { session_count: number; insight_count: number }> = {};
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       const date = s.started_at.slice(0, 10);
       if (!grouped[date]) grouped[date] = { session_count: 0, insight_count: 0 };
       grouped[date].session_count++;
     }
-    for (const i of insights) {
+    for (const i of filteredInsights) {
       const date = i.timestamp.slice(0, 10);
       if (!grouped[date]) grouped[date] = { session_count: 0, insight_count: 0 };
       grouped[date].insight_count++;
@@ -50,15 +76,15 @@ export default function AnalyticsPage() {
         message_count: 0,
         insight_count: counts.insight_count,
       }));
-  }, [sessions, insights]);
+  }, [filteredSessions, filteredInsights]);
 
   // Insight type breakdown
   const insightsByType = useMemo(() => ({
-    summary: insights.filter((i) => i.type === 'summary').length,
-    decision: insights.filter((i) => i.type === 'decision').length,
-    learning: insights.filter((i) => i.type === 'learning' || i.type === 'technique').length,
-    prompt_quality: insights.filter((i) => i.type === 'prompt_quality').length,
-  }), [insights]);
+    summary: filteredInsights.filter((i) => i.type === 'summary').length,
+    decision: filteredInsights.filter((i) => i.type === 'decision').length,
+    learning: filteredInsights.filter((i) => i.type === 'learning' || i.type === 'technique').length,
+    prompt_quality: filteredInsights.filter((i) => i.type === 'prompt_quality').length,
+  }), [filteredInsights]);
 
   // Project stats
   const projectStats = useMemo(() => {
@@ -75,7 +101,7 @@ export default function AnalyticsPage() {
       }
     > = {};
 
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       if (!statsMap[s.project_id]) {
         statsMap[s.project_id] = {
           projectId: s.project_id,
@@ -93,7 +119,7 @@ export default function AnalyticsPage() {
       statsMap[s.project_id].estimatedCostUsd += s.estimated_cost_usd ?? 0;
     }
 
-    for (const i of insights) {
+    for (const i of filteredInsights) {
       if (statsMap[i.project_id]) {
         const type = i.type === 'technique' ? 'learning' : i.type;
         if (type in statsMap[i.project_id].insightCounts) {
@@ -103,23 +129,23 @@ export default function AnalyticsPage() {
     }
 
     return Object.values(statsMap).sort((a, b) => b.sessionCount - a.sessionCount);
-  }, [sessions, insights]);
+  }, [filteredSessions, filteredInsights]);
 
   // Model distribution
   const modelDistribution = useMemo(() => {
     const dist: Record<string, number> = {};
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       if (s.primary_model) {
         dist[s.primary_model] = (dist[s.primary_model] ?? 0) + 1;
       }
     }
     return dist;
-  }, [sessions]);
+  }, [filteredSessions]);
 
-  const totalSessions = sessions.length;
-  const totalInsights = insights.length;
-  const totalCost = sessions.reduce((sum, s) => sum + (s.estimated_cost_usd ?? 0), 0);
-  const totalTokens = sessions.reduce(
+  const totalSessions = filteredSessions.length;
+  const totalInsights = filteredInsights.length;
+  const totalCost = filteredSessions.reduce((sum, s) => sum + (s.estimated_cost_usd ?? 0), 0);
+  const totalTokens = filteredSessions.reduce(
     (sum, s) =>
       sum +
       (s.total_input_tokens ?? 0) +
@@ -182,9 +208,24 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-muted-foreground">Visualize your AI coding usage patterns</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-muted-foreground">Visualize your AI coding usage patterns</p>
+        </div>
+        <div className="flex gap-1">
+          {rangeOptions.map(({ value, label }) => (
+            <Button
+              key={value}
+              variant={range === value ? 'default' : 'ghost'}
+              size="sm"
+              className="h-7 px-2.5 text-xs"
+              onClick={() => setRange(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -212,7 +253,7 @@ export default function AnalyticsPage() {
             <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{projects.length}</div>
+            <div className="text-3xl font-bold">{projectStats.length}</div>
           </CardContent>
         </Card>
 

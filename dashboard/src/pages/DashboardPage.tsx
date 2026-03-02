@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { DailyStats } from '@/lib/types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
-type DashboardRange = '30d' | '90d' | 'all';
+type DashboardRange = '7d' | '30d' | '90d' | 'all';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -25,7 +25,7 @@ function getGreeting(): string {
 }
 
 export default function DashboardPage() {
-  const [range, setRange] = useState<DashboardRange>('30d');
+  const [range, setRange] = useState<DashboardRange>('7d');
 
   const { data: dashStats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useDashboardStats(range);
   const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError, refetch: refetchSessions } = useSessions({ limit: 500 });
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   // Build daily stats for activity chart
   const dailyStats: DailyStats[] = useMemo(() => {
     const now = Date.now();
-    const rangeDays = range === '30d' ? 30 : range === '90d' ? 90 : Infinity;
+    const rangeDays = range === '7d' ? 7 : range === '30d' ? 30 : range === '90d' ? 90 : Infinity;
     const cutoff = rangeDays === Infinity ? 0 : now - rangeDays * 86_400_000;
 
     const grouped: Record<string, { session_count: number; insight_count: number }> = {};

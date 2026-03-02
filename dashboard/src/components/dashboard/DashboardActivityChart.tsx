@@ -14,7 +14,7 @@ import { useThemeColors } from '@/lib/hooks/useThemeColors';
 import { CHART_COLORS } from '@/lib/constants/colors';
 import type { DailyStats } from '@/lib/types';
 
-type DashboardRange = '30d' | '90d' | 'all';
+type DashboardRange = '7d' | '30d' | '90d' | 'all';
 
 interface DashboardActivityChartProps {
   data: DailyStats[];
@@ -23,6 +23,7 @@ interface DashboardActivityChartProps {
 }
 
 const rangeOptions: { value: DashboardRange; label: string }[] = [
+  { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },
   { value: '90d', label: '90d' },
   { value: 'all', label: 'All' },
@@ -86,7 +87,7 @@ export function DashboardActivityChart({ data, range, onRangeChange }: Dashboard
                   tickLine={false}
                   axisLine={false}
                   className="text-muted-foreground"
-                  interval={range === '30d' ? 4 : range === '90d' ? 13 : 'preserveStartEnd'}
+                  interval={range === '7d' ? 0 : range === '30d' ? 4 : range === '90d' ? 13 : 'preserveStartEnd'}
                 />
                 <YAxis
                   tick={{ fontSize: 11 }}
