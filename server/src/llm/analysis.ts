@@ -150,6 +150,16 @@ export async function analyzeSession(
         if (parsed.success) chunkResponses.push(parsed.data);
       }
 
+      if (chunkResponses.length === 0) {
+        return {
+          success: false,
+          insights: [],
+          error: 'All chunks failed to parse LLM response',
+          error_type: 'json_parse_error',
+          usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+        };
+      }
+
       analysisResponse = mergeAnalysisResponses(chunkResponses);
     } else {
       options?.onProgress?.({ phase: 'analyzing', currentChunk: 1, totalChunks: 1 });
