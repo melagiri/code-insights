@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "2a628ce3ad7d",
+  "session_id": "21ecc255-30d2-4439-85c4-1a9520c78df7",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-02T10:40:32.052389Z",
+  "branch": "fix/dashboard-stats-and-posthog",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/src/pages/DashboardPage.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b6b6fc16d450",
+  "token_usage": {
+    "input_tokens": 43,
+    "cache_creation_tokens": 78238,
+    "cache_read_tokens": 2334418,
+    "output_tokens": 11203,
+    "api_call_count": 33
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-02T10:40:31.898681Z",
+    "agent_lines": 29,
+    "human_added": 3270,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 3303,
+    "agent_percentage": 0.877989706327581
+  }
+}
