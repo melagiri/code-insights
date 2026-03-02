@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e79f665b1083",
+  "strategy": "manual-commit",
+  "branch": "fix/dashboard-stats-and-posthog",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cli/src/utils/telemetry.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e7/9f665b1083/0/metadata.json",
+      "transcript": "/e7/9f665b1083/0/full.jsonl",
+      "context": "/e7/9f665b1083/0/context.md",
+      "content_hash": "/e7/9f665b1083/0/content_hash.txt",
+      "prompt": "/e7/9f665b1083/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 324,
+    "cache_creation_tokens": 152350,
+    "cache_read_tokens": 12583807,
+    "output_tokens": 40911,
+    "api_call_count": 111
+  }
+}
