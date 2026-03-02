@@ -7,6 +7,7 @@ export function useDashboardStats(range: Range = '7d') {
   return useQuery({
     queryKey: ['analytics', 'dashboard', range],
     queryFn: () => fetchDashboardStats(range).then((r) => r.stats),
+    refetchInterval: 60_000,
   });
 }
 
@@ -14,5 +15,6 @@ export function useUsageStats() {
   return useQuery({
     queryKey: ['analytics', 'usage'],
     queryFn: () => fetchUsageStats().then((r) => r.stats),
+    refetchInterval: 60_000,
   });
 }

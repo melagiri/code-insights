@@ -100,8 +100,15 @@ export function fetchUsageStats() {
 
 // ── Analysis (Phase 4) ────────────────────────────────────────────────────────
 
+export interface AnalysisApiResult {
+  success: boolean;
+  insights?: Array<{ id: string; type: string; title: string }>;
+  error?: string;
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
 export function analyzeSession(sessionId: string) {
-  return request<unknown>('/analysis/session', {
+  return request<AnalysisApiResult>('/analysis/session', {
     method: 'POST',
     body: JSON.stringify({ sessionId }),
   });
@@ -146,14 +153,19 @@ export function fetchOllamaModels(baseUrl?: string) {
 }
 
 export function analyzePromptQuality(sessionId: string) {
-  return request<unknown>('/analysis/prompt-quality', {
+  return request<AnalysisApiResult>('/analysis/prompt-quality', {
     method: 'POST',
     body: JSON.stringify({ sessionId }),
   });
 }
 
 export function findRecurringInsights(body?: { projectId?: string; limit?: number }) {
-  return request<unknown>('/analysis/recurring', {
+  return request<{
+    success: boolean;
+    groups?: Array<{ insightIds: string[]; theme: string }>;
+    updatedCount?: number;
+    error?: string;
+  }>('/analysis/recurring', {
     method: 'POST',
     body: JSON.stringify(body ?? {}),
   });

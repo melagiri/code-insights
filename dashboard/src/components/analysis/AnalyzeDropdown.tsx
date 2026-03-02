@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sparkles, Loader2, X, ChevronDown, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +24,6 @@ import type { Session } from '@/lib/types';
 
 interface AnalyzeDropdownProps {
   session: Session;
-  onTitleSuggestion?: (title: string) => void;
   hasExistingInsights?: boolean;
   insightCount?: number;
   hasExistingPromptQuality?: boolean;
@@ -117,10 +116,15 @@ export function AnalyzeDropdown({
 
   if (isAnalyzingOther) {
     return (
-      <Button disabled variant="outline" size="sm" className="h-8 gap-2">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Analysis in progress...
-      </Button>
+      <div className="flex items-center gap-1.5">
+        <Button disabled variant="outline" size="sm" className="h-8 gap-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Analysis in progress...
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Waiting for &quot;{analysisState.sessionTitle}&quot;
+        </span>
+      </div>
     );
   }
 

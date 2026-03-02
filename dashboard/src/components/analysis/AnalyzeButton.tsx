@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sparkles, Loader2, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,12 +18,11 @@ import type { Session } from '@/lib/types';
 
 interface AnalyzeButtonProps {
   session: Session;
-  onTitleSuggestion?: (title: string) => void;
   hasExistingInsights?: boolean;
   insightCount?: number;
 }
 
-export function AnalyzeButton({ session, onTitleSuggestion, hasExistingInsights, insightCount }: AnalyzeButtonProps) {
+export function AnalyzeButton({ session, hasExistingInsights, insightCount }: AnalyzeButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { state: analysisState, startAnalysis, cancelAnalysis } = useAnalysis();
   const { data: llmConfig } = useLlmConfig();
@@ -100,7 +99,7 @@ export function AnalyzeButton({ session, onTitleSuggestion, hasExistingInsights,
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Analyzing &quot;{analysisState.sessionTitle}&quot;
+          Waiting for &quot;{analysisState.sessionTitle}&quot; to finish
         </p>
       </div>
     );
@@ -142,7 +141,9 @@ export function AnalyzeButton({ session, onTitleSuggestion, hasExistingInsights,
 
       {isCompleteForThisSession && analysisState.result?.success && (
         <div className="text-sm text-green-600">
-          Analysis complete! Insights have been saved.
+          {analysisState.result.insightCount != null
+            ? `Analysis complete! ${analysisState.result.insightCount} insight${analysisState.result.insightCount !== 1 ? 's' : ''} saved.`
+            : 'Analysis complete! Insights saved.'}
         </div>
       )}
 

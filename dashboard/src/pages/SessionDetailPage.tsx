@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { useSession, useSessionMutation } from '@/hooks/useSessions';
 import { useInsights } from '@/hooks/useInsights';
@@ -29,6 +29,8 @@ import {
 import { InsightCard } from '@/components/insights/InsightCard';
 import { PromptQualityCard } from '@/components/insights/PromptQualityCard';
 import { AnalyzeDropdown } from '@/components/analysis/AnalyzeDropdown';
+import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
+import { useAnalysis } from '@/components/analysis/AnalysisContext';
 import { RenameSessionDialog } from '@/components/sessions/RenameSessionDialog';
 import { ChatConversation } from '@/components/chat/conversation/ChatConversation';
 import {
@@ -55,6 +57,19 @@ export default function SessionDetailPage() {
   const sessionMutation = useSessionMutation();
   const [renameOpen, setRenameOpen] = useState(false);
   const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null);
+  const { state: analysisState } = useAnalysis();
+
+  // Populate suggestedTitle from analysis context when complete
+  useEffect(() => {
+    if (
+      analysisState.status === 'complete' &&
+      analysisState.sessionId === id &&
+      analysisState.type === 'session' &&
+      analysisState.result?.suggestedTitle
+    ) {
+      setSuggestedTitle(analysisState.result.suggestedTitle);
+    }
+  }, [analysisState, id]);
 
   // Flatten paginated messages
   const messages = messagesQuery.data?.pages.flat() ?? [];
@@ -229,7 +244,6 @@ export default function SessionDetailPage() {
           <div className="ml-auto flex items-center gap-1">
             <AnalyzeDropdown
               session={session}
-              onTitleSuggestion={setSuggestedTitle}
               hasExistingInsights={nonPromptInsights.length > 0}
               insightCount={nonPromptInsights.length}
               hasExistingPromptQuality={hasPromptQuality}
@@ -305,7 +319,7 @@ export default function SessionDetailPage() {
 
       {/* AI Title Suggestion Banner */}
       {suggestedTitle && suggestedTitle !== getSessionTitle(session) && (
-        <div className="shrink-0 flex items-center justify-between gap-4 px-6 py-2.5 border-b bg-muted/50">
+        <div className="shrink-0 flex items-center justify-between gap-4 px-6 py-2.5 border-b bg-muted/50 transition-all duration-300">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-purple-500" />
             <span className="text-sm">
@@ -487,12 +501,10 @@ export default function SessionDetailPage() {
                   Generate AI insights to extract learnings, decisions, and a session summary.
                 </p>
                 <div className="pt-2">
-                  <AnalyzeDropdown
+                  <AnalyzeButton
                     session={session}
-                    onTitleSuggestion={setSuggestedTitle}
                     hasExistingInsights={false}
                     insightCount={0}
-                    hasExistingPromptQuality={false}
                   />
                 </div>
               </div>

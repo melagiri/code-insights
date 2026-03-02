@@ -5,8 +5,6 @@ export function useLlmConfig() {
   return useQuery({
     queryKey: ['config', 'llm'],
     queryFn: () => fetchLlmConfig(),
-    // Config rarely changes — no need to poll aggressively.
-    refetchInterval: false,
   });
 }
 
