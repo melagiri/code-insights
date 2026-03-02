@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
-import { trackEvent } from '../../../utils/telemetry.js';
+import { trackEvent, identifyUser } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import {
   periodStartDate,
@@ -26,6 +26,7 @@ import { sectionHeader, metricGrid, projectCardHeader } from '../render/layout.j
 import { showTip } from '../../../utils/tips.js';
 
 export async function projectsAction(flags: StatsFlags): Promise<void> {
+  const startTime = Date.now();
   try {
     const source = await resolveDataSource(flags);
 
@@ -36,6 +37,9 @@ export async function projectsAction(flags: StatsFlags): Promise<void> {
     } catch {
       spinner.warn('Sync failed (showing cached data)');
     }
+
+    // Identify user now that DB is open (updates total_sessions person property)
+    void identifyUser();
 
     // Resolve project filter
     const opts: SessionQueryOptions = {
@@ -105,10 +109,10 @@ export async function projectsAction(flags: StatsFlags): Promise<void> {
       console.log(colors.hint(`Run stats cost --project "${projects[0].projectName}" for project cost breakdown`));
     }
     console.log();
-    trackEvent('stats', true, 'projects');
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'projects', period: flags.period, source_filter: flags.source ?? null, success: true });
     showTip('stats projects');
   } catch (err) {
-    trackEvent('stats', false, 'projects');
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'projects', period: flags.period, source_filter: flags.source ?? null, success: false });
     handleStatsError(err);
   }
 }

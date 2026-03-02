@@ -64,7 +64,7 @@ function showConfigAction(): void {
   }
 
   console.log('');
-  trackEvent('config', true);
+  trackEvent('cli_config', { subcommand: 'view', success: true });
 }
 
 export const configCommand = new Command('config')
@@ -93,7 +93,7 @@ configCommand
         saveConfig(existing);
       }
       console.log(chalk.green(`\nTelemetry ${value === 'true' ? 'enabled' : 'disabled'}.\n`));
-      trackEvent('config', true, 'set');
+      trackEvent('cli_config', { subcommand: 'set', success: true });
     } else {
       console.error(chalk.red(`\nUnknown config key "${key}". Available: telemetry.\n`));
       process.exit(1);

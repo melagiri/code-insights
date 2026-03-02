@@ -84,7 +84,7 @@ export async function installHookCommand(): Promise<void> {
   console.log(chalk.white('  When a Claude Code session ends, the hook runs automatically'));
   console.log(chalk.white('  Sessions are synced to your local database (~/.code-insights/data.db)'));
   console.log(chalk.white('  Run `code-insights stats` anytime to see your analytics'));
-  trackEvent('install-hook', true);
+  trackEvent('cli_install_hook', { success: true });
 }
 
 /**

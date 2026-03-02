@@ -58,5 +58,5 @@ export async function initCommand(_options: InitOptions = {}): Promise<void> {
   console.log(chalk.white('  3. Check today\'s activity:'));
   console.log(chalk.gray('     code-insights stats today\n'));
 
-  trackEvent('init', true);
+  trackEvent('cli_init', { success: true });
 }

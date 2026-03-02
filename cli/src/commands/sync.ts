@@ -3,7 +3,7 @@ import * as path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
 import { loadSyncState, saveSyncState } from '../utils/config.js';
-import { trackEvent } from '../utils/telemetry.js';
+import { trackEvent, identifyUser } from '../utils/telemetry.js';
 import { insertSessionWithProjectAndReturnIsNew, insertMessages, recalculateUsageStats } from '../db/write.js';
 import { getDb } from '../db/client.js';
 import { getAllProviders, getProvider } from '../providers/registry.js';
@@ -27,6 +27,7 @@ export interface SyncResult {
   messageCount: number;
   errorCount: number;
   updatedExistingCount: number;
+  sessionsByProvider: Record<string, number>;
 }
 
 /**
@@ -112,6 +113,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   let totalMessageCount = 0;
   let totalErrorCount = 0;
   let totalUpdatedExisting = 0;
+  const sessionsByProvider: Record<string, number> = {};
 
   for (const provider of providers) {
     const providerName = provider.getProviderName();
@@ -185,6 +187,8 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
         }
       }
 
+      sessionsByProvider[providerName] = providerSyncedCount;
+
       // One summary line per provider instead of per-file noise
       spinner.stop();
       if (providerSyncedCount > 0 || providerSkippedCount > 0) {
@@ -235,6 +239,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
     messageCount: totalMessageCount,
     errorCount: totalErrorCount,
     updatedExistingCount: totalUpdatedExisting,
+    sessionsByProvider,
   };
 }
 
@@ -243,14 +248,26 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
  */
 export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   const log = options.quiet ? () => {} : console.log.bind(console);
+  const startTime = Date.now();
 
   try {
     const result = await runSync(options);
+    const duration_ms = Date.now() - startTime;
+
+    // Identify user now that DB is open (updates total_sessions person property)
+    void identifyUser();
 
     // Summary (only if not quiet)
     if (result.syncedCount === 0 && result.errorCount === 0) {
       log(chalk.green('\n  Already up to date!'));
-      trackEvent('sync', true);
+      trackEvent('cli_sync', {
+        duration_ms,
+        sessions_synced: 0,
+        sessions_by_provider: result.sessionsByProvider,
+        errors: 0,
+        source_filter: options.source ?? null,
+        success: true,
+      });
       return;
     }
     log(chalk.cyan('\n  Sync Summary'));
@@ -264,9 +281,24 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
       log(chalk.red(`  Errors: ${result.errorCount}`));
     }
     log(chalk.green('\n  Sync complete!'));
-    trackEvent('sync', true);
+    trackEvent('cli_sync', {
+      duration_ms,
+      sessions_synced: result.syncedCount,
+      sessions_by_provider: result.sessionsByProvider,
+      errors: result.errorCount,
+      source_filter: options.source ?? null,
+      success: true,
+    });
   } catch (error) {
-    trackEvent('sync', false);
+    const duration_ms = Date.now() - startTime;
+    trackEvent('cli_sync', {
+      duration_ms,
+      sessions_synced: 0,
+      sessions_by_provider: {},
+      errors: 1,
+      source_filter: options.source ?? null,
+      success: false,
+    });
     if (!options.quiet) {
       console.error(chalk.red(error instanceof Error ? error.message : 'Sync failed'));
     }

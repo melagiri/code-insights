@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
-import { trackEvent } from '../../../utils/telemetry.js';
+import { trackEvent, identifyUser } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import {
   periodStartDate,
@@ -30,6 +30,7 @@ import { showTip } from '../../../utils/tips.js';
 import { isConfigured } from '../../../utils/config.js';
 
 export async function overviewAction(flags: StatsFlags): Promise<void> {
+  const startTime = Date.now();
   try {
     const source = await resolveDataSource(flags);
 
@@ -40,6 +41,9 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
     } catch {
       spinner.warn('Sync failed (showing cached data)');
     }
+
+    // Identify user now that DB is open (updates total_sessions person property)
+    void identifyUser();
 
     // Show welcome message on first ever run (no config file)
     if (!isConfigured()) {
@@ -168,10 +172,10 @@ export async function overviewAction(flags: StatsFlags): Promise<void> {
     console.log(colors.hint("Run stats today for today's sessions"));
     console.log(colors.hint('Run stats projects for project details'));
     console.log();
-    trackEvent('stats', true);
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'overview', period: flags.period, source_filter: flags.source ?? null, success: true });
     showTip('stats');
   } catch (err) {
-    trackEvent('stats', false);
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'overview', period: flags.period, source_filter: flags.source ?? null, success: false });
     handleStatsError(err);
   }
 }

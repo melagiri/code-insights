@@ -72,7 +72,7 @@ export const resetCommand = new Command('reset')
 
     // Collect stats for telemetry before resetting
     try {
-      trackEvent('reset', true);
+      trackEvent('cli_reset', { success: true });
     } catch {
       // non-fatal
     }

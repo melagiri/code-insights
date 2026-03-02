@@ -36,11 +36,11 @@ export async function openCommand(options: OpenOptions): Promise<void> {
 
   try {
     openUrl(url);
-    trackEvent('open', true);
+    trackEvent('cli_open', { success: true });
   } catch {
     console.log(chalk.yellow('  Could not open browser automatically.'));
     console.log(chalk.white(`  Visit: ${chalk.bold.underline(url)}\n`));
-    trackEvent('open', false);
+    trackEvent('cli_open', { success: false });
   }
 }
 

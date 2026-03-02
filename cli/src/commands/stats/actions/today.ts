@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────
 
 import ora from 'ora';
-import { trackEvent } from '../../../utils/telemetry.js';
+import { trackEvent, identifyUser } from '../../../utils/telemetry.js';
 import { resolveDataSource } from '../data/source.js';
 import {
   computeTodayStats,
@@ -24,6 +24,7 @@ import { sectionHeader, metricGrid, getTerminalWidth } from '../render/layout.js
 import { showTip } from '../../../utils/tips.js';
 
 export async function todayAction(flags: StatsFlags): Promise<void> {
+  const startTime = Date.now();
   try {
     const source = await resolveDataSource(flags);
 
@@ -34,6 +35,9 @@ export async function todayAction(flags: StatsFlags): Promise<void> {
     } catch {
       spinner.warn('Sync failed (showing cached data)');
     }
+
+    // Identify user now that DB is open (updates total_sessions person property)
+    void identifyUser();
 
     // Resolve project filter (period is ignored for today — always today)
     const todayStart = new Date();
@@ -133,10 +137,10 @@ export async function todayAction(flags: StatsFlags): Promise<void> {
     console.log();
     console.log(colors.hint('Run stats cost --period 7d for weekly cost trends'));
     console.log();
-    trackEvent('stats', true, 'today');
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'today', period: flags.period, source_filter: flags.source ?? null, success: true });
     showTip('stats today');
   } catch (err) {
-    trackEvent('stats', false, 'today');
+    trackEvent('cli_stats', { duration_ms: Date.now() - startTime, subcommand: 'today', period: flags.period, source_filter: flags.source ?? null, success: false });
     handleStatsError(err);
   }
 }
