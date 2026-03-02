@@ -20,16 +20,11 @@ vi.mock('../db/client.js', () => ({
   getDb: () => ({}),
 }));
 
-const sessionExists = vi.fn();
-vi.mock('../db/read.js', () => ({
-  sessionExists,
-}));
-
-const insertSessionWithProject = vi.fn();
+const insertSessionWithProjectAndReturnIsNew = vi.fn();
 const insertMessages = vi.fn();
 const recalculateUsageStats = vi.fn(() => ({ sessionsWithUsage: 0, totalTokens: 0, estimatedCostUsd: 0 }));
 vi.mock('../db/write.js', () => ({
-  insertSessionWithProject,
+  insertSessionWithProjectAndReturnIsNew,
   insertMessages,
   recalculateUsageStats,
 }));
@@ -57,8 +52,7 @@ describe('runSync', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'code-insights-sync-'));
     syncState = { lastSync: '', files: {} };
     saveSyncState.mockClear();
-    sessionExists.mockReset();
-    insertSessionWithProject.mockReset();
+    insertSessionWithProjectAndReturnIsNew.mockReset();
     insertMessages.mockReset();
     recalculateUsageStats.mockClear();
     getAllProviders.mockReset();
@@ -96,12 +90,12 @@ describe('runSync', () => {
       },
     ]);
 
-    sessionExists.mockReturnValue(true);
+    insertSessionWithProjectAndReturnIsNew.mockReturnValue(false);
 
     await runSync({ quiet: true });
 
-    expect(insertSessionWithProject).toHaveBeenCalledTimes(1);
-    expect(insertSessionWithProject).toHaveBeenCalledWith(
+    expect(insertSessionWithProjectAndReturnIsNew).toHaveBeenCalledTimes(1);
+    expect(insertSessionWithProjectAndReturnIsNew).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'session-1' }),
       false,
     );
@@ -140,11 +134,11 @@ describe('runSync', () => {
       },
     ]);
 
-    sessionExists.mockReturnValue(true);
+    insertSessionWithProjectAndReturnIsNew.mockReturnValue(false);
 
     await runSync({ quiet: true });
 
-    expect(insertSessionWithProject).toHaveBeenCalledWith(
+    expect(insertSessionWithProjectAndReturnIsNew).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'cursor:composer-1' }),
       false,
     );
@@ -173,11 +167,11 @@ describe('runSync', () => {
       },
     ]);
 
-    sessionExists.mockReturnValue(false);
+    insertSessionWithProjectAndReturnIsNew.mockReturnValue(true);
 
     await runSync({ quiet: true });
 
-    expect(insertSessionWithProject).toHaveBeenCalledTimes(1);
+    expect(insertSessionWithProjectAndReturnIsNew).toHaveBeenCalledTimes(1);
     expect(recalculateUsageStats).not.toHaveBeenCalled();
   });
 });

@@ -4,8 +4,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadSyncState, saveSyncState } from '../utils/config.js';
 import { trackEvent } from '../utils/telemetry.js';
-import { insertSessionWithProject, insertMessages, recalculateUsageStats } from '../db/write.js';
-import { sessionExists } from '../db/read.js';
+import { insertSessionWithProjectAndReturnIsNew, insertMessages, recalculateUsageStats } from '../db/write.js';
 import { getDb } from '../db/client.js';
 import { getAllProviders, getProvider } from '../providers/registry.js';
 import { setProviderVerbose } from '../providers/context.js';
@@ -27,6 +26,7 @@ export interface SyncResult {
   syncedCount: number;
   messageCount: number;
   errorCount: number;
+  updatedExistingCount: number;
 }
 
 /**
@@ -142,6 +142,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
 
       // Process files — accumulate per-provider counts, show one summary line after
       let providerSyncedCount = 0;
+      let providerUpdatedCount = 0;
       let providerSkippedCount = 0;
       let providerMessageCount = 0;
 
@@ -157,10 +158,8 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
             continue;
           }
 
-          const exists = sessionExists(session.id);
-
           // Write session and messages to SQLite
-          insertSessionWithProject(session, !!options.force);
+          const isNew = insertSessionWithProjectAndReturnIsNew(session, !!options.force);
           insertMessages(session);
 
           // Update and persist sync state after each file
@@ -168,7 +167,8 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
           updateSyncState(syncState, filePath, session.id);
           saveSyncState(syncState);
 
-          if (exists && !options.force) {
+          if (!isNew && !options.force) {
+            providerUpdatedCount++;
             totalUpdatedExisting++;
           }
 
@@ -188,9 +188,12 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
       // One summary line per provider instead of per-file noise
       spinner.stop();
       if (providerSyncedCount > 0 || providerSkippedCount > 0) {
-        const syncedPart = providerSyncedCount > 0
-          ? `${providerSyncedCount} synced (${providerMessageCount.toLocaleString()} messages)`
-          : `0 synced`;
+        const providerNewCount = providerSyncedCount - providerUpdatedCount;
+        const parts: string[] = [];
+        if (providerNewCount > 0) parts.push(`${providerNewCount} new`);
+        if (providerUpdatedCount > 0) parts.push(`${providerUpdatedCount} updated`);
+        if (parts.length === 0) parts.push('0 synced');
+        const syncedPart = `${parts.join(', ')}${providerMessageCount > 0 ? ` (${providerMessageCount.toLocaleString()} messages)` : ''}`;
         const skippedPart = providerSkippedCount > 0
           ? `, ${providerSkippedCount} empty`
           : '';
@@ -231,6 +234,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
     syncedCount: totalSyncedCount,
     messageCount: totalMessageCount,
     errorCount: totalErrorCount,
+    updatedExistingCount: totalUpdatedExisting,
   };
 }
 
@@ -250,7 +254,11 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
       return;
     }
     log(chalk.cyan('\n  Sync Summary'));
-    log(chalk.white(`  Sessions synced: ${result.syncedCount}`));
+    const newCount = Math.max(result.syncedCount - result.updatedExistingCount, 0);
+    log(chalk.white(`  Sessions new: ${newCount}`));
+    if (result.updatedExistingCount > 0) {
+      log(chalk.white(`  Sessions updated: ${result.updatedExistingCount}`));
+    }
     log(chalk.white(`  Messages synced: ${result.messageCount}`));
     if (result.errorCount > 0) {
       log(chalk.red(`  Errors: ${result.errorCount}`));

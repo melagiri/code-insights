@@ -165,6 +165,18 @@ function getStmts() {
  * incrementally added — they'll be recalculated via recalculateUsageStats().
  */
 export function insertSessionWithProject(session: ParsedSession, isForce = false): void {
+  insertSessionWithProjectInternal(session, isForce);
+}
+
+/**
+ * Insert a session and return whether it was new to the DB.
+ * Lets callers avoid a duplicate sessionExists() query.
+ */
+export function insertSessionWithProjectAndReturnIsNew(session: ParsedSession, isForce = false): boolean {
+  return insertSessionWithProjectInternal(session, isForce);
+}
+
+function insertSessionWithProjectInternal(session: ParsedSession, isForce: boolean): boolean {
   const db = getDb();
   const { projectId, source: projectIdSource, gitRemoteUrl } = generateStableProjectId(session.projectPath);
   const deviceInfo = getDeviceInfo();
@@ -180,6 +192,7 @@ export function insertSessionWithProject(session: ParsedSession, isForce = false
   });
 
   tx();
+  return isNew;
 }
 
 
