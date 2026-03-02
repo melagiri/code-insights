@@ -100,7 +100,7 @@ export interface SessionUsage {
   estimatedCostUsd: number;
   modelsUsed: string[];
   primaryModel: string;
-  usageSource: 'jsonl';
+  usageSource: 'jsonl' | 'session';
 }
 
 export type SessionCharacter =
