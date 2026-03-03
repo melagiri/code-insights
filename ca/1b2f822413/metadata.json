@@ -17,6 +17,13 @@
       "context": "/ca/1b2f822413/0/context.md",
       "content_hash": "/ca/1b2f822413/0/content_hash.txt",
       "prompt": "/ca/1b2f822413/0/prompt.txt"
+    },
+    {
+      "metadata": "/ca/1b2f822413/1/metadata.json",
+      "transcript": "/ca/1b2f822413/1/full.jsonl",
+      "context": "/ca/1b2f822413/1/context.md",
+      "content_hash": "/ca/1b2f822413/1/content_hash.txt",
+      "prompt": "/ca/1b2f822413/1/prompt.txt"
     }
   ],
   "token_usage": {
