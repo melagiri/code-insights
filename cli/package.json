@@ -1,7 +1,7 @@
 {
   "name": "@code-insights/cli",
   "version": "3.5.0",
-  "description": "AI coding session analytics with built-in dashboard",
+  "description": "Turn your AI coding sessions into knowledge",
   "type": "module",
   "main": "dist/index.js",
   "exports": {

@@ -4,7 +4,7 @@
 
 <h1 align="center">Code Insights</h1>
 
-A free, open-source, local-first tool for analyzing AI coding sessions.
+Turn your AI coding sessions into knowledge.
 
 Parses session history from Claude Code, Cursor, Codex CLI, and Copilot CLI. Stores structured data in a local SQLite database. Surfaces insights through terminal analytics and a built-in browser dashboard.
 
