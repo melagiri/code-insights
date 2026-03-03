@@ -6,7 +6,7 @@ import { INSIGHT_TYPE_COLORS, INSIGHT_TYPE_LABELS } from '@/lib/constants/colors
 import { cn } from '@/lib/utils';
 import type { Insight, InsightType, InsightMetadata } from '@/lib/types';
 import { parseJsonField } from '@/lib/types';
-import { OutcomeBadge } from './InsightCard';
+import { OutcomeBadge, renderTypeContent } from './insight-metadata';
 
 const typeIcons: Record<InsightType, typeof FileText> = {
   summary: FileText,
@@ -20,96 +20,6 @@ interface InsightListItemProps {
   insight: Insight;
   showProject?: boolean;
   allInsightIds?: Set<string>;
-}
-
-function MetadataField({ label, children, prominent }: { label: string; children: React.ReactNode; prominent?: boolean }) {
-  return (
-    <div className="space-y-0.5">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">{label}</span>
-      <p className={prominent ? 'text-sm font-medium text-foreground' : 'text-sm text-muted-foreground'}>{children}</p>
-    </div>
-  );
-}
-
-function formatAlternatives(alternatives: InsightMetadata['alternatives']): string {
-  if (!alternatives || alternatives.length === 0) return '';
-  return alternatives.map(a => {
-    if (typeof a === 'string') return a;
-    return a.rejected_because ? `${a.option} (rejected: ${a.rejected_because})` : a.option;
-  }).join('; ');
-}
-
-function DecisionExpandedContent({ metadata }: { metadata: InsightMetadata }) {
-  const hasStructured = metadata.situation || metadata.choice || metadata.reasoning;
-  if (!hasStructured) return null;
-
-  return (
-    <div className="space-y-3">
-      {metadata.situation && <MetadataField label="Situation">{metadata.situation}</MetadataField>}
-      {metadata.choice && <MetadataField label="Choice" prominent>{metadata.choice}</MetadataField>}
-      {metadata.reasoning && <MetadataField label="Reasoning">{metadata.reasoning}</MetadataField>}
-      {metadata.alternatives && metadata.alternatives.length > 0 && (
-        <MetadataField label="Alternatives Considered">{formatAlternatives(metadata.alternatives)}</MetadataField>
-      )}
-      {metadata.trade_offs && <MetadataField label="Trade-offs">{metadata.trade_offs}</MetadataField>}
-      {metadata.revisit_when && metadata.revisit_when !== 'N/A' && (
-        <MetadataField label="Revisit When">{metadata.revisit_when}</MetadataField>
-      )}
-      {metadata.evidence && metadata.evidence.length > 0 && (
-        <MetadataField label="Evidence">{metadata.evidence.join(', ')}</MetadataField>
-      )}
-    </div>
-  );
-}
-
-function LearningExpandedContent({ metadata }: { metadata: InsightMetadata }) {
-  const hasStructured = metadata.symptom || metadata.root_cause || metadata.takeaway;
-  if (!hasStructured) return null;
-
-  return (
-    <div className="space-y-3">
-      {metadata.symptom && <MetadataField label="What Happened">{metadata.symptom}</MetadataField>}
-      {metadata.root_cause && <MetadataField label="Why">{metadata.root_cause}</MetadataField>}
-      {metadata.takeaway && <MetadataField label="Takeaway" prominent>{metadata.takeaway}</MetadataField>}
-      {metadata.applies_when && <MetadataField label="Applies When">{metadata.applies_when}</MetadataField>}
-    </div>
-  );
-}
-
-function SummaryExpandedContent({ metadata, bullets }: { metadata: InsightMetadata; bullets: string[] }) {
-  return (
-    <div className="space-y-3">
-      {metadata.outcome && (
-        <div>
-          <OutcomeBadge outcome={metadata.outcome} />
-        </div>
-      )}
-      {bullets.length > 0 && (
-        <ul className="space-y-1">
-          {bullets.map((bullet, i) => (
-            <li key={i} className="text-sm text-muted-foreground flex gap-2">
-              <span className="shrink-0 mt-0.5">-</span>
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function renderExpandedTypeContent(type: InsightType, metadata: InsightMetadata, bullets: string[]): React.ReactNode {
-  switch (type) {
-    case 'decision':
-      return <DecisionExpandedContent metadata={metadata} />;
-    case 'learning':
-    case 'technique':
-      return <LearningExpandedContent metadata={metadata} />;
-    case 'summary':
-      return <SummaryExpandedContent metadata={metadata} bullets={bullets} />;
-    default:
-      return null;
-  }
 }
 
 export function InsightListItem({ insight, showProject = false, allInsightIds }: InsightListItemProps) {
@@ -162,7 +72,7 @@ export function InsightListItem({ insight, showProject = false, allInsightIds }:
   })();
 
   // For expanded content: type-specific or generic fallback
-  const expandedTypeContent = renderExpandedTypeContent(insight.type, metadata, bullets);
+  const expandedTypeContent = renderTypeContent(insight.type, metadata, bullets);
 
   return (
     <div className="border rounded-lg overflow-hidden">

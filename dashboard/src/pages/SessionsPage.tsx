@@ -356,7 +356,7 @@ function SessionRow({
             {/* Summary preview */}
             {session.summary && (
               <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                {session.summary.length > 80 ? session.summary.slice(0, 80) + '...' : session.summary}
+                {session.summary}
               </p>
             )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
