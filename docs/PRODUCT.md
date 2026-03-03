@@ -2,7 +2,7 @@
 
 ## What It Is
 
-Code Insights transforms your AI coding session history into structured, searchable insights. It extracts patterns from your conversations—what you built, decisions you made, lessons learned—and presents them in a local visual dashboard.
+Turn your AI coding sessions into knowledge. Code Insights extracts patterns from your conversations—what you built, decisions you made, lessons learned—and presents them in a local visual dashboard.
 
 ## The Problem
 
