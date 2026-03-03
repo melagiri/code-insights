@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "8b6f2cada22e",
+  "session_id": "9d3d675a-98c7-4950-a022-06a61ed1c8c2",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T03:21:39.629738Z",
+  "branch": "feature/sessions-insights-tier2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/src/lib/pattern-grouping.ts",
+    "dashboard/src/components/insights/RecurringPatternsSection.tsx",
+    "dashboard/src/pages/InsightsPage.tsx",
+    "dashboard/src/components/chat/conversation/ConversationSearch.tsx",
+    "dashboard/src/components/sessions/CompactSessionRow.tsx",
+    "dashboard/src/components/sessions/ProjectNav.tsx",
+    "dashboard/src/components/sessions/SessionDetailPanel.tsx",
+    "dashboard/src/components/shared/ProgressRing.tsx",
+    "dashboard/src/hooks/useFilterParams.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e4022663b0aa",
+  "checkpoint_transcript_start": 6,
+  "transcript_lines_at_start": 6,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T03:21:39.615365Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 97,
+    "human_removed": 5,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}

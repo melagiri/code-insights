@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "8b6f2cada22e",
+  "strategy": "manual-commit",
+  "branch": "feature/sessions-insights-tier2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/src/components/chat/conversation/ConversationSearch.tsx",
+    "dashboard/src/components/insights/RecurringPatternsSection.tsx",
+    "dashboard/src/components/sessions/CompactSessionRow.tsx",
+    "dashboard/src/components/sessions/ProjectNav.tsx",
+    "dashboard/src/components/sessions/SessionDetailPanel.tsx",
+    "dashboard/src/components/shared/ProgressRing.tsx",
+    "dashboard/src/hooks/useFilterParams.ts",
+    "dashboard/src/lib/pattern-grouping.ts",
+    "dashboard/src/pages/InsightsPage.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/8b/6f2cada22e/0/metadata.json",
+      "transcript": "/8b/6f2cada22e/0/full.jsonl",
+      "context": "/8b/6f2cada22e/0/context.md",
+      "content_hash": "/8b/6f2cada22e/0/content_hash.txt",
+      "prompt": "/8b/6f2cada22e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
