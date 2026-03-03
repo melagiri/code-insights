@@ -147,6 +147,38 @@ export interface DashboardStats {
   estimated_cost_usd: number | null;
 }
 
+/**
+ * Typed metadata for insight rendering.
+ * Mirrors cli/src/types.ts InsightMetadata — all fields optional since
+ * sessions may not have all metadata populated.
+ */
+export interface InsightMetadata {
+  // Decision fields
+  situation?: string;
+  choice?: string;
+  reasoning?: string;
+  alternatives?: Array<string | { option: string; rejected_because: string }>;
+  trade_offs?: string;
+  revisit_when?: string;
+  evidence?: string[];
+  // Learning fields
+  symptom?: string;
+  root_cause?: string;
+  takeaway?: string;
+  applies_when?: string;
+  // Summary fields
+  outcome?: 'success' | 'partial' | 'abandoned' | 'blocked';
+  // Legacy learning/technique
+  context?: string;
+  applicability?: string;
+  // Prompt quality fields
+  efficiencyScore?: number;
+  wastedTurns?: Array<{ messageIndex: number; whatWentWrong?: string; reason?: string; originalMessage?: string; suggestedRewrite?: string; turnsWasted?: number }>;
+  antiPatterns?: Array<{ name: string; description?: string; count: number; examples: string[]; fix?: string }>;
+  sessionTraits?: Array<{ trait: string; severity: string; description: string; evidence?: string; suggestion?: string }>;
+  potentialMessageReduction?: number;
+}
+
 // LLM config from /api/config/llm
 export interface LLMConfig {
   dashboardPort: number;
