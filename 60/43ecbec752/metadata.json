@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "6043ecbec752",
+  "strategy": "manual-commit",
+  "branch": "feature/insights-page-ux-polish",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "dashboard/src/components/insights/InsightListItem.tsx",
+    "dashboard/src/components/insights/PromptQualityCard.tsx",
+    "dashboard/src/pages/InsightsPage.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/60/43ecbec752/0/metadata.json",
+      "transcript": "/60/43ecbec752/0/full.jsonl",
+      "context": "/60/43ecbec752/0/context.md",
+      "content_hash": "/60/43ecbec752/0/content_hash.txt",
+      "prompt": "/60/43ecbec752/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 115290,
+    "cache_read_tokens": 3883562,
+    "output_tokens": 22405,
+    "api_call_count": 42
+  }
+}

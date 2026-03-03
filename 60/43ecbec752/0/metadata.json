@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "6043ecbec752",
+  "session_id": "28cb2a20-eed2-485a-933b-df88f71f2fb9",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T08:59:05.060825Z",
+  "branch": "feature/insights-page-ux-polish",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "dashboard/src/components/insights/InsightListItem.tsx",
+    "dashboard/src/components/insights/PromptQualityCard.tsx",
+    "dashboard/src/pages/InsightsPage.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "0ab97fe5ea2c",
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 115290,
+    "cache_read_tokens": 3883562,
+    "output_tokens": 22405,
+    "api_call_count": 42
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T08:59:04.806917Z",
+    "agent_lines": 324,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 324,
+    "agent_percentage": 100
+  }
+}
