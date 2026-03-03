@@ -8,6 +8,10 @@ Analyze AI coding sessions from the terminal. Parses session history from Claude
 
 **Local-first. No accounts. No cloud. No data leaves your machine.**
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/dashboard-light.png" alt="Dashboard — activity chart, session stats, recent insights" width="800" />
+</p>
+
 ## Install
 
 ```bash
@@ -35,6 +39,10 @@ code-insights dashboard
 
 The dashboard opens at `http://localhost:7890` and shows your sessions, analytics, and LLM-powered insights.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/session-insight-light.png" alt="Session detail — insights, learnings, decisions, and conversation" width="800" />
+</p>
+
 ## Supported Tools
 
 | Tool | Data Location |
@@ -58,6 +66,14 @@ Opens the built-in React dashboard at `http://localhost:7890`. The dashboard pro
 - **Analytics** — usage patterns, cost trends, activity charts
 - **LLM Insights** — AI-generated summaries, decisions (with reasoning and trade-offs), learnings (with root cause analysis), prompt quality scoring with session traits
 - **Settings** — configure your LLM provider for analysis
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/insights-light.png" alt="Insights page — browse decisions, learnings, and prompt quality across all sessions" width="800" />
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/analytics-light.png" alt="Analytics — activity charts, model usage, cost breakdown, project table" width="800" />
+</p>
 
 ### Options
 
@@ -139,6 +155,10 @@ code-insights stats today
 # Model usage distribution and cost chart
 code-insights stats models
 ```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/stats.png" alt="Terminal stats — sessions, cost, activity chart, top projects" width="500" />
+</p>
 
 **Shared flags for all `stats` subcommands:**
 
