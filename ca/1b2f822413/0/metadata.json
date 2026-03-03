@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "ca1b2f822413",
+  "session_id": "8a05cca1-5ba6-4426-8e13-8021431e8765",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T07:33:35.054312Z",
+  "branch": "feature/sessions-panel-ux-polish",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "dashboard/src/components/sessions/CompactSessionRow.tsx",
+    "dashboard/src/components/sessions/SessionDetailPanel.tsx",
+    "dashboard/src/components/sessions/SessionListPanel.tsx",
+    "dashboard/src/components/sessions/VitalsStrip.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cb8427eba76b",
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 72475,
+    "cache_read_tokens": 739109,
+    "output_tokens": 7221,
+    "api_call_count": 11
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T07:33:34.815496Z",
+    "agent_lines": 197,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 197,
+    "agent_percentage": 100
+  }
+}
