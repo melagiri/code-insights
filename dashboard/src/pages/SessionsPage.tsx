@@ -5,7 +5,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { useProjects } from '@/hooks/useProjects';
 import { useInsights } from '@/hooks/useInsights';
 import { SESSION_CHARACTER_COLORS, SOURCE_TOOL_COLORS } from '@/lib/constants/colors';
-import { formatDuration, getSessionTitle } from '@/lib/utils';
+import { formatDuration, formatModelName, getSessionTitle } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,16 +18,19 @@ import {
 } from '@/components/ui/select';
 import { SessionCardSkeleton } from '@/components/skeletons/SessionCardSkeleton';
 import { ErrorCard } from '@/components/ErrorCard';
+import { OutcomeBadge } from '@/components/insights/InsightCard';
 import {
   MessageSquare,
   Wrench,
   Clock,
-  CheckCircle2,
-  Circle,
   SearchX,
   Terminal,
+  GitBranch,
+  DollarSign,
+  Sparkles,
 } from 'lucide-react';
-import type { Session } from '@/lib/types';
+import type { Session, Insight, InsightMetadata } from '@/lib/types';
+import { parseJsonField } from '@/lib/types';
 
 const SESSION_CHARACTERS = [
   'deep_focus',
@@ -58,6 +61,21 @@ function getDateGroup(dateStr: string): string {
 
 const GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'Earlier'];
 
+/** Short type abbreviations for compact insight count display */
+const INSIGHT_TYPE_ABBREV: Record<string, string> = {
+  summary: 'S',
+  decision: 'D',
+  learning: 'L',
+  technique: 'L',
+  prompt_quality: 'PQ',
+};
+
+function getCostColor(cost: number): string {
+  if (cost < 0.10) return 'bg-green-500/10 text-green-600 border-green-500/20';
+  if (cost < 0.50) return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+  return 'bg-red-500/10 text-red-600 border-red-500/20';
+}
+
 export default function SessionsPage() {
   const [search, setSearch] = useState('');
   const [projectFilter, setProjectFilter] = useState('all');
@@ -82,6 +100,31 @@ export default function SessionsPage() {
     () => new Set(insights.map((i) => i.session_id)),
     [insights]
   );
+
+  // Build insight counts per session: Map<sessionId, Record<type, count>>
+  const insightCountsBySession = useMemo(() => {
+    const map = new Map<string, Record<string, number>>();
+    for (const insight of insights) {
+      const counts = map.get(insight.session_id) || {};
+      counts[insight.type] = (counts[insight.type] || 0) + 1;
+      map.set(insight.session_id, counts);
+    }
+    return map;
+  }, [insights]);
+
+  // Build session outcome map from summary insights
+  const sessionOutcomes = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const insight of insights) {
+      if (insight.type === 'summary') {
+        const metadata = parseJsonField<InsightMetadata>(insight.metadata, {});
+        if (metadata.outcome) {
+          map.set(insight.session_id, metadata.outcome);
+        }
+      }
+    }
+    return map;
+  }, [insights]);
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
@@ -245,7 +288,8 @@ export default function SessionsPage() {
                   <SessionRow
                     key={session.id}
                     session={session}
-                    isAnalyzed={analyzedSessionIds.has(session.id)}
+                    insightCounts={insightCountsBySession.get(session.id)}
+                    outcome={sessionOutcomes.get(session.id)}
                   />
                 ))}
               </div>
@@ -257,7 +301,42 @@ export default function SessionsPage() {
   );
 }
 
-function SessionRow({ session, isAnalyzed }: { session: Session; isAnalyzed: boolean }) {
+function InsightCountBadge({ counts }: { counts: Record<string, number> | undefined }) {
+  if (!counts) {
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Sparkles className="h-3 w-3" />
+        Not analyzed
+      </span>
+    );
+  }
+
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  // Build compact breakdown string like "2L 1D"
+  const breakdown = Object.entries(counts)
+    .filter(([type]) => type !== 'summary') // Don't show summary in breakdown
+    .sort(([, a], [, b]) => b - a)
+    .map(([type, count]) => `${count}${INSIGHT_TYPE_ABBREV[type] || type[0].toUpperCase()}`)
+    .join(' ');
+
+  return (
+    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+      <Sparkles className="h-3 w-3 text-purple-500" />
+      {total} insight{total !== 1 ? 's' : ''}
+      {breakdown && <span className="text-muted-foreground/70">({breakdown})</span>}
+    </span>
+  );
+}
+
+function SessionRow({
+  session,
+  insightCounts,
+  outcome,
+}: {
+  session: Session;
+  insightCounts: Record<string, number> | undefined;
+  outcome: string | undefined;
+}) {
   const startedAt = new Date(session.started_at);
   const endedAt = new Date(session.ended_at);
   const displayTitle = getSessionTitle(session);
@@ -268,11 +347,18 @@ function SessionRow({ session, isAnalyzed }: { session: Session; isAnalyzed: boo
   return (
     <Link to={`/sessions/${session.id}`} className="block group">
       <div className="rounded-lg border bg-card px-4 py-3 hover:bg-accent/40 transition-colors">
+        {/* Row 1: Title + badges */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">
               {displayTitle}
             </p>
+            {/* Summary preview */}
+            {session.summary && (
+              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                {session.summary.length > 80 ? session.summary.slice(0, 80) + '...' : session.summary}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {session.session_character && characterColor && (
                 <Badge variant="outline" className={`text-xs capitalize ${characterColor}`}>
@@ -280,6 +366,7 @@ function SessionRow({ session, isAnalyzed }: { session: Session; isAnalyzed: boo
                 </Badge>
               )}
               <span className="text-xs text-muted-foreground">{session.project_name}</span>
+              {outcome && <OutcomeBadge outcome={outcome} />}
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -291,23 +378,15 @@ function SessionRow({ session, isAnalyzed }: { session: Session; isAnalyzed: boo
                 {session.source_tool}
               </Badge>
             )}
-            {isAnalyzed ? (
-              <span className="flex items-center gap-1 text-xs text-green-600">
-                <CheckCircle2 className="h-3 w-3" />
-                analyzed
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Circle className="h-3 w-3" />
-                not analyzed
-              </span>
-            )}
+            <InsightCountBadge counts={insightCounts} />
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(startedAt, { addSuffix: true })}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+
+        {/* Row 2: Metadata stats */}
+        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <MessageSquare className="h-3 w-3" />
             {session.message_count} messages
@@ -320,6 +399,23 @@ function SessionRow({ session, isAnalyzed }: { session: Session; isAnalyzed: boo
             <Clock className="h-3 w-3" />
             {formatDuration(startedAt, endedAt)}
           </span>
+          {session.estimated_cost_usd != null && (
+            <Badge variant="outline" className={`text-xs py-0 ${getCostColor(session.estimated_cost_usd)}`}>
+              <DollarSign className="h-3 w-3 mr-0.5" />
+              {session.estimated_cost_usd.toFixed(2)}
+            </Badge>
+          )}
+          {session.primary_model && (
+            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {formatModelName(session.primary_model)}
+            </span>
+          )}
+          {session.git_branch && (
+            <span className="flex items-center gap-1">
+              <GitBranch className="h-3 w-3" />
+              <span className="font-mono text-xs truncate max-w-[120px]">{session.git_branch}</span>
+            </span>
+          )}
         </div>
       </div>
     </Link>
