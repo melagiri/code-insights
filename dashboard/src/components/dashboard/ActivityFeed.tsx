@@ -70,7 +70,7 @@ function SessionFeedItem({ session }: { session: Session }) {
   const displayTitle = getSessionTitle(session);
 
   return (
-    <Link to={`/sessions/${session.id}`} className="block group">
+    <Link to={`/sessions?session=${session.id}`} className="block group">
       <div className="py-1.5 px-1 hover:bg-accent transition-all duration-200 rounded-sm">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -107,7 +107,7 @@ function InsightFeedItem({ insight }: { insight: Insight }) {
   const label = insightTypeLabels[insight.type];
 
   return (
-    <Link to={`/sessions/${insight.session_id}`} className="block group">
+    <Link to={`/sessions?session=${insight.session_id}`} className="block group">
       <div className="py-1.5 px-1 hover:bg-accent transition-all duration-200 rounded-sm">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">

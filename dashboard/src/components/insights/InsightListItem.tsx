@@ -152,7 +152,7 @@ export function InsightListItem({ insight, showProject = false, allInsightIds }:
 
           <div className="mt-3">
             <a
-              href={`/sessions/${insight.session_id}`}
+              href={`/sessions?session=${insight.session_id}`}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
