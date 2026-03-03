@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "b7aca14ba699",
+  "session_id": "9d3d675a-98c7-4950-a022-06a61ed1c8c2",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T09:09:46.609017Z",
+  "branch": "release/v3.5.0",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/assets/screenshots/session-insight-light.png",
+    "docs/assets/screenshots/stats.png",
+    "cli/README.md",
+    "cli/package.json",
+    "docs/assets/screenshots/analytics-light.png",
+    "docs/assets/screenshots/dashboard-light.png",
+    "docs/assets/screenshots/insights-light.png"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e4022663b0aa",
+  "checkpoint_transcript_start": 6,
+  "transcript_lines_at_start": 6,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T09:09:46.607208Z",
+    "agent_lines": 0,
+    "human_added": 329,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 329,
+    "agent_percentage": 0
+  }
+}
