@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "06a50ac71f71",
+  "strategy": "manual-commit",
+  "branch": "feature/sessions-insights-tier2",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/ux/sessions-insights-redesign.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/06/a50ac71f71/0/metadata.json",
+      "transcript": "/06/a50ac71f71/0/full.jsonl",
+      "context": "/06/a50ac71f71/0/context.md",
+      "content_hash": "/06/a50ac71f71/0/content_hash.txt",
+      "prompt": "/06/a50ac71f71/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
