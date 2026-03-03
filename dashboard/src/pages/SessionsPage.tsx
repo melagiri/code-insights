@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useSyncExternalStore } from 'react';
 import { useSessions } from '@/hooks/useSessions';
 import { useProjects } from '@/hooks/useProjects';
 import { useInsights } from '@/hooks/useInsights';
@@ -16,6 +16,15 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { ArrowLeft, ChevronDown, MousePointerClick } from 'lucide-react';
+
+const lgQuery = typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)') : null;
+function subscribeLg(cb: () => void) {
+  lgQuery?.addEventListener('change', cb);
+  return () => lgQuery?.removeEventListener('change', cb);
+}
+function getIsLg() {
+  return lgQuery?.matches ?? true;
+}
 
 export default function SessionsPage() {
   const [filters, setFilter, setFilters, clearFilters] = useFilterParams({
@@ -80,6 +89,7 @@ export default function SessionsPage() {
   }, [filters.project, projects]);
 
   const showProject = filters.project === 'all';
+  const isLg = useSyncExternalStore(subscribeLg, getIsLg);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
@@ -152,14 +162,14 @@ export default function SessionsPage() {
       </div>
 
       {/* Below lg: Session detail as Sheet from right */}
-      {filters.session && (
+      {!isLg && filters.session && (
         <Sheet
           open={!!filters.session}
           onOpenChange={(open) => {
             if (!open) setFilter('session', '');
           }}
         >
-          <SheetContent side="right" className="w-full sm:w-[85vw] lg:hidden p-0 flex flex-col">
+          <SheetContent side="right" className="w-full sm:w-[85vw] p-0 flex flex-col">
             <SheetHeader className="sr-only">
               <SheetTitle>Session Detail</SheetTitle>
               <SheetDescription>Session detail view</SheetDescription>
