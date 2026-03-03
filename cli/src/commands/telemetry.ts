@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { loadConfig, saveConfig } from '../utils/config.js';
-import { isTelemetryEnabled, buildEventPreview } from '../utils/telemetry.js';
+import { isTelemetryEnabled, buildEventPreview, trackEvent, shutdownTelemetry } from '../utils/telemetry.js';
 import type { ClaudeInsightConfig } from '../types.js';
 
 /**
@@ -70,8 +70,16 @@ function statusAction(): void {
  * If no config file exists yet we write a minimal one — the user clearly has
  * an intent to opt out and we should honour it without forcing them to run init
  * first.
+ *
+ * Fire telemetry_opted_out BEFORE writing the config — telemetry is still
+ * enabled at this point, so the event will actually be sent. Then flush
+ * and shut down the client before the process exits.
  */
-function disableAction(): void {
+async function disableAction(): Promise<void> {
+  // Fire and flush while telemetry is still enabled
+  trackEvent('telemetry_opted_out');
+  await shutdownTelemetry();
+
   const config = loadConfig() ?? { ...MINIMAL_CONFIG };
   config.telemetry = false;
   saveConfig(config);
@@ -81,11 +89,14 @@ function disableAction(): void {
 /**
  * Persist telemetry = true to config.
  * Same minimal-config fallback as disableAction.
+ *
+ * Write config FIRST so telemetry is enabled, then fire telemetry_opted_in.
  */
 function enableAction(): void {
   const config = loadConfig() ?? { ...MINIMAL_CONFIG };
   config.telemetry = true;
   saveConfig(config);
+  trackEvent('telemetry_opted_in');
   console.log(chalk.green('\n  Telemetry enabled.\n'));
 }
 
@@ -105,8 +116,8 @@ telemetryCommand
 telemetryCommand
   .command('disable')
   .description('Disable anonymous telemetry')
-  .action(() => {
-    disableAction();
+  .action(async () => {
+    await disableAction();
   });
 
 telemetryCommand
