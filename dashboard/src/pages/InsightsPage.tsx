@@ -6,7 +6,8 @@ import { useFilterParams } from '@/hooks/useFilterParams';
 import { useProjects } from '@/hooks/useProjects';
 import { buildPatternGroups } from '@/lib/pattern-grouping';
 import { InsightListItem } from '@/components/insights/InsightListItem';
-import { PromptQualityCard } from '@/components/insights/PromptQualityCard';
+// PromptQualityCard still used in SessionDetailPanel; on this page prompt_quality
+// insights render inline via InsightListItem → PromptQualityContent.
 import { RecurringPatternsSection } from '@/components/insights/RecurringPatternsSection';
 import { InsightCardSkeleton } from '@/components/skeletons/InsightCardSkeleton';
 import { ErrorCard } from '@/components/ErrorCard';
@@ -21,12 +22,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sparkles, SearchX, X } from 'lucide-react';
+import { Sparkles, SearchX, X, FileText, GitCommit, BookOpen, Target } from 'lucide-react';
 import { getDateGroup, sortDateGroups } from '@/lib/utils';
 import { INSIGHT_TYPE_LABELS } from '@/lib/constants/colors';
 import type { Insight, InsightType } from '@/lib/types';
 
 const INSIGHT_TYPES: InsightType[] = ['summary', 'decision', 'learning', 'technique', 'prompt_quality'];
+
+const TYPE_SECTION_ICONS: Record<string, { icon: typeof FileText; color: string }> = {
+  summary: { icon: FileText, color: 'text-purple-500' },
+  decision: { icon: GitCommit, color: 'text-blue-500' },
+  learning: { icon: BookOpen, color: 'text-green-500' },
+  technique: { icon: BookOpen, color: 'text-green-500' },
+  prompt_quality: { icon: Target, color: 'text-rose-500' },
+};
 
 const VIEW_MODES = [
   { value: 'timeline', label: 'Timeline' },
@@ -154,95 +163,94 @@ export default function InsightsPage() {
   }, [filtered, filters.view]);
 
   return (
-    <div className="p-6 space-y-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Insights</h1>
-        {!isLoading && (
-          <p className="text-muted-foreground text-sm">
-            {filtered.length} insight{filtered.length !== 1 ? 's' : ''}
-            {hasFilters ? ' matching filters' : ''}
-          </p>
+    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
+      {/* Sticky header: title + filters */}
+      <div className="shrink-0 sticky top-0 z-10 bg-background border-b px-6 pt-5 pb-3 space-y-3">
+        <div>
+          <h1 className="text-2xl font-bold">Insights</h1>
+          {!isLoading && (
+            <p className="text-muted-foreground text-sm">
+              {filtered.length} insight{filtered.length !== 1 ? 's' : ''}
+              {hasFilters ? ' matching filters' : ''}
+            </p>
+          )}
+        </div>
+
+        {/* Pattern filter banner */}
+        {filters.pattern && (
+          <div className="flex items-center gap-2 rounded-lg border bg-amber-500/5 border-amber-500/20 px-3 py-2">
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+              Pattern
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              Showing {filtered.length} insight{filtered.length !== 1 ? 's' : ''} in this recurring pattern
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 ml-auto shrink-0"
+              onClick={() => setFilter('pattern', '')}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         )}
-      </div>
 
-      {/* Pattern filter banner */}
-      {filters.pattern && (
-        <div className="flex items-center gap-2 rounded-lg border bg-amber-500/5 border-amber-500/20 px-3 py-2">
-          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-            Pattern
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            Showing {filtered.length} insight{filtered.length !== 1 ? 's' : ''} in this recurring pattern
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 ml-auto shrink-0"
-            onClick={() => setFilter('pattern', '')}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
-      {/* Filters + View Mode */}
-      <div className="space-y-2">
+        {/* Filters + View Mode */}
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            placeholder="Search insights..."
-            value={filters.q}
-            onChange={(e) => setFilter('q', e.target.value)}
-            className="max-w-sm"
-          />
-          <Tabs
-            value={filters.view}
-            onValueChange={(v) => setFilter('view', v)}
-          >
-            <TabsList variant="default" className="h-9">
-              {VIEW_MODES.map((mode) => (
-                <TabsTrigger key={mode.value} value={mode.value} className="text-xs px-3">
-                  {mode.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Select value={filters.project} onValueChange={(v) => setFilter('project', v)}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All Projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Input
+          placeholder="Search insights..."
+          value={filters.q}
+          onChange={(e) => setFilter('q', e.target.value)}
+          className="max-w-xs"
+        />
 
-          <Select
-            value={filters.type}
-            onValueChange={(v) => setFilter('type', v)}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {INSIGHT_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {INSIGHT_TYPE_LABELS[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Select value={filters.project} onValueChange={(v) => setFilter('project', v)}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="All Projects" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filters.type} onValueChange={(v) => setFilter('type', v)}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {INSIGHT_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {INSIGHT_TYPE_LABELS[t]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Tabs
+          value={filters.view}
+          onValueChange={(v) => setFilter('view', v)}
+          className="ml-auto"
+        >
+          <TabsList variant="default" className="h-9">
+            {VIEW_MODES.map((mode) => (
+              <TabsTrigger key={mode.value} value={mode.value} className="text-xs px-3">
+                {mode.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
         </div>
       </div>
 
-      {/* Content */}
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
       {isError && !isLoading ? (
         <ErrorCard message="Failed to load insights" onRetry={refetch} />
       ) : isLoading ? (
@@ -278,16 +286,18 @@ export default function InsightsPage() {
             <RecurringPatternsSection insights={insights} />
           )}
 
-          {grouped.map((group) => (
-            <div key={group.key}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                {group.label} ({group.count})
-              </h2>
-              <div className="space-y-3">
-                {group.insights.map((insight) =>
-                  insight.type === 'prompt_quality' ? (
-                    <PromptQualityCard key={insight.id} insight={insight} />
-                  ) : (
+          {grouped.map((group) => {
+            const sectionMeta = filters.view === 'type' ? TYPE_SECTION_ICONS[group.key] : null;
+            const SectionIcon = sectionMeta?.icon;
+
+            return (
+              <div key={group.key}>
+                <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  {SectionIcon && <SectionIcon className={`h-3.5 w-3.5 ${sectionMeta.color}`} />}
+                  {group.label} ({group.count})
+                </h2>
+                <div className="rounded-md border overflow-hidden">
+                  {group.insights.map((insight) => (
                     <InsightListItem
                       key={insight.id}
                       insight={insight}
@@ -296,13 +306,14 @@ export default function InsightsPage() {
                       highlighted={insight.id === highlightedInsightId}
                       defaultExpanded={insight.id === highlightedInsightId}
                     />
-                  )
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+      </div>
     </div>
   );
 }

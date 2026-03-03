@@ -1,19 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { FileText, GitCommit, BookOpen, Target, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { INSIGHT_TYPE_COLORS, INSIGHT_TYPE_LABELS } from '@/lib/constants/colors';
 import { cn } from '@/lib/utils';
+import { getScoreTier } from '@/lib/score-utils';
 import type { Insight, InsightType, InsightMetadata } from '@/lib/types';
 import { parseJsonField } from '@/lib/types';
 import { OutcomeBadge, renderTypeContent } from './insight-metadata';
+import { PromptQualityContent } from './PromptQualityCard';
 
-const typeIcons: Record<InsightType, typeof FileText> = {
-  summary: FileText,
-  decision: GitCommit,
-  learning: BookOpen,
-  technique: BookOpen,
-  prompt_quality: Target,
+const SCORE_BADGE_COLORS: Record<string, string> = {
+  excellent: 'bg-green-500/15 text-green-600',
+  good: 'bg-yellow-500/15 text-yellow-600',
+  fair: 'bg-orange-500/15 text-orange-600',
+  poor: 'bg-red-500/15 text-red-600',
+};
+
+const DOT_COLORS: Record<InsightType, string> = {
+  summary: 'bg-purple-500',
+  decision: 'bg-blue-500',
+  learning: 'bg-green-500',
+  technique: 'bg-green-500',
+  prompt_quality: 'bg-rose-500',
+};
+
+const EXPAND_BORDER_COLORS: Record<InsightType, string> = {
+  summary: 'border-purple-500/40',
+  decision: 'border-blue-500/40',
+  learning: 'border-green-500/40',
+  technique: 'border-green-500/40',
+  prompt_quality: 'border-rose-500/40',
 };
 
 interface InsightListItemProps {
@@ -29,7 +46,6 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
   const [showRing, setShowRing] = useState(highlighted);
   const itemRef = useRef<HTMLDivElement>(null);
 
-  // Sync showRing when highlighted prop changes
   useEffect(() => {
     setShowRing(!!highlighted);
   }, [highlighted]);
@@ -43,7 +59,7 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
       return () => clearTimeout(timer);
     }
   }, [highlighted]);
-  const Icon = typeIcons[insight.type];
+
   const colorClass = INSIGHT_TYPE_COLORS[insight.type];
   const bullets = parseJsonField<string[]>(insight.bullets, []);
   const metadata = parseJsonField<InsightMetadata>(insight.metadata, {});
@@ -58,64 +74,45 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
     : 0;
 
   const iconColorClass = colorClass.split(' ').find(c => c.startsWith('text-')) || 'text-muted-foreground';
+  const expandedTypeContent = insight.type !== 'prompt_quality'
+    ? renderTypeContent(insight.type, metadata, bullets)
+    : null;
 
-  // For collapsed preview: show key field based on type
-  const collapsedPreview = !expanded && (() => {
-    if (insight.type === 'decision' && metadata.choice) {
-      return <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Choice: {metadata.choice}</p>;
-    }
-    if ((insight.type === 'learning' || insight.type === 'technique') && metadata.takeaway) {
-      return <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Takeaway: {metadata.takeaway}</p>;
-    }
-    if (insight.type === 'summary' && metadata.outcome) {
-      return (
-        <div className="mt-1">
-          <OutcomeBadge outcome={metadata.outcome} />
-        </div>
-      );
-    }
-    // Generic fallback: show bullets
-    if (bullets.length > 0) {
-      return (
-        <ul className="mt-2 space-y-0.5">
-          {bullets.slice(0, 3).map((bullet, i) => (
-            <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-              <span className="shrink-0 mt-0.5">-</span>
-              <span className="line-clamp-1">{bullet}</span>
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    return null;
-  })();
-
-  // For expanded content: type-specific or generic fallback
-  const expandedTypeContent = renderTypeContent(insight.type, metadata, bullets);
+  // Prompt quality score for collapsed badge
+  const pqScore = insight.type === 'prompt_quality'
+    ? (typeof (metadata as Record<string, unknown>).efficiencyScore === 'number'
+        ? (metadata as Record<string, unknown>).efficiencyScore as number
+        : null)
+    : null;
 
   return (
     <div
       ref={itemRef}
       className={cn(
-        'border rounded-lg overflow-hidden transition-shadow duration-500',
-        showRing && 'ring-2 ring-primary'
+        'border-b last:border-b-0 transition-shadow duration-500',
+        showRing && 'ring-2 ring-primary rounded-sm'
       )}
     >
       <button
-        className="w-full text-left p-4 hover:bg-muted/30 transition-colors"
+        className="w-full text-left px-3 py-2.5 hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}
       >
-        <div className="flex items-start gap-3">
-          <div className={cn('mt-0.5 shrink-0 rounded-md p-1.5', colorClass)}>
-            <Icon className="h-4 w-4" />
-          </div>
-
+        <div className="flex items-start gap-2.5">
+          <span className={cn('w-2 h-2 rounded-full shrink-0 mt-1.5', DOT_COLORS[insight.type])} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <span className={cn('text-xs font-medium', iconColorClass)}>
                 {INSIGHT_TYPE_LABELS[insight.type]}
               </span>
+              {pqScore != null && (
+                <span className={cn(
+                  'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+                  SCORE_BADGE_COLORS[getScoreTier(pqScore)]
+                )}>
+                  {pqScore}
+                </span>
+              )}
               {recurringCount > 0 && (
                 <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs py-0">
                   Recurring {recurringCount + 1}x
@@ -123,8 +120,7 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
               )}
             </div>
             <p className="text-sm font-medium leading-snug">{insight.title}</p>
-
-            <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
+            <div className="flex items-center justify-between gap-2 mt-0.5 flex-wrap">
               {showProject && (
                 <span className="text-xs text-muted-foreground">{insight.project_name}</span>
               )}
@@ -132,11 +128,8 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
                 {formatDistanceToNow(new Date(insight.timestamp), { addSuffix: true })}
               </span>
             </div>
-
-            {collapsedPreview}
           </div>
-
-          <div className="shrink-0 mt-0.5 text-muted-foreground">
+          <div className="shrink-0 mt-1 text-muted-foreground">
             {expanded
               ? <ChevronDown className="h-4 w-4" />
               : <ChevronRight className="h-4 w-4" />}
@@ -145,21 +138,21 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 pt-0 border-t bg-muted/20">
-          {expandedTypeContent ? (
-            <div className="mt-3">
-              {expandedTypeContent}
-            </div>
+        <div className={cn(
+          'mx-3 mb-2.5 ml-[1.85rem] pl-3 pr-3 py-2.5 border-l-2 bg-muted/20 rounded-r-md',
+          EXPAND_BORDER_COLORS[insight.type]
+        )}>
+          {insight.type === 'prompt_quality' ? (
+            <PromptQualityContent insight={insight} />
+          ) : expandedTypeContent ? (
+            <div>{expandedTypeContent}</div>
           ) : (
             <>
               {insight.content && (
-                <div className="mt-3">
-                  <p className="text-sm text-foreground leading-relaxed">{insight.content}</p>
-                </div>
+                <p className="text-sm text-foreground leading-relaxed">{insight.content}</p>
               )}
-
               {bullets.length > 0 && (
-                <ul className="mt-3 space-y-1">
+                <ul className="mt-2 space-y-1">
                   {bullets.map((bullet, i) => (
                     <li key={i} className="text-sm text-muted-foreground flex gap-2">
                       <span className="shrink-0 mt-0.5">-</span>
@@ -171,9 +164,11 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
             </>
           )}
 
-          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-            <span>Confidence: {Math.round(insight.confidence * 100)}%</span>
-          </div>
+          {metadata.outcome && insight.type === 'summary' && (
+            <div className="mt-2">
+              <OutcomeBadge outcome={metadata.outcome} />
+            </div>
+          )}
 
           <div className="mt-3">
             <a
