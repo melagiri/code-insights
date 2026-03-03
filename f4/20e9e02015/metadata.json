@@ -5,6 +5,12 @@
   "branch": "feature/sessions-panel-ux-polish",
   "checkpoints_count": 17,
   "files_touched": [
+    "dashboard/src/components/insights/PromptQualityCard.tsx",
+    "dashboard/src/components/sessions/CompactSessionRow.tsx",
+    "dashboard/src/components/sessions/SessionDetailPanel.tsx",
+    "dashboard/src/components/sessions/VitalsStrip.tsx",
+    "dashboard/src/components/shared/ProgressRing.tsx",
+    "dashboard/src/lib/score-utils.ts",
     "docs/ux/sessions-insights-redesign.md"
   ],
   "sessions": [
@@ -14,6 +20,13 @@
       "context": "/f4/20e9e02015/0/context.md",
       "content_hash": "/f4/20e9e02015/0/content_hash.txt",
       "prompt": "/f4/20e9e02015/0/prompt.txt"
+    },
+    {
+      "metadata": "/f4/20e9e02015/1/metadata.json",
+      "transcript": "/f4/20e9e02015/1/full.jsonl",
+      "context": "/f4/20e9e02015/1/context.md",
+      "content_hash": "/f4/20e9e02015/1/content_hash.txt",
+      "prompt": "/f4/20e9e02015/1/prompt.txt"
     }
   ],
   "token_usage": {
