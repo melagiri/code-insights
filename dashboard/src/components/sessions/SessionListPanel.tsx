@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CompactSessionRow } from './CompactSessionRow';
-import { getSessionTitle, getDateGroup, DATE_GROUP_ORDER } from '@/lib/utils';
+import { getSessionTitle, getDateGroup, sortDateGroups } from '@/lib/utils';
 import { parseJsonField } from '@/lib/types';
 import type { Session, Insight, InsightMetadata } from '@/lib/types';
 import { SearchX, Terminal } from 'lucide-react';
@@ -94,15 +94,16 @@ export function SessionListPanel({
   }, [sessions, filters.character, filters.status, filters.q, analyzedSessionIds]);
 
   const groupedSessions = useMemo(() => {
-    const groups: Record<string, Session[]> = {};
+    const groups = new Map<string, Session[]>();
     for (const s of filteredSessions) {
       const group = getDateGroup(s.started_at);
-      if (!groups[group]) groups[group] = [];
-      groups[group].push(s);
+      const arr = groups.get(group) || [];
+      arr.push(s);
+      groups.set(group, arr);
     }
-    return DATE_GROUP_ORDER.filter((g) => groups[g]).map((g) => ({
-      group: g,
-      sessions: groups[g],
+    return sortDateGroups([...groups.entries()]).map(([group, sessions]) => ({
+      group,
+      sessions,
     }));
   }, [filteredSessions]);
 

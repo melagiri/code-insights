@@ -2,7 +2,8 @@ import { FileText, FilePen, FilePlus2 } from 'lucide-react';
 import type { ToolCall, ToolResult } from '@/lib/types';
 import { parseToolInput } from '../utils';
 import { usePreviewText } from '../usePreview';
-import { ToolPanelHeader } from './ToolPanelHeader';
+import { CollapsibleToolPanel } from '../CollapsibleToolPanel';
+import { Badge } from '@/components/ui/badge';
 
 interface FileToolPanelProps {
   toolCall: ToolCall;
@@ -44,20 +45,22 @@ export function FileToolPanel({ toolCall, result }: FileToolPanelProps) {
   const PREVIEW_LINES = 8;
   const { hasMore, previewText, resultLines, showFull, toggle } = usePreviewText(resultText, PREVIEW_LINES);
 
-  return (
-    <div className="my-2 rounded-lg border border-border overflow-hidden">
-      <ToolPanelHeader
-        className="bg-muted/60 border-border"
-        icon={<Icon className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
-        title={label}
-        meta={(
-          <code className="text-xs text-muted-foreground font-mono truncate" title={filePath}>
-            {fileName || 'file'}
-          </code>
-        )}
-        rightContent={lang ? <span className="text-[10px] text-muted-foreground/60">{lang}</span> : null}
-      />
+  const summary = (
+    <>
+      <code className="text-xs text-muted-foreground font-mono truncate" title={filePath}>
+        {fileName || 'file'}
+      </code>
+      <Badge variant="outline" className="text-[10px] py-0 shrink-0">{label}</Badge>
+      {lang && <span className="text-[10px] text-muted-foreground/60 shrink-0">{lang}</span>}
+    </>
+  );
 
+  return (
+    <CollapsibleToolPanel
+      icon={<Icon className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
+      label="File"
+      summary={summary}
+    >
       {isEdit && (oldString || newString) && (
         <div className="text-xs font-mono overflow-x-auto">
           {oldString && (
@@ -96,6 +99,6 @@ export function FileToolPanel({ toolCall, result }: FileToolPanelProps) {
           Created {fileName ? <code className="font-mono">{fileName}</code> : 'file'}
         </div>
       )}
-    </div>
+    </CollapsibleToolPanel>
   );
 }

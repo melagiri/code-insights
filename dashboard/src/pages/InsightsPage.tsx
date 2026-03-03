@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
+import { useSearchParams } from 'react-router';
 import { useInsights } from '@/hooks/useInsights';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { useProjects } from '@/hooks/useProjects';
@@ -21,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sparkles, SearchX, X } from 'lucide-react';
-import { getDateGroup, DATE_GROUP_ORDER } from '@/lib/utils';
+import { getDateGroup, sortDateGroups } from '@/lib/utils';
 import { INSIGHT_TYPE_LABELS } from '@/lib/constants/colors';
 import type { Insight, InsightType } from '@/lib/types';
 
@@ -49,6 +50,9 @@ export default function InsightsPage() {
     view: 'timeline',
     pattern: '',
   });
+
+  const [searchParams] = useSearchParams();
+  const highlightedInsightId = searchParams.get('insight') || null;
 
   const { data: projects = [] } = useProjects();
   const { data: insights = [], isLoading, isError, refetch } = useInsights(
@@ -103,9 +107,8 @@ export default function InsightsPage() {
     const entries = [...groups.entries()];
 
     if (view === 'timeline') {
-      const order = DATE_GROUP_ORDER as readonly string[];
-      entries.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
-      return entries.map(([key, items]) => ({
+      const sorted = sortDateGroups(entries);
+      return sorted.map(([key, items]) => ({
         key,
         label: key,
         count: items.length,
@@ -290,6 +293,8 @@ export default function InsightsPage() {
                       insight={insight}
                       showProject={filters.view !== 'project'}
                       allInsightIds={allInsightIds}
+                      highlighted={insight.id === highlightedInsightId}
+                      defaultExpanded={insight.id === highlightedInsightId}
                     />
                   )
                 )}

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import type { Session } from '@/lib/types';
 
 export function cn(...inputs: ClassValue[]) {
@@ -73,21 +73,57 @@ export function getSessionTitle(session: Pick<Session, 'custom_title' | 'generat
   return session.custom_title || session.generated_title || session.summary || 'Untitled Session';
 }
 
-export const DATE_GROUP_ORDER = ['Today', 'Yesterday', 'This Week', 'Earlier'] as const;
-
 export function getDateGroup(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(thisWeekStart.getDate() - 7);
 
   const sessionDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
   if (sessionDay.getTime() === today.getTime()) return 'Today';
   if (sessionDay.getTime() === yesterday.getTime()) return 'Yesterday';
-  if (sessionDay >= thisWeekStart) return 'This Week';
-  return 'Earlier';
+  if (date.getFullYear() !== now.getFullYear()) {
+    return format(date, 'EEEE, MMM d, yyyy');
+  }
+  return format(date, 'EEEE, MMM d');
+}
+
+/**
+ * Sort date group entries: Today first, Yesterday second, then remaining groups
+ * sorted newest-first by parsing the date label.
+ */
+export function sortDateGroups<T>(entries: [string, T][]): [string, T][] {
+  const now = new Date();
+  return [...entries].sort((a, b) => {
+    const labelA = a[0];
+    const labelB = b[0];
+
+    // Today always first
+    if (labelA === 'Today') return -1;
+    if (labelB === 'Today') return 1;
+    // Yesterday always second
+    if (labelA === 'Yesterday') return -1;
+    if (labelB === 'Yesterday') return 1;
+
+    // Parse dates from labels for remaining groups (newest first)
+    const dateA = parseDateGroupLabel(labelA, now);
+    const dateB = parseDateGroupLabel(labelB, now);
+    return dateB.getTime() - dateA.getTime();
+  });
+}
+
+function parseDateGroupLabel(label: string, now: Date): Date {
+  // Remove the day-of-week prefix (e.g., "Monday, ")
+  const commaIdx = label.indexOf(', ');
+  if (commaIdx === -1) return new Date(0);
+  const datePart = label.slice(commaIdx + 2);
+  // Try "MMM d, yyyy" first (cross-year labels)
+  const withYear = parse(datePart, 'MMM d, yyyy', now);
+  if (!isNaN(withYear.getTime())) return withYear;
+  // Fall back to "MMM d" (current year)
+  const currentYear = parse(datePart, 'MMM d', now);
+  if (!isNaN(currentYear.getTime())) return currentYear;
+  return new Date(0);
 }

@@ -7,6 +7,7 @@ import { AGENT_PARTICIPANT_COLORS, AGENT_DEFAULT_COLOR } from '@/lib/constants/c
 import type { ToolCall, ToolResult } from '@/lib/types';
 import { parseToolInput } from '../utils';
 import { usePreviewText } from '../usePreview';
+import { CollapsibleToolPanel } from '../CollapsibleToolPanel';
 
 interface AgentToolPanelProps {
   toolCall: ToolCall;
@@ -41,14 +42,29 @@ export function AgentToolPanel({ toolCall, result }: AgentToolPanelProps) {
   const resultText = result?.output || '';
   const { hasMore, previewText, resultLines, showFull, toggle } = usePreviewText(resultText, PREVIEW_LINES);
 
+  const descriptionPreview = description.length > 60
+    ? description.slice(0, 60) + '...'
+    : description;
+
+  const summary = (
+    <>
+      {descriptionPreview && (
+        <span className="text-xs text-muted-foreground truncate">{descriptionPreview}</span>
+      )}
+      {subagentType && (
+        <Badge variant="outline" className="text-[10px] py-0 shrink-0">{subagentType}</Badge>
+      )}
+    </>
+  );
+
   return (
     <div className="my-3">
-      <div className="rounded-lg border border-purple-500/20 overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/8">
-          <Users className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-          <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Agent Dispatched</span>
-        </div>
-
+      <CollapsibleToolPanel
+        icon={<Users className="h-3.5 w-3.5 text-purple-500 shrink-0" />}
+        label="Agent"
+        summary={summary}
+        className="border-purple-500/20"
+      >
         <div className="px-3 py-2 space-y-2">
           {description && (
             <p className="text-sm font-medium text-foreground">&quot;{description}&quot;</p>
@@ -79,7 +95,7 @@ export function AgentToolPanel({ toolCall, result }: AgentToolPanelProps) {
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleToolPanel>
 
       {resultText && (
         <div className="mt-2 pl-4 border-l-2 border-purple-400/40">

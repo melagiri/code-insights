@@ -66,6 +66,14 @@ export const AGENT_PARTICIPANT_COLORS: Record<string, string> = {
 /** Fallback color for unknown agent types. */
 export const AGENT_DEFAULT_COLOR = 'bg-gray-500 text-white';
 
+/** Outcome indicator dot colors and labels for session outcome status. */
+export const OUTCOME_DOT: Record<string, { color: string; label: string }> = {
+  success: { color: 'bg-emerald-500', label: 'Completed successfully' },
+  partial: { color: 'bg-amber-500', label: 'Partially completed' },
+  abandoned: { color: 'bg-red-500', label: 'Abandoned' },
+  blocked: { color: 'bg-red-500', label: 'Blocked' },
+};
+
 /** Badge colors for source tool indicators. */
 export const SOURCE_TOOL_COLORS: Record<string, string> = {
   'claude-code': 'bg-orange-500/10 text-orange-600 border-orange-500/20',

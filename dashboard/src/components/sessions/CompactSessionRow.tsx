@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
-import { SESSION_CHARACTER_COLORS } from '@/lib/constants/colors';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { SESSION_CHARACTER_COLORS, OUTCOME_DOT } from '@/lib/constants/colors';
 import { formatDuration, getSessionTitle, cn } from '@/lib/utils';
-import { OutcomeBadge } from '@/components/insights/InsightCard';
 import { Sparkles } from 'lucide-react';
 import type { Session } from '@/lib/types';
 
@@ -63,38 +63,46 @@ export function CompactSessionRow({
 
       {/* Badges */}
       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+        {outcome && OUTCOME_DOT[outcome] && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn('w-2 h-2 rounded-full shrink-0', OUTCOME_DOT[outcome].color)} />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">{OUTCOME_DOT[outcome].label}</TooltipContent>
+          </Tooltip>
+        )}
         {session.session_character && characterColor && (
           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 capitalize ${characterColor}`}>
             {session.session_character.replace(/_/g, ' ')}
           </Badge>
         )}
-        {outcome && <OutcomeBadge outcome={outcome} />}
       </div>
 
-      {/* Stats line 1: source . messages . duration */}
-      <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-        {sourceLabel && <span>{sourceLabel}</span>}
-        {sourceLabel && <span className="text-muted-foreground/40">&middot;</span>}
-        <span>{session.message_count} msgs</span>
-        <span className="text-muted-foreground/40">&middot;</span>
-        <span>{formatDuration(startedAt, endedAt)}</span>
-      </div>
-
-      {/* Stats line 2: cost . insights */}
-      <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-        {session.estimated_cost_usd != null && (
+      {/* Metadata: source . messages . duration . cost . insights */}
+      <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground/70 flex-wrap">
+        {sourceLabel && (
           <>
-            <span>${session.estimated_cost_usd.toFixed(2)}</span>
-            <span className="text-muted-foreground/40">&middot;</span>
+            <span className="text-muted-foreground">{sourceLabel}</span>
+            <span className="text-muted-foreground/30">&middot;</span>
           </>
         )}
-        {insightTotal > 0 ? (
-          <span className="flex items-center gap-0.5">
-            <Sparkles className="h-3 w-3 text-purple-500" />
-            {insightTotal} insight{insightTotal !== 1 ? 's' : ''}
-          </span>
-        ) : (
-          <span className="text-muted-foreground/60">not analyzed</span>
+        <span>{session.message_count} msgs</span>
+        <span className="text-muted-foreground/30">&middot;</span>
+        <span>{formatDuration(startedAt, endedAt)}</span>
+        {session.estimated_cost_usd != null && (
+          <>
+            <span className="text-muted-foreground/30">&middot;</span>
+            <span>${session.estimated_cost_usd.toFixed(2)}</span>
+          </>
+        )}
+        {insightTotal > 0 && (
+          <>
+            <span className="text-muted-foreground/30">&middot;</span>
+            <span className="flex items-center gap-0.5 text-purple-500/80">
+              <Sparkles className="h-2.5 w-2.5" />
+              {insightTotal}
+            </span>
+          </>
         )}
       </div>
 

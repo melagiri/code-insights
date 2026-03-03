@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router';
 import { capturePageView, captureDashboardLoaded } from '@/lib/telemetry';
 import { Layout } from '@/components/layout/Layout';
 import DashboardPage from '@/pages/DashboardPage';
@@ -23,12 +23,17 @@ const ROUTE_TITLES: Record<string, string> = {
 
 function RouteEffects() {
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const insightParam = searchParams.get('insight');
   const navStartRef = useRef<number>(Date.now());
 
-  // Scroll to top on route change
+  // Scroll to top on route change, unless deep-linking to a specific insight
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    const isInsightDeepLink = pathname === '/insights' && insightParam;
+    if (!isInsightDeepLink) {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, insightParam]);
 
   // Update document.title per route, track page views, and capture dashboard_loaded
   useEffect(() => {

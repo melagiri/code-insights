@@ -8,7 +8,7 @@ import { parseJsonField } from '@/lib/types';
 import { renderTypeContent } from './insight-metadata';
 
 // Re-export from shared module for backward compat (SessionDetailPage, SessionsPage import these)
-export { OutcomeBadge, OUTCOME_CONFIG } from './insight-metadata';
+export { OutcomeBadge } from './insight-metadata';
 
 interface InsightCardProps {
   insight: Insight;

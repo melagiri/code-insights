@@ -8,10 +8,10 @@ import {
   formatDateRange,
   cn,
 } from '@/lib/utils';
-import { SESSION_CHARACTER_COLORS, SESSION_CHARACTER_LABELS, SOURCE_TOOL_COLORS } from '@/lib/constants/colors';
+import { SESSION_CHARACTER_COLORS, SESSION_CHARACTER_LABELS, SOURCE_TOOL_COLORS, OUTCOME_DOT } from '@/lib/constants/colors';
 import { parseJsonField } from '@/lib/types';
-import type { InsightMetadata } from '@/lib/types';
-import { OutcomeBadge } from '@/components/insights/InsightCard';
+import type { Insight, InsightMetadata } from '@/lib/types';
+import { LearningContent, DecisionContent } from '@/components/insights/insight-metadata';
 import { Badge } from '@/components/ui/badge';
 import { ErrorCard } from '@/components/ErrorCard';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { InsightCard } from '@/components/insights/InsightCard';
 import { PromptQualityCard } from '@/components/insights/PromptQualityCard';
 import { AnalyzeDropdown } from '@/components/analysis/AnalyzeDropdown';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
@@ -40,12 +39,72 @@ import {
   X,
   FileText,
   BookOpen,
+  GitBranch,
   GitCommit,
   GitPullRequest,
   BarChart2,
-
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+/** Per-item collapsible for learnings and decisions. Shows a 1-2 line preview
+ *  with an expand toggle to reveal full structured metadata. */
+function CollapsibleInsightItem({ insight }: { insight: Insight }) {
+  const [expanded, setExpanded] = useState(false);
+  const metadata = parseJsonField<InsightMetadata>(insight.metadata, {});
+
+  // Build the preview text: use title if available, otherwise first ~120 chars of content
+  const previewText = insight.title || insight.content.slice(0, 120);
+
+  // Hint labels for the expandable sections
+  const hintLabel =
+    insight.type === 'decision'
+      ? 'Situation, Choice, Rationale...'
+      : 'What, Why, Takeaway...';
+
+  // Check if there is structured metadata worth expanding
+  const hasStructured =
+    insight.type === 'decision'
+      ? !!(metadata.situation || metadata.choice || metadata.reasoning)
+      : !!(metadata.symptom || metadata.root_cause || metadata.takeaway);
+
+  return (
+    <div className="rounded-md border px-3 py-2.5">
+      <button
+        className="flex items-start gap-2 w-full text-left group"
+        onClick={() => hasStructured && setExpanded(!expanded)}
+        aria-expanded={expanded}
+        disabled={!hasStructured}
+      >
+        {hasStructured ? (
+          expanded ? (
+            <ChevronDown className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+          )
+        ) : (
+          <span className="w-4 shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium line-clamp-2">{previewText}</p>
+          {!expanded && hasStructured && (
+            <p className="text-xs text-muted-foreground/60 mt-0.5">{hintLabel}</p>
+          )}
+        </div>
+      </button>
+      {expanded && (
+        <div className="ml-6 mt-2 pt-2 border-t">
+          {insight.type === 'decision' ? (
+            <DecisionContent metadata={metadata} />
+          ) : (
+            <LearningContent metadata={metadata} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface SessionDetailPanelProps {
   sessionId: string;
@@ -59,6 +118,7 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null);
   const [searchHighlightId, setSearchHighlightId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loadingAllMessages, setLoadingAllMessages] = useState(false);
   const { state: analysisState } = useAnalysis();
 
@@ -88,8 +148,6 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
     }
     setLoadingAllMessages(false);
   }, [messagesQuery, loadingAllMessages]);
-
-  const allInsightIds = useMemo(() => new Set(insights.map((i) => i.id)), [insights]);
 
   const prLinks = useMemo(() => {
     const linkSet = new Set<string>();
@@ -246,12 +304,19 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
       <div className="shrink-0 border-b px-6 py-3 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-lg font-semibold leading-tight">{getSessionTitle(session)}</h1>
+          {sessionOutcome && OUTCOME_DOT[sessionOutcome] && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={cn('w-2 h-2 rounded-full shrink-0', OUTCOME_DOT[sessionOutcome].color)} />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">{OUTCOME_DOT[sessionOutcome].label}</TooltipContent>
+            </Tooltip>
+          )}
           {characterLabel && characterColor && (
             <Badge variant="outline" className={cn('text-xs shrink-0', characterColor)}>
               {characterLabel}
             </Badge>
           )}
-          {sessionOutcome && <OutcomeBadge outcome={sessionOutcome} />}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -315,6 +380,15 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
             </a>
           ) : (
             <span>{session.project_name}</span>
+          )}
+          {session.git_branch && (
+            <>
+              <span>&middot;</span>
+              <span className="flex items-center gap-1">
+                <GitBranch className="h-3 w-3" />
+                <span className="font-mono text-[11px] truncate max-w-[160px]">{session.git_branch}</span>
+              </span>
+            </>
           )}
           {session.source_tool && (
             <>
@@ -391,7 +465,7 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="flex-1 overflow-y-auto mt-0 p-6 space-y-6">
+        <TabsContent value="overview" className="flex-1 overflow-y-auto mt-0 p-5 space-y-4">
           {/* Vitals Strip */}
           <VitalsStrip session={session} />
 
@@ -481,14 +555,9 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
                         {learningInsights.length}
                       </Badge>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {learningInsights.map((insight) => (
-                        <InsightCard
-                          key={insight.id}
-                          insight={insight}
-                          showProject={false}
-                          allInsightIds={allInsightIds}
-                        />
+                        <CollapsibleInsightItem key={insight.id} insight={insight} />
                       ))}
                     </div>
                   </div>
@@ -507,14 +576,9 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
                         {decisionInsights.length}
                       </Badge>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {decisionInsights.map((insight) => (
-                        <InsightCard
-                          key={insight.id}
-                          insight={insight}
-                          showProject={false}
-                          allInsightIds={allInsightIds}
-                        />
+                        <CollapsibleInsightItem key={insight.id} insight={insight} />
                       ))}
                     </div>
                   </div>
@@ -531,6 +595,7 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
           <ConversationSearch
             messages={messages}
             onHighlightMessage={setSearchHighlightId}
+            onSearchQueryChange={setSearchQuery}
             fetchAllMessages={fetchAllMessages}
             isLoadingAll={loadingAllMessages}
           />
@@ -543,6 +608,7 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
               onLoadMore={() => messagesQuery.fetchNextPage()}
               sourceTool={session.source_tool}
               highlightMessageId={searchHighlightId}
+              searchQuery={searchQuery}
             />
           </div>
         </TabsContent>

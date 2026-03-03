@@ -1,9 +1,6 @@
-import { Badge } from '@/components/ui/badge';
-import { SOURCE_TOOL_COLORS } from '@/lib/constants/colors';
 import { formatDuration, formatModelName, formatTokenCount } from '@/lib/utils';
 import { parseJsonField } from '@/lib/types';
 import type { Session } from '@/lib/types';
-import { GitBranch } from 'lucide-react';
 
 interface VitalsStripProps {
   session: Session;
@@ -15,7 +12,7 @@ export function VitalsStrip({ session }: VitalsStripProps) {
   const modelsUsed = parseJsonField<string[]>(session.models_used, []);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {/* Primary stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCell label="Duration" value={formatDuration(startedAt, endedAt)} />
@@ -35,41 +32,29 @@ export function VitalsStrip({ session }: VitalsStripProps) {
         />
       </div>
 
-      {/* Secondary metadata row */}
-      <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-        {session.total_input_tokens != null && (
-          <span className="flex items-center gap-1.5">
-            <span>{formatTokenCount(session.total_input_tokens)} input</span>
-            {(session.cache_read_tokens ?? 0) > 0 && (
-              <>
-                <span className="text-muted-foreground/40">&middot;</span>
-                <span>{formatTokenCount(session.cache_read_tokens!)} cache</span>
-              </>
-            )}
-            <span className="text-muted-foreground/40">&middot;</span>
-            <span>{formatTokenCount(session.total_output_tokens ?? 0)} output</span>
-          </span>
-        )}
-        {modelsUsed.length > 0 && (
-          <span className="bg-muted px-1.5 py-0.5 rounded">
-            {modelsUsed.map(formatModelName).join(', ')}
-          </span>
-        )}
-        {session.git_branch && (
-          <span className="flex items-center gap-1">
-            <GitBranch className="h-3 w-3" />
-            <span className="font-mono truncate max-w-[160px]">{session.git_branch}</span>
-          </span>
-        )}
-        {session.source_tool && (
-          <Badge
-            variant="outline"
-            className={`text-xs capitalize ${SOURCE_TOOL_COLORS[session.source_tool] ?? 'bg-muted text-muted-foreground'}`}
-          >
-            {session.source_tool}
-          </Badge>
-        )}
-      </div>
+      {/* Token breakdown + model row */}
+      {session.total_input_tokens != null && (
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground/70">Tokens</span>
+          <span>{formatTokenCount(session.total_input_tokens)} input</span>
+          {(session.cache_read_tokens ?? 0) > 0 && (
+            <>
+              <span className="text-muted-foreground/30">&middot;</span>
+              <span>{formatTokenCount(session.cache_read_tokens!)} cache</span>
+            </>
+          )}
+          <span className="text-muted-foreground/30">&middot;</span>
+          <span>{formatTokenCount(session.total_output_tokens ?? 0)} output</span>
+          {modelsUsed.length > 0 && (
+            <>
+              <span className="text-muted-foreground/30">&middot;</span>
+              <span className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
+                {modelsUsed.map(formatModelName).join(', ')}
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -84,9 +69,9 @@ function StatCell({
   sublabel?: string;
 }) {
   return (
-    <div className="rounded-lg border px-3 py-2.5 text-center">
-      <div className="text-xl font-semibold tabular-nums leading-tight">{value}</div>
-      <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">{label}</div>
+    <div className="rounded-lg border px-3 py-2 text-center">
+      <div className="text-lg font-semibold tabular-nums leading-tight">{value}</div>
+      <div className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</div>
       {sublabel && (
         <div className="text-[10px] text-muted-foreground/60 leading-tight">{sublabel}</div>
       )}

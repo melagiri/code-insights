@@ -17,6 +17,7 @@ interface MessageBubbleProps {
   showHeader?: boolean;
   nextToolResults?: ToolResult[];
   sourceTool?: string;
+  searchQuery?: string;
 }
 
 function getAssistantConfig(sourceTool?: string): { name: string; avatarColor: string } {
@@ -35,7 +36,7 @@ function getAssistantConfig(sourceTool?: string): { name: string; avatarColor: s
   }
 }
 
-export function MessageBubble({ message, showHeader = true, nextToolResults = [], sourceTool }: MessageBubbleProps) {
+export function MessageBubble({ message, showHeader = true, nextToolResults = [], sourceTool, searchQuery }: MessageBubbleProps) {
   const isUser = message.type === 'user';
   const isSystem = message.type === 'system';
   const hasContent = message.content?.trim();
@@ -87,7 +88,7 @@ export function MessageBubble({ message, showHeader = true, nextToolResults = []
             </div>
           )}
           <div className="bg-blue-500/10 text-foreground rounded-2xl rounded-tr-sm px-4 py-2.5">
-            <UserMarkdown content={message.content} />
+            <UserMarkdown content={message.content} searchQuery={searchQuery} />
           </div>
         </div>
       </div>
@@ -112,7 +113,7 @@ export function MessageBubble({ message, showHeader = true, nextToolResults = []
         {message.thinking && <ThinkingBlock thinking={message.thinking} />}
 
         {hasContent ? (
-          <AssistantMarkdown content={message.content} codeStyle={codeStyle} />
+          <AssistantMarkdown content={message.content} codeStyle={codeStyle} searchQuery={searchQuery} />
         ) : null}
 
         {hasToolCalls && (

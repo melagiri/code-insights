@@ -7,6 +7,7 @@ import type { Message } from '@/lib/types';
 interface ConversationSearchProps {
   messages: Message[];
   onHighlightMessage: (messageId: string | null) => void;
+  onSearchQueryChange?: (query: string) => void;
   fetchAllMessages?: () => void;
   isLoadingAll?: boolean;
 }
@@ -14,6 +15,7 @@ interface ConversationSearchProps {
 export function ConversationSearch({
   messages,
   onHighlightMessage,
+  onSearchQueryChange,
   fetchAllMessages,
   isLoadingAll,
 }: ConversationSearchProps) {
@@ -44,6 +46,10 @@ export function ConversationSearch({
     onHighlightMessage(matches[matchIndex] ?? null);
   }, [matches, matchIndex, onHighlightMessage]);
 
+  useEffect(() => {
+    onSearchQueryChange?.(debouncedQuery);
+  }, [debouncedQuery, onSearchQueryChange]);
+
   const handleInputChange = useCallback(
     (value: string) => {
       setQuery(value);
@@ -65,7 +71,8 @@ export function ConversationSearch({
     setDebouncedQuery('');
     setMatchIndex(0);
     onHighlightMessage(null);
-  }, [onHighlightMessage]);
+    onSearchQueryChange?.('');
+  }, [onHighlightMessage, onSearchQueryChange]);
 
   return (
     <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-2 flex items-center gap-2">

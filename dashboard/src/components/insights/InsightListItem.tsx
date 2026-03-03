@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { FileText, GitCommit, BookOpen, Target, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -20,10 +20,29 @@ interface InsightListItemProps {
   insight: Insight;
   showProject?: boolean;
   allInsightIds?: Set<string>;
+  highlighted?: boolean;
+  defaultExpanded?: boolean;
 }
 
-export function InsightListItem({ insight, showProject = false, allInsightIds }: InsightListItemProps) {
-  const [expanded, setExpanded] = useState(false);
+export function InsightListItem({ insight, showProject = false, allInsightIds, highlighted = false, defaultExpanded = false }: InsightListItemProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [showRing, setShowRing] = useState(highlighted);
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  // Sync showRing when highlighted prop changes
+  useEffect(() => {
+    setShowRing(!!highlighted);
+  }, [highlighted]);
+
+  useEffect(() => {
+    if (highlighted && itemRef.current) {
+      requestAnimationFrame(() => {
+        itemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      const timer = setTimeout(() => setShowRing(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlighted]);
   const Icon = typeIcons[insight.type];
   const colorClass = INSIGHT_TYPE_COLORS[insight.type];
   const bullets = parseJsonField<string[]>(insight.bullets, []);
@@ -75,7 +94,13 @@ export function InsightListItem({ insight, showProject = false, allInsightIds }:
   const expandedTypeContent = renderTypeContent(insight.type, metadata, bullets);
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div
+      ref={itemRef}
+      className={cn(
+        'border rounded-lg overflow-hidden transition-shadow duration-500',
+        showRing && 'ring-2 ring-primary'
+      )}
+    >
       <button
         className="w-full text-left p-4 hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
