@@ -185,3 +185,48 @@ export async function exportMarkdown(body: {
   }
   return res.text();
 }
+
+// ── LLM Export Generate ───────────────────────────────────────────────────────
+
+export type ExportGenerateFormat = 'agent-rules' | 'knowledge-brief' | 'obsidian' | 'notion';
+export type ExportGenerateScope = 'project' | 'all';
+export type ExportGenerateDepth = 'essential' | 'standard' | 'comprehensive';
+
+export interface ExportGenerateRequest {
+  scope: ExportGenerateScope;
+  projectId?: string;
+  format: ExportGenerateFormat;
+  depth?: ExportGenerateDepth;
+}
+
+export interface ExportGenerateMetadata {
+  insightCount: number;
+  totalInsights: number;
+  sessionCount: number;
+  projectCount: number;
+  scope: ExportGenerateScope;
+  depth: ExportGenerateDepth;
+}
+
+/**
+ * Open an SSE stream for LLM export generation.
+ * Returns the raw Response — caller uses parseSSEStream to consume events.
+ * Caller is responsible for passing an AbortSignal for cancellation.
+ */
+export async function exportGenerateStream(
+  params: ExportGenerateRequest,
+  signal?: AbortSignal
+): Promise<Response> {
+  const q = new URLSearchParams();
+  q.set('scope', params.scope);
+  if (params.projectId) q.set('projectId', params.projectId);
+  q.set('format', params.format);
+  if (params.depth) q.set('depth', params.depth);
+
+  const res = await fetch(`${BASE}/export/generate/stream?${q.toString()}`, { signal });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Export stream failed ${res.status}: ${text}`);
+  }
+  return res;
+}
