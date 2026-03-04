@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Calendar, Folder, ChevronRight, Loader2 } from 'lucide-react';
+import { Download, FileText, Calendar, Folder, ChevronRight, Loader2, Copy, Check, BookOpen, Bot } from 'lucide-react';
 
 type ExportType = 'everything' | 'project' | 'daily';
+type ExportTemplate = 'knowledge-base' | 'agent-rules';
 type WizardStep = 1 | 2 | 3;
 
 export default function ExportPage() {
@@ -23,9 +24,11 @@ export default function ExportPage() {
 
   const [step, setStep] = useState<WizardStep>(1);
   const [exportType, setExportType] = useState<ExportType | null>(null);
+  const [template, setTemplate] = useState<ExportTemplate>('knowledge-base');
   const [projectId, setProjectId] = useState<string>('');
   const [dailyDate, setDailyDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Compute counts for the current config
   const { filteredSessions, filteredInsights } = useMemo(() => {
@@ -48,12 +51,13 @@ export default function ExportPage() {
 
   const getFilename = (): string => {
     const today = format(new Date(), 'yyyy-MM-dd');
-    if (exportType === 'daily') return `daily-digest-${dailyDate}.md`;
+    const suffix = template === 'agent-rules' ? 'agent-rules' : 'knowledge-base';
+    if (exportType === 'daily') return `daily-digest-${dailyDate}-${suffix}.md`;
     if (exportType === 'project') {
       const projectName = projects.find((p) => p.id === projectId)?.name || 'project';
-      return `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-insights-${today}.md`;
+      return `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${suffix}-${today}.md`;
     }
-    return `code-insights-export-${today}.md`;
+    return `code-insights-${suffix}-${today}.md`;
   };
 
   const handleGoToPreview = async () => {
@@ -65,12 +69,13 @@ export default function ExportPage() {
     try {
       const body =
         exportType === 'project'
-          ? { projectId }
+          ? { projectId, template }
           : exportType === 'daily'
             ? {
                 sessionIds: filteredSessions.map((s) => s.id),
+                template,
               }
-            : {};
+            : { template };
 
       const content = await exportMutation.mutateAsync(body);
       setPreviewContent(content);
@@ -95,10 +100,23 @@ export default function ExportPage() {
     toast.success('Export downloaded.');
   };
 
+  const handleCopy = async () => {
+    if (!previewContent) return;
+    try {
+      await navigator.clipboard.writeText(previewContent);
+      setCopied(true);
+      toast.success('Copied to clipboard.');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy to clipboard.');
+    }
+  };
+
   const handleReset = () => {
     setStep(1);
     setExportType(null);
     setPreviewContent(null);
+    setCopied(false);
   };
 
   const steps = [
@@ -216,6 +234,27 @@ export default function ExportPage() {
                 </div>
               )}
 
+              {/* Template selector */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Template</label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <TemplateCard
+                    icon={BookOpen}
+                    title="Knowledge Base"
+                    description="Full insights organized for reading and sharing"
+                    selected={template === 'knowledge-base'}
+                    onSelect={() => setTemplate('knowledge-base')}
+                  />
+                  <TemplateCard
+                    icon={Bot}
+                    title="Agent Rules"
+                    description="Imperative instructions for CLAUDE.md and cursor rules"
+                    selected={template === 'agent-rules'}
+                    onSelect={() => setTemplate('agent-rules')}
+                  />
+                </div>
+              </div>
+
               {/* Filtered counts */}
               <div className="rounded-lg bg-muted px-4 py-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
@@ -294,6 +333,19 @@ export default function ExportPage() {
               <Button variant="outline" onClick={handleReset}>
                 Start Over
               </Button>
+              <Button variant="outline" onClick={handleCopy}>
+                {copied ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy
+                  </>
+                )}
+              </Button>
               <Button onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
                 Download
@@ -329,6 +381,36 @@ function ExportTypeCard({
     >
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`h-5 w-5 ${selected ? 'text-primary' : 'text-muted-foreground'}`} />
+        <span className="font-medium text-sm">{title}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </button>
+  );
+}
+
+function TemplateCard({
+  icon: Icon,
+  title,
+  description,
+  selected,
+  onSelect,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${
+        selected ? 'border-primary bg-primary/5' : 'border-border'
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={`h-4 w-4 ${selected ? 'text-primary' : 'text-muted-foreground'}`} />
         <span className="font-medium text-sm">{title}</span>
       </div>
       <p className="text-xs text-muted-foreground">{description}</p>
