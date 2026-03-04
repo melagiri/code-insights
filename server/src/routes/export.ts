@@ -271,7 +271,8 @@ app.post('/generate', async (c) => {
     return c.json({ content: response.content, metadata }, 200);
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      return c.json({ error: 'Export cancelled' }, 499);
+      // Client disconnected — 422 is the closest Hono allows; client ignores this on abort
+      return c.json({ error: 'Export cancelled' }, 422);
     }
     const message = error instanceof Error ? error.message : 'Export generation failed';
     captureError(error, { format, scope, depth, llm_provider: llmConfig?.provider, llm_model: llmConfig?.model });
