@@ -111,6 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_insights_session_id ON insights(session_id);
 CREATE INDEX IF NOT EXISTS idx_insights_project_id ON insights(project_id);
 CREATE INDEX IF NOT EXISTS idx_insights_type ON insights(type);
 CREATE INDEX IF NOT EXISTS idx_insights_timestamp ON insights(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_insights_confidence_timestamp ON insights(confidence DESC, timestamp DESC);
 
 -- ============================================================
 -- Global usage stats (singleton row, updated by CLI sync)
@@ -127,6 +128,6 @@ CREATE TABLE IF NOT EXISTS usage_stats (
 );
 `;
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export { runMigrations } from './migrate.js';

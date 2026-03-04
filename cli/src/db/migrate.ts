@@ -6,6 +6,7 @@ import { SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './schema.js';
  * Called once on startup before any reads or writes.
  *
  * Version 1: Initial schema (projects, sessions, messages, insights, usage_stats)
+ * Version 2: Add compound index on insights(confidence DESC, timestamp DESC) for depth-ordered export queries
  */
 export function runMigrations(db: Database.Database): void {
   // Create schema_version table first if it doesn't exist.
@@ -23,7 +24,9 @@ export function runMigrations(db: Database.Database): void {
     applyV1(db);
   }
 
-  // Future migrations: if (currentVersion < 2) { applyV2(db); }
+  if (currentVersion < 2) {
+    applyV2(db);
+  }
 }
 
 function getCurrentVersion(db: Database.Database): number {
@@ -33,5 +36,10 @@ function getCurrentVersion(db: Database.Database): number {
 
 function applyV1(db: Database.Database): void {
   db.exec(SCHEMA_SQL);
-  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(CURRENT_SCHEMA_VERSION);
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(1);
+}
+
+function applyV2(db: Database.Database): void {
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_insights_confidence_timestamp ON insights(confidence DESC, timestamp DESC)`);
+  db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(2);
 }
