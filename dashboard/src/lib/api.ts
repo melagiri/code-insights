@@ -172,6 +172,7 @@ export function findRecurringInsights(body?: { projectId?: string; limit?: numbe
 export async function exportMarkdown(body: {
   sessionIds?: string[];
   projectId?: string;
+  template?: 'knowledge-base' | 'agent-rules';
 }): Promise<string> {
   const res = await fetch(`${BASE}/export/markdown`, {
     method: 'POST',

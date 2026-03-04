@@ -4,6 +4,7 @@ import { exportMarkdown } from '@/lib/api';
 interface ExportParams {
   sessionIds?: string[];
   projectId?: string;
+  template?: 'knowledge-base' | 'agent-rules';
 }
 
 export function useExportMarkdown() {
