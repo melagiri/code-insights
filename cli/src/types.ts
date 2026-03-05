@@ -202,6 +202,96 @@ export interface InsightMetadata {
   potentialMessageReduction?: number;
 }
 
+// === Session Facets (cross-session analysis foundation) ===
+
+export interface FrictionPoint {
+  category: string;
+  description: string;
+  severity: 'high' | 'medium' | 'low';
+  resolution: 'resolved' | 'workaround' | 'unresolved';
+}
+
+export interface EffectivePattern {
+  description: string;
+  confidence: number;
+}
+
+export type OutcomeSatisfaction = 'high' | 'medium' | 'low' | 'abandoned';
+
+export interface SessionFacet {
+  sessionId: string;
+  outcomeSatisfaction: OutcomeSatisfaction;
+  workflowPattern: string | null;
+  hadCourseCorrection: boolean;
+  courseCorrectionReason: string | null;
+  iterationCount: number;
+  frictionPoints: FrictionPoint[];
+  effectivePatterns: EffectivePattern[];
+  extractedAt: string;
+  analysisVersion: string;
+}
+
+export interface ComputedFacets {
+  toolsUsed: string[];
+  dominantToolPattern: 'read-heavy' | 'edit-heavy' | 'bash-heavy' | 'balanced';
+  messageCount: number;
+  sessionDurationMinutes: number;
+}
+
+// === Reflect / Patterns types ===
+
+export type ReflectSection = 'friction-wins' | 'rules-skills' | 'working-style';
+
+export interface FrictionWinsResult {
+  section: 'friction-wins';
+  frictionCategories: Array<{
+    category: string;
+    count: number;
+    avgSeverity: number;
+    examples: string[];
+    trend: 'increasing' | 'stable' | 'decreasing' | 'new';
+  }>;
+  effectivePatterns: Array<{
+    description: string;
+    frequency: number;
+    avgConfidence: number;
+  }>;
+  narrative: string;
+  generatedAt: string;
+}
+
+export interface RulesSkillsResult {
+  section: 'rules-skills';
+  claudeMdRules: Array<{
+    rule: string;
+    rationale: string;
+    frictionSource: string;
+  }>;
+  skillTemplates: Array<{
+    name: string;
+    description: string;
+    content: string;
+  }>;
+  hookConfigs: Array<{
+    event: string;
+    command: string;
+    rationale: string;
+  }>;
+  targetTool: string;
+  generatedAt: string;
+}
+
+export interface WorkingStyleResult {
+  section: 'working-style';
+  narrative: string;
+  workflowDistribution: Record<string, number>;
+  outcomeDistribution: Record<string, number>;
+  characterDistribution: Record<string, number>;
+  generatedAt: string;
+}
+
+export type ReflectResult = FrictionWinsResult | RulesSkillsResult | WorkingStyleResult;
+
 export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'ollama';
 
 export interface LLMProviderConfig {
