@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "cf3b08de3b53",
+  "strategy": "manual-commit",
+  "branch": "claude/analyze-insights-generation-Zwj8t",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/llm/friction-normalize.ts",
+    "server/src/routes/facets.ts",
+    "server/src/routes/reflect.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/cf/3b08de3b53/0/metadata.json",
+      "transcript": "/cf/3b08de3b53/0/full.jsonl",
+      "context": "/cf/3b08de3b53/0/context.md",
+      "content_hash": "/cf/3b08de3b53/0/content_hash.txt",
+      "prompt": "/cf/3b08de3b53/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 428,
+    "cache_creation_tokens": 417820,
+    "cache_read_tokens": 14006147,
+    "output_tokens": 82890,
+    "api_call_count": 125
+  }
+}
