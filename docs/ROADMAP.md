@@ -93,10 +93,10 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
   - Generates 4 insight types: summary, decision, learning, technique
   - Analysis versioning for re-analysis
 
-- [ ] **3.3 Cross-Session Patterns**
-  - Cross-session pattern detection
-  - Project-level and overall-level insights
-  - Recurring pattern identification
+- [x] **3.3 Cross-Session Patterns** ✅ (shipped as Reflect & Patterns in Phase 8)
+  - Cross-session pattern detection via session facets
+  - Project-level and overall-level friction/pattern synthesis
+  - Recurring pattern identification via Levenshtein normalization
 
 - [ ] **3.4 Learning Journal**
   - Auto-generate "lessons learned" from sessions
@@ -106,7 +106,7 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 ### Deliverables
 - ✅ Multi-provider LLM insight generation
 - ✅ On-demand and bulk session analysis
-- Cross-session patterns (pending)
+- ✅ Cross-session patterns (shipped in Phase 8 as Reflect & Patterns)
 - Learning journal (pending)
 
 ---
@@ -234,6 +234,48 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 
 ---
 
+## Phase 8: Reflect & Patterns
+
+**Goal:** Cross-session pattern detection and synthesis — turning individual session facets into actionable insights about friction, effective patterns, and working style
+
+### Milestones
+
+- [x] **8.1 Session Facets Infrastructure** (v3.6.1) ✅
+  - New `session_facets` SQLite table (Schema V3 migration)
+  - Per-session structured metadata: outcome satisfaction, workflow pattern, friction points, effective patterns, course correction tracking
+  - Facet extraction integrated into existing analysis prompt (facets first, then insights)
+  - Lightweight facet-only backfill for previously-analyzed sessions (summary + bookend messages)
+
+- [x] **8.2 Friction Normalization** (v3.6.1) ✅
+  - Canonical friction categories (~15-20) defined in analysis prompt
+  - Levenshtein distance matching (exact → distance ≤ 2 → substring → passthrough)
+  - Prevents category fragmentation during aggregation
+
+- [x] **8.3 Server APIs** (v3.6.1) ✅
+  - Shared aggregation module (`shared-aggregation.ts`) — used by facets and reflect routes
+  - `GET /api/facets` — session facets with period/project/source filters
+  - `GET /api/facets/aggregated` — pre-aggregated friction categories, patterns, distributions
+  - `POST /api/facets/backfill` — SSE streaming facet extraction for sessions missing facets
+  - `POST /api/reflect/generate` — SSE streaming LLM synthesis (friction-wins, rules-skills, working-style)
+
+- [x] **8.4 CLI Commands** (v3.6.1) ✅
+  - `code-insights reflect` — Generate cross-session synthesis with LLM
+  - `code-insights stats patterns` — View pattern summary in terminal
+
+- [x] **8.5 Dashboard Patterns Page** (v3.6.1) ✅
+  - Three-tab layout: Friction & Wins, Rules & Skills, Working Style
+  - Facet backfill progress indicator for sessions missing facets
+  - Copy-to-clipboard for generated rules, skills, and hooks
+  - ARIA-accessible tab navigation
+
+### Deliverables
+- ✅ Session facets with Schema V3 migration
+- ✅ Cross-session pattern synthesis via LLM
+- ✅ CLI reflect command and stats patterns subcommand
+- ✅ Dashboard Patterns page with three synthesis sections
+
+---
+
 ## Version Milestones
 
 | Version | Phase | Key Features | Status |
@@ -251,6 +293,7 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 | 3.4.0 | — | Multi-source parser fixes (Codex, Cursor, Copilot), agent message rendering | ✅ Done |
 | 3.5.1 | 7 | Session-level export templates (Knowledge Base, Agent Rules), prompt quality in exports | ✅ Done |
 | 3.6.0 | 7 | LLM-powered Export Page (cross-session synthesis, 4 formats, depth presets, SSE streaming) | ✅ Done |
+| 3.6.1 | 8 | Reflect & Patterns (session facets, friction normalization, cross-session synthesis, Patterns page) | ✅ Done |
 
 ---
 

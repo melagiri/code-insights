@@ -70,17 +70,27 @@ Code Insights is a utility, not a product. It should:
 - Landing page and docs at `code-insights.app`
 - README, CONTRIBUTING.md, MIGRATION.md, CHANGELOG.md
 
-### Phase 7: Export & Knowledge Pipeline (In Progress)
+### Phase 7: Export & Knowledge Pipeline ✅
 - Session-level export with Knowledge Base and Agent Rules templates (v3.5.1) ✅
 - Prompt quality analysis insight type (efficiency scores, anti-patterns, wasted turns) ✅
-- LLM-powered Export Page: cross-session synthesis into agent rules, Obsidian, Notion formats
-- Export Page uses the multi-provider LLM abstraction (same as session analysis)
+- LLM-powered Export Page: cross-session synthesis into agent rules, Obsidian, Notion formats (v3.6.0) ✅
+- Export Page uses the multi-provider LLM abstraction (same as session analysis) ✅
+
+### Phase 8: Reflect & Patterns ✅
+- Session facets: per-session structured metadata (friction, patterns, workflow, outcome) extracted during analysis
+- Dedicated `session_facets` SQLite table (Schema V3) with indexed scalar columns
+- Friction category normalization via Levenshtein distance matching
+- `code-insights reflect` CLI command for cross-session LLM synthesis
+- `code-insights stats patterns` for terminal pattern viewing
+- Dashboard Patterns page with three sections: Friction & Wins, Rules & Skills, Working Style
+- Facet backfill endpoint for previously-analyzed sessions
 
 ### What's Next
-- LLM-powered Export Page (cross-session insight synthesis → agent rules)
-- Cross-session pattern detection and learning journal
 - Test suite expansion (Vitest)
 - Slash commands for quick insights from the terminal
+- LLM cost tracking per call (app-wide)
+- Feedback mechanism for friction category learning
+- Session merging across tools (linking related sessions from different AI tools)
 
 ## Non-Goals
 

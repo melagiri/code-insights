@@ -55,7 +55,7 @@ Before advising on any decision, ground yourself in the current state:
 | Product vision & architecture | `CLAUDE.md` |
 | Migration plan | `docs/plans/2026-02-27-local-first-migration.md` |
 | CLI capabilities & commands | `CLAUDE.md` -> Commands section |
-| Multi-source tool roadmap | `docs/MULTI-TOOL-VISION.md` |
+| Multi-source architecture | `docs/PRODUCT.md` -> Multi-Source Architecture section |
 | Current feature state & gaps | `docs/architecture/11-gaps-and-improvements.md` |
 | Active design plans | `docs/plans/*.md` |
 

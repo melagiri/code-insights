@@ -68,10 +68,39 @@ Two-tier export system for turning session knowledge into shareable and actionab
 - **Knowledge Base** — Human-readable markdown with full insight content (summaries, decisions with alternatives/reasoning, learnings with root causes/takeaways, techniques, prompt quality analysis)
 - **Agent Rules** — Imperative instructions formatted for CLAUDE.md/.cursorrules (`USE X`, `DO NOT use Y`, `WHEN Z, check W`)
 
-**Export Page** (planned) — LLM-powered cross-session synthesis:
+**Export Page** — LLM-powered cross-session synthesis (v3.6.0):
 - Reads across multiple sessions' insights to deduplicate, merge, and synthesize
 - Generates agent rules via LLM (not just template formatting)
-- Multiple output formats: Agent Rules, Markdown, Obsidian (YAML frontmatter), Notion
+- 4 output formats: Agent Rules, Knowledge Brief, Obsidian (YAML frontmatter), Notion
+- 3 depth presets: Essential (~25 insights), Standard (~80), Comprehensive (~200)
+- SSE streaming with progress phases, AbortSignal support, token budget guard
+
+### Reflect & Patterns
+
+Cross-session pattern detection and synthesis, powered by session facets:
+
+**Session Facets** — Structured metadata extracted during LLM analysis for each session:
+- Outcome satisfaction (high/medium/low/mixed)
+- Workflow pattern (iterative, plan-then-execute, exploratory, debugging, etc.)
+- Friction points (categorized: unclear-requirements, wrong-approach, tool-limitations, etc.)
+- Effective patterns (what worked well and why)
+- Course correction tracking (whether the session changed direction and why)
+
+**CLI Commands:**
+- `code-insights reflect` — Generate cross-session synthesis with LLM (friction analysis, rules/skills, working style)
+- `code-insights stats patterns` — View pattern summary in the terminal
+
+**Dashboard Patterns Page** — Three synthesis sections:
+- **Friction & Wins** — Top friction categories ranked by frequency, effective patterns that worked
+- **Rules & Skills** — Auto-generated agent rules, skill recommendations, and hook suggestions based on recurring patterns
+- **Working Style** — Workflow distribution, outcome trends, session character analysis
+
+**Technical details:**
+- Dedicated `session_facets` SQLite table (Schema V3) with indexed scalar columns and JSON arrays
+- Facet extraction integrated into the existing analysis prompt (facets first, then insights)
+- Lightweight facet-only backfill for previously-analyzed sessions (summary + first/last 20 messages)
+- Friction category normalization via Levenshtein distance matching to canonical categories
+- Synthesis prompts pre-aggregate data in code, then feed ranked summaries to LLM for narration
 
 ### Dashboard Views
 
@@ -80,6 +109,7 @@ Two-tier export system for turning session knowledge into shareable and actionab
 - **Decision log** — Searchable archive of "why" decisions
 - **Analytics** — Charts showing effort distribution, patterns
 - **Session detail** — Full session with analyze button for LLM insights
+- **Patterns** — Cross-session pattern synthesis (Friction & Wins, Rules & Skills, Working Style)
 
 ### CLI Stats Commands
 
@@ -89,7 +119,38 @@ code-insights stats cost         # Cost breakdown by project and model
 code-insights stats projects     # Per-project detail cards
 code-insights stats today        # Today's sessions with details
 code-insights stats models       # Model usage distribution
+code-insights stats patterns     # Cross-session pattern summary
 ```
+
+## Multi-Source Architecture
+
+Code Insights uses a **provider abstraction** to support multiple AI coding tools through a common interface:
+
+```
+Source tool session files → Provider (discover + parse) → SQLite → Dashboard / CLI stats
+```
+
+Each provider implements the `SessionProvider` interface (`discover()`, `parse()`, `getProviderName()`), normalizing tool-specific formats into the shared `ParsedSession` schema.
+
+### How Each Tool Stores Sessions
+
+| Tool | Format | Location (macOS) |
+|------|--------|-----------------|
+| **Claude Code** | JSONL (append-only, one JSON object per line) | `~/.claude/projects/<path>/<id>.jsonl` |
+| **Cursor** | SQLite key-value (`state.vscdb`, JSON blobs) | `~/Library/Application Support/Cursor/User/` |
+| **Codex CLI** | JSONL (event-based stream) | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
+| **Copilot CLI** | JSONL (events) | `~/.copilot/session-state/{id}/events.jsonl` |
+
+### Platform Paths
+
+| Tool | macOS | Linux | Windows |
+|------|-------|-------|---------|
+| Claude Code | `~/.claude/projects/` | `~/.claude/projects/` | `%USERPROFILE%\.claude\projects\` |
+| Cursor | `~/Library/Application Support/Cursor/User/` | `~/.config/Cursor/User/` | `%APPDATA%\Cursor\User\` |
+| Codex CLI | `~/.codex/sessions/` | `~/.codex/sessions/` | `%USERPROFILE%\.codex\sessions\` |
+| Copilot CLI | `~/.copilot/session-state/` | `~/.copilot/session-state/` | `%USERPROFILE%\.copilot\session-state\` |
+
+Adding a new source tool requires implementing the `SessionProvider` interface in `cli/src/providers/`, registering it in the provider registry, and adding dashboard display support (colors, avatars, filter options).
 
 ## Tech Stack
 
