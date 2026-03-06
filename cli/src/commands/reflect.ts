@@ -87,6 +87,28 @@ async function reflectAction(options: {
     process.exit(1);
   }
 
+  // Check minimum session threshold
+  const checkParams = new URLSearchParams();
+  checkParams.set('period', options.period || '30d');
+  if (options.project) checkParams.set('project', options.project);
+  const aggRes = await fetch(`${baseUrl}/api/facets/aggregated?${checkParams.toString()}`);
+  if (aggRes.ok) {
+    const agg = await aggRes.json() as { totalSessions: number; totalAllSessions: number };
+    if (agg.totalSessions < 20) {
+      console.log(chalk.yellow(`  Not enough analyzed sessions for meaningful synthesis.`));
+      console.log(chalk.dim(`  Need at least 20 sessions with facets (currently ${agg.totalSessions}).`));
+      console.log(chalk.dim(`  Run session analysis to extract facets from more sessions.`));
+      console.log();
+      process.exit(1);
+    }
+
+    if (agg.totalAllSessions > 0 && agg.totalSessions / agg.totalAllSessions < 0.5) {
+      console.log(chalk.yellow(`  Note: Only ${agg.totalSessions} of ${agg.totalAllSessions} sessions are analyzed.`));
+      console.log(chalk.dim(`  Results may not represent your full patterns.`));
+      console.log();
+    }
+  }
+
   const body: Record<string, unknown> = {
     period: options.period || '30d',
   };

@@ -131,6 +131,51 @@ export async function patternsAction(flags: StatsFlags): Promise<void> {
     console.log(chalk.dim('  Generate full analysis: code-insights reflect'));
     console.log(chalk.dim('  View in dashboard: code-insights dashboard → Patterns'));
     console.log();
+
+    // Check for cached reflect snapshot
+    const snapshotRes = await fetch(`${baseUrl}/api/reflect/snapshot?${params.toString()}`);
+    if (snapshotRes.ok) {
+      const snapshotData = await snapshotRes.json() as {
+        snapshot: {
+          generatedAt: string;
+          windowStart: string | null;
+          windowEnd: string;
+          sessionCount: number;
+          results: Record<string, Record<string, unknown>>;
+        } | null;
+      };
+
+      if (snapshotData.snapshot) {
+        const snap = snapshotData.snapshot;
+        const genDate = new Date(snap.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const windowLabel = snap.windowStart
+          ? `${new Date(snap.windowStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(snap.windowEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          : 'All time';
+
+        console.log(chalk.dim(`  ─── Last reflection (generated ${genDate} · ${windowLabel} · ${snap.sessionCount} sessions) ───`));
+        console.log();
+
+        const frictionWins = snap.results['friction-wins'];
+        if (frictionWins?.narrative) {
+          console.log(chalk.bold('  Friction & Wins'));
+          const lines = String(frictionWins.narrative).split('\n').slice(0, 3);
+          for (const line of lines) {
+            console.log(chalk.dim('  ') + line);
+          }
+          if (String(frictionWins.narrative).split('\n').length > 3) {
+            console.log(chalk.dim('  ...'));
+          }
+          console.log();
+        }
+
+        const stale = data.totalSessions > snap.sessionCount;
+        if (stale) {
+          console.log(chalk.yellow(`  ${data.totalSessions - snap.sessionCount} new sessions since last reflection.`));
+          console.log(chalk.dim('  Run: code-insights reflect'));
+          console.log();
+        }
+      }
+    }
   } catch (error) {
     handleStatsError(error);
   }
