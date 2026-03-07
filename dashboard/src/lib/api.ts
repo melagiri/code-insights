@@ -279,11 +279,53 @@ export function fetchMissingFacetSessionIds(params?: {
   return request<{ sessionIds: string[]; count: number }>(`/facets/missing${qs}`);
 }
 
-export function backfillFacets(sessionIds: string[]) {
-  return request<{ completed: number; failed: number }>('/facets/backfill', {
+export async function backfillFacets(sessionIds: string[]): Promise<{ completed: number; failed: number }> {
+  // The /api/facets/backfill endpoint returns an SSE stream, not JSON.
+  // Using raw fetch here instead of request() which calls res.json() and would crash.
+  const res = await fetch(`${BASE}/facets/backfill`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionIds }),
   });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`API ${res.status}: ${text}`);
+  }
+  if (!res.body) throw new Error('No response body');
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  let currentEvent = '';
+  let currentData = '';
+  let result = { completed: 0, failed: 0 };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          currentData = line.slice(6);
+        } else if (line === '' && currentEvent && currentData) {
+          if (currentEvent === 'complete') {
+            const data = JSON.parse(currentData) as { completed: number; failed: number };
+            result = { completed: data.completed, failed: data.failed };
+          }
+          currentEvent = '';
+          currentData = '';
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return result;
 }
 
 export interface ReflectSnapshot {

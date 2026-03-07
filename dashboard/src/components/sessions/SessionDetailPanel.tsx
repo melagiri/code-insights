@@ -161,13 +161,13 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
   const { state: analysisState } = useAnalysis();
   const { data: missingFacetsData } = useMissingFacets();
   const backfillMutation = useBackfillFacets();
+  const missingFacetIds = useMemo(
+    () => new Set(missingFacetsData?.sessionIds ?? []),
+    [missingFacetsData]
+  );
   const isMissingFacets = useMemo(
-    () => {
-      const hasInsights = insights.length > 0;
-      const inMissingSet = missingFacetsData?.sessionIds?.includes(sessionId) ?? false;
-      return hasInsights && inMissingSet;
-    },
-    [insights, missingFacetsData, sessionId]
+    () => insights.length > 0 && missingFacetIds.has(sessionId),
+    [insights, missingFacetIds, sessionId]
   );
 
   useEffect(() => {
