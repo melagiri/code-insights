@@ -388,17 +388,40 @@ function updateSyncState(state: SyncState, filePath: string, sessionId: string):
   }
 }
 
+interface TrivialSession {
+  id: string;
+  title: string | null;
+  project_name: string;
+  message_count: number;
+}
+
+/**
+ * Return sessions with ≤2 messages that are not yet soft-deleted.
+ * Used to preview what `sync prune` will affect before asking for confirmation.
+ */
+export function getTrivialSessions(): TrivialSession[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT id, title, project_name, message_count
+    FROM sessions
+    WHERE message_count <= 2 AND deleted_at IS NULL
+    ORDER BY started_at DESC
+  `).all() as TrivialSession[];
+}
+
 /**
  * Soft-delete sessions with ≤2 messages — likely abandoned prompts with no useful content.
  * Unlike --force sync which resurrects deleted sessions, prune is a deliberate cleanup action.
- * Idempotent: sessions already soft-deleted are counted but not double-deleted.
+ * Accepts the session IDs to delete so the caller can preview before executing.
  */
-export async function pruneTrivialSessions(): Promise<{ deleted: number }> {
+export function pruneTrivialSessions(ids: string[]): { deleted: number } {
+  if (ids.length === 0) return { deleted: 0 };
   const db = getDb();
+  const placeholders = ids.map(() => '?').join(', ');
   const result = db.prepare(`
     UPDATE sessions
     SET deleted_at = datetime('now')
-    WHERE message_count <= 2 AND deleted_at IS NULL
-  `).run();
+    WHERE id IN (${placeholders}) AND deleted_at IS NULL
+  `).run(...ids);
   return { deleted: result.changes };
 }
