@@ -162,6 +162,24 @@ app.post('/backfill', async (c) => {
         continue;
       }
 
+      // Skip sessions that already have facets (race condition guard)
+      const existingFacet = db.prepare(
+        'SELECT 1 FROM session_facets WHERE session_id = ?'
+      ).get(sessionId);
+      if (existingFacet) {
+        completed++;
+        await stream.writeSSE({
+          event: 'progress',
+          data: JSON.stringify({
+            completed,
+            failed,
+            total,
+            currentSessionId: sessionId,
+          }),
+        });
+        continue;
+      }
+
       // Only load first 20 and last 20 messages for facet extraction
       const firstMessages = db.prepare(
         `SELECT id, session_id, type, content, thinking, tool_calls, tool_results, usage, timestamp, parent_id
@@ -197,6 +215,7 @@ app.post('/backfill', async (c) => {
           failed,
           total,
           currentSessionId: sessionId,
+          ...(result.success ? {} : { error: result.error }),
         }),
       });
     }

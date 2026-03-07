@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { createInterface } from 'readline';
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadConfig } from '../utils/config.js';
@@ -6,6 +7,16 @@ import { loadConfig } from '../utils/config.js';
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
+
+function confirmPrompt(message: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(`${message} [y/N] `, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() === 'y');
+    });
+  });
+}
 
 function getBaseUrl(): string {
   const config = loadConfig();
@@ -319,9 +330,18 @@ async function backfillAction(options: {
   }
 
   console.log(chalk.cyan(`  Found ${count} session${count !== 1 ? 's' : ''} with insights but missing facets.`));
+  console.log(chalk.dim(`  This will make ${count} LLM call${count !== 1 ? 's' : ''}.`));
 
   if (options.dryRun) {
     console.log(chalk.dim('  (dry run — no changes made)'));
+    console.log();
+    return;
+  }
+
+  // Confirm before proceeding — each call costs tokens
+  const confirmed = await confirmPrompt('  Continue?');
+  if (!confirmed) {
+    console.log(chalk.dim('  Aborted.'));
     console.log();
     return;
   }
