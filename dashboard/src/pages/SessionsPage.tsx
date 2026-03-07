@@ -145,6 +145,7 @@ export default function SessionsPage() {
           insights={insights}
           selectedSessionId={filters.session}
           showProject={showProject}
+          projectId={filters.project || undefined}
           filters={{
             q: filters.q,
             character: filters.character,
@@ -162,7 +163,10 @@ export default function SessionsPage() {
       <div className="hidden lg:flex flex-1 min-w-0 bg-background overflow-hidden">
         {filters.session ? (
           <div className="flex-1 overflow-y-auto" key={filters.session}>
-            <SessionDetailPanel sessionId={filters.session} />
+            <SessionDetailPanel
+              sessionId={filters.session}
+              onDelete={() => setFilter('session', '')}
+            />
           </div>
         ) : (
           <EmptyDetailState />
@@ -194,7 +198,10 @@ export default function SessionsPage() {
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <SessionDetailPanel sessionId={filters.session} />
+              <SessionDetailPanel
+                sessionId={filters.session}
+                onDelete={() => setFilter('session', '')}
+              />
             </div>
           </SheetContent>
         </Sheet>

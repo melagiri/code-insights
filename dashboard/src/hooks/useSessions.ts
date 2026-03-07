@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchSessions, fetchSession, patchSession } from '@/lib/api';
+import { fetchSessions, fetchSession, patchSession, deleteSession, fetchDeletedSessionCount } from '@/lib/api';
 
 interface SessionFilters {
   projectId?: string;
@@ -33,5 +33,24 @@ export function useSessionMutation() {
       queryClient.invalidateQueries({ queryKey: ['session', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
+  });
+}
+
+export function useDeleteSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['deletedSessionCount'] });
+    },
+  });
+}
+
+export function useDeletedSessionCount(projectId?: string) {
+  return useQuery({
+    queryKey: ['deletedSessionCount', projectId],
+    queryFn: () => fetchDeletedSessionCount(projectId).then((r) => r.count),
+    staleTime: 30_000,
   });
 }

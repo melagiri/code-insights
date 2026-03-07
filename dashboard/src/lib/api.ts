@@ -59,6 +59,15 @@ export function patchSession(id: string, body: { customTitle: string }) {
   });
 }
 
+export function deleteSession(id: string) {
+  return request<{ ok: boolean }>(`/sessions/${id}`, { method: 'DELETE' });
+}
+
+export function fetchDeletedSessionCount(projectId?: string) {
+  const q = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<{ count: number }>(`/sessions/deleted/count${q}`);
+}
+
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 export function fetchMessages(sessionId: string, params?: { limit?: number; offset?: number }) {

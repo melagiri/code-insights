@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSession, useSessionMutation } from '@/hooks/useSessions';
+import { useSession, useSessionMutation, useDeleteSession } from '@/hooks/useSessions';
 import { useInsights } from '@/hooks/useInsights';
 import { useMessages } from '@/hooks/useMessages';
 import {
@@ -19,6 +19,17 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +65,7 @@ import {
   Wrench,
   Target,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -146,13 +158,15 @@ function PromptQualityAnalyzeButton({ session }: { session: Session }) {
 
 interface SessionDetailPanelProps {
   sessionId: string;
+  onDelete?: () => void;
 }
 
-export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
+export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelProps) {
   const { data: session, isLoading: loading, error } = useSession(sessionId);
   const { data: insights = [] } = useInsights({ sessionId });
   const messagesQuery = useMessages(sessionId);
   const sessionMutation = useSessionMutation();
+  const deleteMutation = useDeleteSession();
   const [renameOpen, setRenameOpen] = useState(false);
   const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null);
   const [searchHighlightId, setSearchHighlightId] = useState<string | null>(null);
@@ -416,6 +430,45 @@ export function SessionDetailPanel({ sessionId }: SessionDetailPanelProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <AlertDialog>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="sr-only">Hide session</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Hide session</TooltipContent>
+              </Tooltip>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hide this session?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This session will no longer appear in your session list. You can restore it by running{' '}
+                    <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">code-insights sync --force</code>.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      try {
+                        await deleteMutation.mutateAsync(session.id);
+                        toast.success('Session hidden');
+                        onDelete?.();
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to hide session');
+                      }
+                    }}
+                  >
+                    Hide session
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
