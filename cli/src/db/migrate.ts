@@ -98,3 +98,8 @@ function applyV4(db: Database.Database): void {
 
   db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(4);
 }
+
+function applyV5(db: Database.Database): void {
+  db.exec(`ALTER TABLE sessions ADD COLUMN deleted_at TEXT`);
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(5);
+}
