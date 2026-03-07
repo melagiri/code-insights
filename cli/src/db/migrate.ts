@@ -101,5 +101,6 @@ function applyV4(db: Database.Database): void {
 
 function applyV5(db: Database.Database): void {
   db.exec(`ALTER TABLE sessions ADD COLUMN deleted_at TEXT`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_deleted_at ON sessions(deleted_at)`);
   db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(5);
 }

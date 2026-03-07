@@ -138,18 +138,20 @@ function fetchScopedInsights(
   if (scope === 'project') {
     if (!projectId) return [];
     return db.prepare(`
-      SELECT id, type, title, content, summary, confidence, project_name, timestamp
-      FROM insights
-      WHERE project_id = ? AND type != 'summary'
-      ORDER BY confidence DESC, timestamp DESC
+      SELECT i.id, i.type, i.title, i.content, i.summary, i.confidence, i.project_name, i.timestamp
+      FROM insights i
+      JOIN sessions s ON i.session_id = s.id AND s.deleted_at IS NULL
+      WHERE i.project_id = ? AND i.type != 'summary'
+      ORDER BY i.confidence DESC, i.timestamp DESC
     `).all(projectId) as ExportInsightRow[];
   }
 
   return db.prepare(`
-    SELECT id, type, title, content, summary, confidence, project_name, timestamp
-    FROM insights
-    WHERE type != 'summary'
-    ORDER BY confidence DESC, timestamp DESC
+    SELECT i.id, i.type, i.title, i.content, i.summary, i.confidence, i.project_name, i.timestamp
+    FROM insights i
+    JOIN sessions s ON i.session_id = s.id AND s.deleted_at IS NULL
+    WHERE i.type != 'summary'
+    ORDER BY i.confidence DESC, i.timestamp DESC
   `).all() as ExportInsightRow[];
 }
 

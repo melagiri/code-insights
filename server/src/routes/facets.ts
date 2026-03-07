@@ -145,7 +145,7 @@ app.post('/backfill', async (c) => {
 
       const session = db.prepare(
         `SELECT id, project_id, project_name, project_path, summary, ended_at
-         FROM sessions WHERE id = ?`
+         FROM sessions WHERE id = ? AND deleted_at IS NULL`
       ).get(sessionId) as SessionData | undefined;
 
       if (!session) {

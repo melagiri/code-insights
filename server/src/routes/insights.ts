@@ -11,30 +11,31 @@ app.get('/', (c) => {
   const db = getDb();
   const { projectId, sessionId, type, limit, offset } = c.req.query();
 
-  const conditions: string[] = [];
+  const conditions: string[] = ['s.deleted_at IS NULL'];
   const params: (string | number)[] = [];
 
   if (projectId) {
-    conditions.push('project_id = ?');
+    conditions.push('i.project_id = ?');
     params.push(projectId);
   }
   if (sessionId) {
-    conditions.push('session_id = ?');
+    conditions.push('i.session_id = ?');
     params.push(sessionId);
   }
   if (type) {
-    conditions.push('type = ?');
+    conditions.push('i.type = ?');
     params.push(type);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const where = `WHERE ${conditions.join(' AND ')}`;
   const insights = db.prepare(`
-    SELECT id, session_id, project_id, project_name, type, title, content,
-           summary, bullets, confidence, source, metadata, timestamp,
-           created_at, scope, analysis_version, linked_insight_ids
-    FROM insights
+    SELECT i.id, i.session_id, i.project_id, i.project_name, i.type, i.title, i.content,
+           i.summary, i.bullets, i.confidence, i.source, i.metadata, i.timestamp,
+           i.created_at, i.scope, i.analysis_version, i.linked_insight_ids
+    FROM insights i
+    JOIN sessions s ON i.session_id = s.id
     ${where}
-    ORDER BY timestamp DESC
+    ORDER BY i.timestamp DESC
     LIMIT ? OFFSET ?
   `).all(...params, parseIntParam(limit, 100), parseIntParam(offset, 0));
 
