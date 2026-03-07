@@ -3,6 +3,48 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { loadConfig } from '../utils/config.js';
 
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+function getBaseUrl(): string {
+  const config = loadConfig();
+  const port = config?.dashboard?.port || 7890;
+  return `http://localhost:${port}`;
+}
+
+async function checkServer(baseUrl: string): Promise<void> {
+  try {
+    await fetch(`${baseUrl}/api/health`);
+  } catch {
+    console.log(chalk.yellow('  Dashboard server is not running.'));
+    console.log(chalk.dim('  Start it with: code-insights dashboard'));
+    console.log();
+    process.exit(1);
+  }
+}
+
+async function checkLlmConfigured(baseUrl: string): Promise<void> {
+  try {
+    const res = await fetch(`${baseUrl}/api/config/llm`);
+    if (res.ok) {
+      const data = await res.json() as { provider?: string; model?: string };
+      if (!data.provider || !data.model) {
+        console.log(chalk.yellow('  LLM provider is not configured.'));
+        console.log(chalk.dim('  Configure it with: code-insights config llm'));
+        console.log();
+        process.exit(1);
+      }
+    }
+  } catch {
+    // If config endpoint fails, let the backfill endpoint handle it
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SSE helpers
+// ---------------------------------------------------------------------------
+
 async function fetchWithSSE(url: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const res = await fetch(url, {
     method: 'POST',
@@ -68,24 +110,80 @@ async function fetchWithSSE(url: string, body: Record<string, unknown>, signal?:
   return result;
 }
 
+async function backfillBatch(
+  baseUrl: string,
+  sessionIds: string[],
+  offset: number,
+  total: number,
+  signal?: AbortSignal
+): Promise<{ completed: number; failed: number }> {
+  const res = await fetch(`${baseUrl}/api/facets/backfill`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionIds }),
+    signal,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`Server error ${res.status}: ${text}`);
+  }
+  if (!res.body) throw new Error('No response body');
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  let currentEvent = '';
+  let currentData = '';
+  let result = { completed: 0, failed: 0 };
+
+  const spinner = ora({ text: `  Backfilling ${offset + 1}-${offset + sessionIds.length} of ${total}...`, indent: 2 }).start();
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          currentData = line.slice(6);
+        } else if (line === '' && currentEvent && currentData) {
+          try {
+            const data = JSON.parse(currentData) as Record<string, unknown>;
+            if (currentEvent === 'progress') {
+              const processed = (data.completed as number) + (data.failed as number);
+              spinner.text = `  Backfilling ${offset + processed + 1} of ${total}...`;
+            } else if (currentEvent === 'complete') {
+              result = { completed: data.completed as number, failed: data.failed as number };
+              spinner.succeed(`  Batch complete: ${result.completed} extracted, ${result.failed} failed`);
+            }
+          } catch { /* skip malformed */ }
+          currentEvent = '';
+          currentData = '';
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Actions
+// ---------------------------------------------------------------------------
+
 async function reflectAction(options: {
   section?: string;
   period?: string;
   project?: string;
 }): Promise<void> {
-  const config = loadConfig();
-  const port = config?.dashboard?.port || 7890;
-  const baseUrl = `http://localhost:${port}`;
+  const baseUrl = getBaseUrl();
 
-  // Check if server is running
-  try {
-    await fetch(`${baseUrl}/api/health`);
-  } catch {
-    console.log(chalk.yellow('  Dashboard server is not running.'));
-    console.log(chalk.dim('  Start it with: code-insights dashboard'));
-    console.log();
-    process.exit(1);
-  }
+  await checkServer(baseUrl);
 
   // Check minimum session threshold
   const checkParams = new URLSearchParams();
@@ -189,9 +287,81 @@ async function reflectAction(options: {
   console.log();
 }
 
+const BACKFILL_BATCH_SIZE = 200;
+
+async function backfillAction(options: {
+  period?: string;
+  project?: string;
+  dryRun?: boolean;
+}): Promise<void> {
+  const baseUrl = getBaseUrl();
+  await checkServer(baseUrl);
+  await checkLlmConfigured(baseUrl);
+
+  const params = new URLSearchParams();
+  params.set('period', options.period || 'all');
+  if (options.project) params.set('project', options.project);
+
+  const res = await fetch(`${baseUrl}/api/facets/missing?${params.toString()}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    console.log(chalk.red(`  Error: ${text}`));
+    process.exit(1);
+  }
+
+  const { sessionIds, count } = await res.json() as { sessionIds: string[]; count: number };
+
+  console.log();
+  if (count === 0) {
+    console.log(chalk.green('  All analyzed sessions already have facets.'));
+    console.log();
+    return;
+  }
+
+  console.log(chalk.cyan(`  Found ${count} session${count !== 1 ? 's' : ''} with insights but missing facets.`));
+
+  if (options.dryRun) {
+    console.log(chalk.dim('  (dry run — no changes made)'));
+    console.log();
+    return;
+  }
+
+  console.log();
+
+  let totalCompleted = 0;
+  let totalFailed = 0;
+
+  for (let i = 0; i < sessionIds.length; i += BACKFILL_BATCH_SIZE) {
+    const batch = sessionIds.slice(i, i + BACKFILL_BATCH_SIZE);
+    const { completed, failed } = await backfillBatch(baseUrl, batch, i, sessionIds.length);
+    totalCompleted += completed;
+    totalFailed += failed;
+  }
+
+  console.log();
+  console.log(chalk.bold('  Summary'));
+  console.log(chalk.green(`    ${totalCompleted} sessions backfilled`));
+  if (totalFailed > 0) {
+    console.log(chalk.yellow(`    ${totalFailed} sessions failed`));
+  }
+  console.log();
+}
+
+// ---------------------------------------------------------------------------
+// Command registration
+// ---------------------------------------------------------------------------
+
+const backfillCommand = new Command('backfill')
+  .description('Extract facets for sessions that have insights but are missing pattern data')
+  .option('-p, --period <period>', 'Time range: 7d, 30d, 90d, all', 'all')
+  .option('--project <name>', 'Scope to a single project')
+  .option('--dry-run', 'Show count without backfilling')
+  .action(backfillAction);
+
 export const reflectCommand = new Command('reflect')
   .description('Generate cross-session analysis (friction, rules, working style)')
   .option('--section <name>', 'Generate specific section: friction-wins, rules-skills, working-style')
   .option('-p, --period <period>', 'Time range: 7d, 30d, 90d, all', '30d')
   .option('--project <name>', 'Scope to a single project')
+  .addCommand(backfillCommand)
   .action(reflectAction);
