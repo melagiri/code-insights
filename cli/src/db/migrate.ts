@@ -9,6 +9,7 @@ import { SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './schema.js';
  * Version 2: Add compound index on insights(confidence DESC, timestamp DESC) for depth-ordered export queries
  * Version 3: Add session_facets table for cross-session analysis
  * Version 4: Add reflect_snapshots table for caching LLM-generated synthesis results
+ * Version 5: Add deleted_at column to sessions for soft-delete (user-initiated hide)
  */
 export function runMigrations(db: Database.Database): void {
   // Create schema_version table first if it doesn't exist.
@@ -36,6 +37,10 @@ export function runMigrations(db: Database.Database): void {
 
   if (currentVersion < 4) {
     applyV4(db);
+  }
+
+  if (currentVersion < 5) {
+    applyV5(db);
   }
 }
 

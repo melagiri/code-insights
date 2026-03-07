@@ -3,7 +3,7 @@
 import { readFileSync } from 'fs';
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
-import { syncCommand } from './commands/sync.js';
+import { syncCommand, pruneTrivialSessions } from './commands/sync.js';
 import { statusCommand } from './commands/status.js';
 import { installHookCommand, uninstallHookCommand } from './commands/install-hook.js';
 import { openCommand } from './commands/open.js';
@@ -29,10 +29,10 @@ program
   .description('Set up Code Insights (initializes local database)')
   .action(initCommand);
 
-program
+const syncCmd = program
   .command('sync')
   .description('Sync AI coding sessions to local SQLite database')
-  .option('-f, --force', 'Force re-sync all sessions')
+  .option('-f, --force', 'Force re-sync all sessions (also restores hidden sessions)')
   .option('-p, --project <name>', 'Only sync sessions from a specific project')
   .option('-s, --source <name>', 'Only sync sessions from a specific tool (e.g., claude-code, cursor)')
   .option('--dry-run', 'Show what would be synced without making changes')
@@ -40,6 +40,21 @@ program
   .option('-v, --verbose', 'Show diagnostic warnings from providers')
   .option('--regenerate-titles', 'Regenerate titles for all sessions')
   .action(syncCommand);
+
+syncCmd
+  .command('prune')
+  .description('Soft-delete sessions with ≤2 messages (trivial abandoned sessions)')
+  .action(async () => {
+    const chalk = (await import('chalk')).default;
+    console.log(chalk.cyan('\n  Code Insights — Prune\n'));
+    const { deleted } = await pruneTrivialSessions();
+    if (deleted === 0) {
+      console.log(chalk.green('  No trivial sessions found. Nothing to prune.'));
+    } else {
+      console.log(chalk.green(`  Pruned ${deleted} session${deleted !== 1 ? 's' : ''} with ≤2 messages.`));
+      console.log(chalk.dim('  Use code-insights sync --force to restore hidden sessions.'));
+    }
+  });
 
 program
   .command('status')
