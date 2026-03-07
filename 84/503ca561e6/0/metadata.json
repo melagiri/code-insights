@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "84503ca561e6",
+  "session_id": "bd945921-e582-416f-af17-39f2cfbfa0e7",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-07T05:17:16.50947Z",
+  "branch": "fix/prompt-quality-bullets-crash",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/src/components/insights/PromptQualityCard.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1b358f72d454",
+  "checkpoint_transcript_start": 282,
+  "transcript_lines_at_start": 282,
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 16381,
+    "cache_read_tokens": 870329,
+    "output_tokens": 3595,
+    "api_call_count": 12
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-07T05:17:16.393162Z",
+    "agent_lines": 0,
+    "human_added": 1,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 1,
+    "agent_percentage": 0
+  }
+}
