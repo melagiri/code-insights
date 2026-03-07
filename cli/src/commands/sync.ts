@@ -160,6 +160,14 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
             continue;
           }
 
+          // Skip trivial sessions (≤2 messages) — likely abandoned prompts with no content
+          if (session.messageCount <= 2) {
+            providerSkippedCount++;
+            updateSyncState(syncState, filePath, session.id);
+            saveSyncState(syncState);
+            continue;
+          }
+
           // Write session and messages to SQLite
           const isNew = insertSessionWithProjectAndReturnIsNew(session, !!options.force);
           insertMessages(session);
@@ -210,6 +218,12 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
         console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
     }
+  }
+
+  // Resurrect soft-deleted sessions on --force so users get a clean slate
+  if (options.force) {
+    const db = getDb();
+    db.prepare('UPDATE sessions SET deleted_at = NULL WHERE deleted_at IS NOT NULL').run();
   }
 
   // Reconcile usage stats after force sync (skip if nothing changed)
@@ -372,4 +386,42 @@ function updateSyncState(state: SyncState, filePath: string, sessionId: string):
       sessionId,
     };
   }
+}
+
+interface TrivialSession {
+  id: string;
+  title: string | null;
+  project_name: string;
+  message_count: number;
+}
+
+/**
+ * Return sessions with ≤2 messages that are not yet soft-deleted.
+ * Used to preview what `sync prune` will affect before asking for confirmation.
+ */
+export function getTrivialSessions(): TrivialSession[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT id, title, project_name, message_count
+    FROM sessions
+    WHERE message_count <= 2 AND deleted_at IS NULL
+    ORDER BY started_at DESC
+  `).all() as TrivialSession[];
+}
+
+/**
+ * Soft-delete sessions with ≤2 messages — likely abandoned prompts with no useful content.
+ * Unlike --force sync which resurrects deleted sessions, prune is a deliberate cleanup action.
+ * Accepts the session IDs to delete so the caller can preview before executing.
+ */
+export function pruneTrivialSessions(ids: string[]): { deleted: number } {
+  if (ids.length === 0) return { deleted: 0 };
+  const db = getDb();
+  const placeholders = ids.map(() => '?').join(', ');
+  const result = db.prepare(`
+    UPDATE sessions
+    SET deleted_at = datetime('now')
+    WHERE id IN (${placeholders}) AND deleted_at IS NULL
+  `).run(...ids);
+  return { deleted: result.changes };
 }

@@ -12,7 +12,8 @@ import { CompactSessionRow } from './CompactSessionRow';
 import { getSessionTitle, getDateGroup, sortDateGroups } from '@/lib/utils';
 import { parseJsonField } from '@/lib/types';
 import type { Session, Insight, InsightMetadata } from '@/lib/types';
-import { SearchX, Terminal } from 'lucide-react';
+import { SearchX, Terminal, EyeOff } from 'lucide-react';
+import { useDeletedSessionCount } from '@/hooks/useSessions';
 
 const SESSION_CHARACTERS = [
   'deep_focus',
@@ -29,6 +30,7 @@ interface SessionListPanelProps {
   insights: Insight[];
   selectedSessionId: string;
   showProject: boolean;
+  projectId?: string;
   filters: {
     q: string;
     character: string;
@@ -46,6 +48,7 @@ export function SessionListPanel({
   insights,
   selectedSessionId,
   showProject,
+  projectId,
   filters,
   onFilterChange,
   onClearFilters,
@@ -53,6 +56,7 @@ export function SessionListPanel({
   loading,
   missingFacetIds,
 }: SessionListPanelProps) {
+  const { data: deletedCount = 0 } = useDeletedSessionCount(projectId);
   const analyzedSessionIds = useMemo(
     () => new Set(insights.map((i) => i.session_id)),
     [insights]
@@ -225,6 +229,14 @@ export function SessionListPanel({
           </div>
         )}
       </div>
+
+      {/* Hidden sessions footer — only shown when a project is selected and some sessions are hidden */}
+      {projectId && deletedCount > 0 && (
+        <div className="shrink-0 border-t px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <EyeOff className="h-3 w-3 shrink-0" />
+          <span>{deletedCount} hidden session{deletedCount !== 1 ? 's' : ''}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,7 +37,7 @@ vi.mock('../utils/device.js', () => ({
 
 // Dynamic imports AFTER mocks are declared — vitest hoists vi.mock()
 // above these imports, so the modules receive the mocked dependencies.
-const { sessionExists, getSessions, getProjects, getLastSession, getSessionCount, getProjectList } = await import('./read.js');
+const { sessionExists, getSessions, getProjects, getLastSession, getSessionCount, getProjectList, getDeletedSessionCount } = await import('./read.js');
 const { insertSessionWithProject, insertMessages } = await import('./write.js');
 
 // ──────────────────────────────────────────────────────
@@ -747,6 +747,68 @@ describe('Database read/write operations', () => {
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe('proj-pl-fields');
       expect(list[0].name).toBe('pl-fields');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────
+  // Soft-delete behavior
+  // ──────────────────────────────────────────────────────
+
+  describe('soft delete', () => {
+    it('getSessions excludes soft-deleted sessions', () => {
+      insertSessionWithProject(makeParsedSession({ id: 'sd-active', projectPath: '/p/sd', projectName: 'sd' }));
+      insertSessionWithProject(makeParsedSession({ id: 'sd-hidden', projectPath: '/p/sd', projectName: 'sd' }));
+
+      // Soft-delete one
+      testDb.prepare("UPDATE sessions SET deleted_at = datetime('now') WHERE id = ?").run('sd-hidden');
+
+      const sessions = getSessions();
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].id).toBe('sd-active');
+    });
+
+    it('sessionExists still sees soft-deleted sessions (for sync dedup)', () => {
+      insertSessionWithProject(makeParsedSession({ id: 'sd-dedup', projectPath: '/p/sd', projectName: 'sd' }));
+      testDb.prepare("UPDATE sessions SET deleted_at = datetime('now') WHERE id = ?").run('sd-dedup');
+
+      expect(sessionExists('sd-dedup')).toBe(true);
+    });
+
+    it('getDeletedSessionCount returns 0 when no sessions are deleted', () => {
+      insertSessionWithProject(makeParsedSession({ id: 'sd-count-1', projectPath: '/p/sd', projectName: 'sd' }));
+      expect(getDeletedSessionCount()).toBe(0);
+    });
+
+    it('getDeletedSessionCount counts soft-deleted sessions', () => {
+      insertSessionWithProject(makeParsedSession({ id: 'sd-cnt-a', projectPath: '/p/sd', projectName: 'sd' }));
+      insertSessionWithProject(makeParsedSession({ id: 'sd-cnt-b', projectPath: '/p/sd', projectName: 'sd' }));
+      insertSessionWithProject(makeParsedSession({ id: 'sd-cnt-c', projectPath: '/p/sd', projectName: 'sd' }));
+
+      testDb.prepare("UPDATE sessions SET deleted_at = datetime('now') WHERE id IN ('sd-cnt-a', 'sd-cnt-b')").run();
+
+      expect(getDeletedSessionCount()).toBe(2);
+    });
+
+    it('getDeletedSessionCount filters by projectId', () => {
+      insertSessionWithProject(makeParsedSession({ id: 'sd-fp-1', projectPath: '/p/alpha', projectName: 'alpha' }));
+      insertSessionWithProject(makeParsedSession({ id: 'sd-fp-2', projectPath: '/p/beta', projectName: 'beta' }));
+
+      testDb.prepare("UPDATE sessions SET deleted_at = datetime('now')").run();
+
+      const alphaProjectId = (testDb.prepare('SELECT project_id FROM sessions WHERE id = ?').get('sd-fp-1') as { project_id: string }).project_id;
+      const betaProjectId = (testDb.prepare('SELECT project_id FROM sessions WHERE id = ?').get('sd-fp-2') as { project_id: string }).project_id;
+
+      expect(getDeletedSessionCount(alphaProjectId)).toBe(1);
+      expect(getDeletedSessionCount(betaProjectId)).toBe(1);
+    });
+
+    it('getSessionCount excludes soft-deleted sessions', () => {
+      insertSessionWithProject(makeParsedSession({ id: 'sd-sc-1', projectPath: '/p/sd', projectName: 'sd' }));
+      insertSessionWithProject(makeParsedSession({ id: 'sd-sc-2', projectPath: '/p/sd', projectName: 'sd' }));
+
+      testDb.prepare("UPDATE sessions SET deleted_at = datetime('now') WHERE id = ?").run('sd-sc-2');
+
+      expect(getSessionCount()).toBe(1);
     });
   });
 });

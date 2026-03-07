@@ -74,11 +74,13 @@ describe('runSync', () => {
 
     const session = makeParsedSession({
       id: 'session-1',
-      messageCount: 1,
-      userMessageCount: 1,
-      assistantMessageCount: 0,
+      messageCount: 3,
+      userMessageCount: 2,
+      assistantMessageCount: 1,
       messages: [
         makeParsedMessage({ id: 'msg-1', sessionId: 'session-1' }),
+        makeParsedMessage({ id: 'msg-2', sessionId: 'session-1', type: 'assistant' }),
+        makeParsedMessage({ id: 'msg-3', sessionId: 'session-1' }),
       ],
     });
 
@@ -118,11 +120,13 @@ describe('runSync', () => {
     const session = makeParsedSession({
       id: 'cursor:composer-1',
       sourceTool: 'cursor',
-      messageCount: 1,
-      userMessageCount: 1,
-      assistantMessageCount: 0,
+      messageCount: 3,
+      userMessageCount: 2,
+      assistantMessageCount: 1,
       messages: [
         makeParsedMessage({ id: 'msg-2', sessionId: 'cursor:composer-1' }),
+        makeParsedMessage({ id: 'msg-3', sessionId: 'cursor:composer-1', type: 'assistant' }),
+        makeParsedMessage({ id: 'msg-4', sessionId: 'cursor:composer-1' }),
       ],
     });
 
@@ -151,11 +155,13 @@ describe('runSync', () => {
 
     const session = makeParsedSession({
       id: 'session-new',
-      messageCount: 1,
-      userMessageCount: 1,
-      assistantMessageCount: 0,
+      messageCount: 3,
+      userMessageCount: 2,
+      assistantMessageCount: 1,
       messages: [
-        makeParsedMessage({ id: 'msg-new', sessionId: 'session-new' }),
+        makeParsedMessage({ id: 'msg-new-1', sessionId: 'session-new' }),
+        makeParsedMessage({ id: 'msg-new-2', sessionId: 'session-new', type: 'assistant' }),
+        makeParsedMessage({ id: 'msg-new-3', sessionId: 'session-new' }),
       ],
     });
 
@@ -173,5 +179,68 @@ describe('runSync', () => {
 
     expect(insertSessionWithProjectAndReturnIsNew).toHaveBeenCalledTimes(1);
     expect(recalculateUsageStats).not.toHaveBeenCalled();
+  });
+
+  it('skips sessions with 2 or fewer messages', async () => {
+    const filePath = path.join(tempDir, 'trivial.jsonl');
+    fs.writeFileSync(filePath, '{}');
+
+    const trivialSession = makeParsedSession({
+      id: 'session-trivial',
+      messageCount: 2,
+      userMessageCount: 1,
+      assistantMessageCount: 1,
+      messages: [
+        makeParsedMessage({ id: 'msg-t1', sessionId: 'session-trivial' }),
+        makeParsedMessage({ id: 'msg-t2', sessionId: 'session-trivial', type: 'assistant' }),
+      ],
+    });
+
+    getAllProviders.mockReturnValue([
+      {
+        getProviderName: () => 'mock',
+        discover: async () => [filePath],
+        parse: async () => trivialSession,
+      },
+    ]);
+
+    const result = await runSync({ quiet: true });
+
+    expect(insertSessionWithProjectAndReturnIsNew).not.toHaveBeenCalled();
+    expect(insertMessages).not.toHaveBeenCalled();
+    expect(result.syncedCount).toBe(0);
+  });
+
+  it('syncs sessions with 3 or more messages', async () => {
+    const filePath = path.join(tempDir, 'valid.jsonl');
+    fs.writeFileSync(filePath, '{}');
+
+    const validSession = makeParsedSession({
+      id: 'session-valid',
+      messageCount: 3,
+      userMessageCount: 2,
+      assistantMessageCount: 1,
+      messages: [
+        makeParsedMessage({ id: 'msg-v1', sessionId: 'session-valid' }),
+        makeParsedMessage({ id: 'msg-v2', sessionId: 'session-valid', type: 'assistant' }),
+        makeParsedMessage({ id: 'msg-v3', sessionId: 'session-valid' }),
+      ],
+    });
+
+    getAllProviders.mockReturnValue([
+      {
+        getProviderName: () => 'mock',
+        discover: async () => [filePath],
+        parse: async () => validSession,
+      },
+    ]);
+
+    insertSessionWithProjectAndReturnIsNew.mockReturnValue(true);
+
+    const result = await runSync({ quiet: true });
+
+    expect(insertSessionWithProjectAndReturnIsNew).toHaveBeenCalledTimes(1);
+    expect(insertMessages).toHaveBeenCalledTimes(1);
+    expect(result.syncedCount).toBe(1);
   });
 });

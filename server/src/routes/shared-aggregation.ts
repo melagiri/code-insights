@@ -17,7 +17,8 @@ export function buildWhereClause(
   project?: string,
   source?: string
 ): { where: string; params: (string | number)[] } {
-  const conditions: string[] = [];
+  // Always exclude soft-deleted sessions from aggregations
+  const conditions: string[] = ['s.deleted_at IS NULL'];
   const params: (string | number)[] = [];
 
   const periodStart = buildPeriodFilter(period);
@@ -35,7 +36,7 @@ export function buildWhereClause(
   }
 
   return {
-    where: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+    where: `WHERE ${conditions.join(' AND ')}`,
     params,
   };
 }

@@ -39,7 +39,7 @@ function parseLLMJson<T>(response: string): T | null {
 // Detect the dominant source tool from the database to target artifact generation.
 function detectTargetTool(db: ReturnType<typeof getDb>): string {
   const row = db.prepare(
-    `SELECT source_tool, COUNT(*) as count FROM sessions GROUP BY source_tool ORDER BY count DESC LIMIT 1`
+    `SELECT source_tool, COUNT(*) as count FROM sessions WHERE deleted_at IS NULL GROUP BY source_tool ORDER BY count DESC LIMIT 1`
   ).get() as { source_tool: string; count: number } | undefined;
   return row?.source_tool || 'claude-code';
 }

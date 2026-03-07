@@ -25,7 +25,9 @@ app.get('/dashboard', (c) => {
     periodStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
   }
 
-  const where = periodStart ? 'WHERE started_at >= ?' : '';
+  const where = periodStart
+    ? 'WHERE started_at >= ? AND deleted_at IS NULL'
+    : 'WHERE deleted_at IS NULL';
   const params = periodStart ? [periodStart] : [];
 
   const stats = db.prepare(`

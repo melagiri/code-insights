@@ -190,4 +190,109 @@ describe('Sessions routes', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('DELETE /api/sessions/:id (soft delete)', () => {
+    it('soft-deletes a session by setting deleted_at', async () => {
+      seedProject('proj-1', 'alpha');
+      seedSession('sess-del', 'proj-1');
+
+      const app = createApp();
+      const res = await app.request('/api/sessions/sess-del', { method: 'DELETE' });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.ok).toBe(true);
+
+      // Verify deleted_at is set in DB
+      const row = testDb.prepare(
+        'SELECT deleted_at FROM sessions WHERE id = ?',
+      ).get('sess-del') as { deleted_at: string | null };
+      expect(row.deleted_at).not.toBeNull();
+    });
+
+    it('returns 404 for non-existent session', async () => {
+      const app = createApp();
+      const res = await app.request('/api/sessions/nonexistent', { method: 'DELETE' });
+      expect(res.status).toBe(404);
+    });
+
+    it('excludes soft-deleted sessions from GET /api/sessions', async () => {
+      seedProject('proj-1', 'alpha');
+      seedSession('sess-active', 'proj-1');
+      seedSession('sess-hidden', 'proj-1');
+
+      // Soft-delete one session
+      testDb.prepare(
+        "UPDATE sessions SET deleted_at = datetime('now') WHERE id = ?",
+      ).run('sess-hidden');
+
+      const app = createApp();
+      const res = await app.request('/api/sessions');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.sessions).toHaveLength(1);
+      expect(body.sessions[0].id).toBe('sess-active');
+    });
+
+    it('returns 404 for soft-deleted session on GET /api/sessions/:id', async () => {
+      seedProject('proj-1', 'alpha');
+      seedSession('sess-gone', 'proj-1');
+      testDb.prepare(
+        "UPDATE sessions SET deleted_at = datetime('now') WHERE id = ?",
+      ).run('sess-gone');
+
+      const app = createApp();
+      const res = await app.request('/api/sessions/sess-gone');
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /api/sessions/deleted/count', () => {
+    it('returns 0 when no sessions are deleted', async () => {
+      seedProject('proj-1', 'alpha');
+      seedSession('sess-1', 'proj-1');
+
+      const app = createApp();
+      const res = await app.request('/api/sessions/deleted/count');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(0);
+    });
+
+    it('returns count of soft-deleted sessions', async () => {
+      seedProject('proj-1', 'alpha');
+      seedSession('sess-1', 'proj-1');
+      seedSession('sess-2', 'proj-1');
+      seedSession('sess-3', 'proj-1');
+
+      testDb.prepare(
+        "UPDATE sessions SET deleted_at = datetime('now') WHERE id IN ('sess-1', 'sess-2')",
+      ).run();
+
+      const app = createApp();
+      const res = await app.request('/api/sessions/deleted/count');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(2);
+    });
+
+    it('filters by project_id', async () => {
+      seedProject('proj-1', 'alpha');
+      seedProject('proj-2', 'beta');
+      seedSession('sess-1', 'proj-1');
+      seedSession('sess-2', 'proj-2');
+
+      testDb.prepare(
+        "UPDATE sessions SET deleted_at = datetime('now') WHERE id = 'sess-1'",
+      ).run();
+      testDb.prepare(
+        "UPDATE sessions SET deleted_at = datetime('now') WHERE id = 'sess-2'",
+      ).run();
+
+      const app = createApp();
+      const res = await app.request('/api/sessions/deleted/count?projectId=proj-1');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(1);
+    });
+  });
 });

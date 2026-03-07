@@ -81,7 +81,7 @@ app.get('/missing', (c) => {
   // buildWhereClause can't be used here — it generates "WHERE ..." prefix,
   // but this query already needs "WHERE sf.session_id IS NULL".
   // Build conditions inline instead.
-  const conditions: string[] = ['sf.session_id IS NULL'];
+  const conditions: string[] = ['sf.session_id IS NULL', 's.deleted_at IS NULL'];
   const params: (string | number)[] = [];
 
   if (period !== 'all') {
@@ -145,7 +145,7 @@ app.post('/backfill', async (c) => {
 
       const session = db.prepare(
         `SELECT id, project_id, project_name, project_path, summary, ended_at
-         FROM sessions WHERE id = ?`
+         FROM sessions WHERE id = ? AND deleted_at IS NULL`
       ).get(sessionId) as SessionData | undefined;
 
       if (!session) {

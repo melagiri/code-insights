@@ -73,21 +73,21 @@ app.post('/markdown', async (c) => {
     sessions = db.prepare(
       `SELECT id, project_name, generated_title, custom_title, started_at, ended_at,
               message_count, estimated_cost_usd, session_character, source_tool
-       FROM sessions WHERE id IN (${placeholders}) ORDER BY started_at DESC`,
+       FROM sessions WHERE id IN (${placeholders}) AND deleted_at IS NULL ORDER BY started_at DESC`,
     ).all(...sessionIds) as SessionRow[];
   } else if (projectId) {
     // Cap at 100 to avoid unbounded queries and SQLite variable limit on insight fetch
     sessions = db.prepare(
       `SELECT id, project_name, generated_title, custom_title, started_at, ended_at,
               message_count, estimated_cost_usd, session_character, source_tool
-       FROM sessions WHERE project_id = ? ORDER BY started_at DESC LIMIT 100`,
+       FROM sessions WHERE project_id = ? AND deleted_at IS NULL ORDER BY started_at DESC LIMIT 100`,
     ).all(projectId) as SessionRow[];
   } else {
     // "Everything" export — most recent 100 sessions
     sessions = db.prepare(
       `SELECT id, project_name, generated_title, custom_title, started_at, ended_at,
               message_count, estimated_cost_usd, session_character, source_tool
-       FROM sessions ORDER BY started_at DESC LIMIT 100`,
+       FROM sessions WHERE deleted_at IS NULL ORDER BY started_at DESC LIMIT 100`,
     ).all() as SessionRow[];
   }
 
@@ -138,18 +138,20 @@ function fetchScopedInsights(
   if (scope === 'project') {
     if (!projectId) return [];
     return db.prepare(`
-      SELECT id, type, title, content, summary, confidence, project_name, timestamp
-      FROM insights
-      WHERE project_id = ? AND type != 'summary'
-      ORDER BY confidence DESC, timestamp DESC
+      SELECT i.id, i.type, i.title, i.content, i.summary, i.confidence, i.project_name, i.timestamp
+      FROM insights i
+      JOIN sessions s ON i.session_id = s.id AND s.deleted_at IS NULL
+      WHERE i.project_id = ? AND i.type != 'summary'
+      ORDER BY i.confidence DESC, i.timestamp DESC
     `).all(projectId) as ExportInsightRow[];
   }
 
   return db.prepare(`
-    SELECT id, type, title, content, summary, confidence, project_name, timestamp
-    FROM insights
-    WHERE type != 'summary'
-    ORDER BY confidence DESC, timestamp DESC
+    SELECT i.id, i.type, i.title, i.content, i.summary, i.confidence, i.project_name, i.timestamp
+    FROM insights i
+    JOIN sessions s ON i.session_id = s.id AND s.deleted_at IS NULL
+    WHERE i.type != 'summary'
+    ORDER BY i.confidence DESC, i.timestamp DESC
   `).all() as ExportInsightRow[];
 }
 
@@ -163,7 +165,7 @@ function fetchSessionContext(
   if (scope === 'project' && projectId) {
     const row = db.prepare(`
       SELECT COUNT(*) as cnt, MIN(started_at) as min_date, MAX(ended_at) as max_date, project_name
-      FROM sessions WHERE project_id = ?
+      FROM sessions WHERE project_id = ? AND deleted_at IS NULL
     `).get(projectId) as { cnt: number; min_date: string; max_date: string; project_name: string } | undefined;
     return {
       sessionCount: row?.cnt ?? 0,
@@ -180,6 +182,7 @@ function fetchSessionContext(
            MIN(started_at) as min_date,
            MAX(ended_at) as max_date
     FROM sessions
+    WHERE deleted_at IS NULL
   `).get() as { session_cnt: number; project_cnt: number; min_date: string; max_date: string } | undefined;
 
   return {

@@ -132,34 +132,34 @@ describe('buildPeriodFilter', () => {
 // ──────────────────────────────────────────────────────
 
 describe('buildWhereClause', () => {
-  it('returns empty where and params for "all" with no filters', () => {
+  it('returns deleted_at filter for "all" with no filters', () => {
     const { where, params } = buildWhereClause('all');
-    expect(where).toBe('');
+    expect(where).toBe('WHERE s.deleted_at IS NULL');
     expect(params).toEqual([]);
   });
 
   it('adds period filter for non-all periods', () => {
     const { where, params } = buildWhereClause('30d');
-    expect(where).toMatch(/^WHERE s\.started_at >= \?$/);
+    expect(where).toMatch(/^WHERE s\.deleted_at IS NULL AND s\.started_at >= \?$/);
     expect(params).toHaveLength(1);
     expect(typeof params[0]).toBe('string');
   });
 
   it('adds project filter when project is provided', () => {
     const { where, params } = buildWhereClause('all', 'proj-123');
-    expect(where).toBe('WHERE s.project_id = ?');
+    expect(where).toBe('WHERE s.deleted_at IS NULL AND s.project_id = ?');
     expect(params).toEqual(['proj-123']);
   });
 
   it('adds source filter when source is provided', () => {
     const { where, params } = buildWhereClause('all', undefined, 'cursor');
-    expect(where).toBe('WHERE s.source_tool = ?');
+    expect(where).toBe('WHERE s.deleted_at IS NULL AND s.source_tool = ?');
     expect(params).toEqual(['cursor']);
   });
 
   it('combines all filters with AND', () => {
     const { where, params } = buildWhereClause('7d', 'proj-abc', 'claude-code');
-    expect(where).toMatch(/^WHERE s\.started_at >= \? AND s\.project_id = \? AND s\.source_tool = \?$/);
+    expect(where).toMatch(/^WHERE s\.deleted_at IS NULL AND s\.started_at >= \? AND s\.project_id = \? AND s\.source_tool = \?$/);
     expect(params).toHaveLength(3);
     expect(params[1]).toBe('proj-abc');
     expect(params[2]).toBe('claude-code');
@@ -167,7 +167,7 @@ describe('buildWhereClause', () => {
 
   it('combines period + project without source', () => {
     const { where, params } = buildWhereClause('30d', 'proj-x');
-    expect(where).toMatch(/^WHERE s\.started_at >= \? AND s\.project_id = \?$/);
+    expect(where).toMatch(/^WHERE s\.deleted_at IS NULL AND s\.started_at >= \? AND s\.project_id = \?$/);
     expect(params).toHaveLength(2);
   });
 });

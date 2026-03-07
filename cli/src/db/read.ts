@@ -82,7 +82,8 @@ export function getSessions(opts: SessionQueryOptions = {}): SessionRow[] {
     params.push(opts.sourceTool);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  conditions.push('deleted_at IS NULL');
+  const where = `WHERE ${conditions.join(' AND ')}`;
   const sql = `
     SELECT
       id, project_id, project_name,
@@ -168,7 +169,8 @@ export function getLastSession(opts?: { sourceTool?: string; projectId?: string 
     params.push(opts.projectId);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  conditions.push('deleted_at IS NULL');
+  const where = `WHERE ${conditions.join(' AND ')}`;
   const sql = `
     SELECT
       id, project_id, project_name,
@@ -262,7 +264,8 @@ export function getSessionCount(opts: SessionQueryOptions = {}): number {
     params.push(opts.sourceTool);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  conditions.push('deleted_at IS NULL');
+  const where = `WHERE ${conditions.join(' AND ')}`;
   const sql = `SELECT COUNT(*) AS cnt FROM sessions ${where}`;
 
   const row = db.prepare(sql).get(...params) as { cnt: number };
@@ -278,6 +281,25 @@ export function getProjectList(): Array<{ id: string; name: string }> {
   return db.prepare(`
     SELECT DISTINCT project_id AS id, project_name AS name
     FROM sessions
+    WHERE deleted_at IS NULL
     ORDER BY project_name
   `).all() as Array<{ id: string; name: string }>;
+}
+
+/**
+ * Count soft-deleted sessions for a project (or all projects).
+ * Used by the dashboard sidebar to show "N hidden sessions".
+ */
+export function getDeletedSessionCount(projectId?: string): number {
+  const db = getDb();
+  if (projectId) {
+    const row = db.prepare(
+      `SELECT COUNT(*) AS cnt FROM sessions WHERE deleted_at IS NOT NULL AND project_id = ?`
+    ).get(projectId) as { cnt: number };
+    return row.cnt;
+  }
+  const row = db.prepare(
+    `SELECT COUNT(*) AS cnt FROM sessions WHERE deleted_at IS NOT NULL`
+  ).get() as { cnt: number };
+  return row.cnt;
 }

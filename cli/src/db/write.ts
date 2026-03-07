@@ -330,7 +330,7 @@ export function recalculateUsageStats(): { sessionsWithUsage: number; totalToken
         SUM(cache_read_tokens)         AS cache_read,
         SUM(estimated_cost_usd)        AS total_cost
       FROM sessions
-      WHERE usage_source IS NOT NULL
+      WHERE usage_source IS NOT NULL AND deleted_at IS NULL
     `).get() as {
       sessions_with_usage: number;
       total_input: number | null;
@@ -373,6 +373,7 @@ export function recalculateUsageStats(): { sessionsWithUsage: number; totalToken
         SUM(estimated_cost_usd)    AS total_cost,
         MAX(ended_at)              AS last_activity
       FROM sessions
+      WHERE deleted_at IS NULL
       GROUP BY project_id
     `).all() as Array<{
       project_id: string;
