@@ -79,6 +79,19 @@ export function formatMessagesForAnalysis(messages: SQLiteMessageRow[]): string 
     .join('\n\n');
 }
 
+// Shared guidance for friction category precision.
+// Steers the LLM away from the `tooling-limitation` catch-all via negative anchoring
+// and contrastive examples. Novel categories are encouraged for specific patterns.
+export const FRICTION_CLASSIFICATION_GUIDANCE = `
+IMPORTANT — "tooling-limitation" precision:
+Do NOT use "tooling-limitation" for these situations (use a more specific category instead):
+- Agent spawned via Task tool becomes unresponsive/fails to communicate → use a specific category like "agent-orchestration-failure" or "agent-communication-failure"
+- AI uses wrong command/edits before reading/wrong syntax, then self-corrects → "wrong-approach"
+- API rate limit hit, session paused → use a specific category like "rate-limit-hit"
+- User rejects a tool call → not friction (omit entirely)
+Only use "tooling-limitation" when a tool genuinely cannot do what was needed (e.g., WebFetch returned incomplete content, CLI tool has no flag for needed behavior).
+When no preferred category fits, create a specific kebab-case category — a precise novel category is better than a vague canonical one.`;
+
 export const CANONICAL_FRICTION_CATEGORIES = [
   'wrong-approach', 'missing-dependency', 'config-drift', 'test-failure',
   'type-error', 'api-misunderstanding', 'stale-cache', 'version-mismatch',
@@ -112,6 +125,7 @@ Before extracting individual insights, assess the session as a whole. Extract th
    - description: One sentence describing what went wrong
    - severity: "high" (blocked progress for multiple turns), "medium" (caused a detour), "low" (minor hiccup)
    - resolution: "resolved" (fixed in session), "workaround" (bypassed), "unresolved" (still broken)
+${FRICTION_CLASSIFICATION_GUIDANCE}
 
 4. effective_patterns: Up to 3 techniques or approaches that worked particularly well (array, max 3).
    Each has:
@@ -396,6 +410,13 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
     parsed.session_character = undefined;
   }
 
+  // Observability: warn when LLM still uses "tooling-limitation".
+  // Monitors whether FRICTION_CLASSIFICATION_GUIDANCE is working.
+  // Remove after confirming classification quality over ~20 new sessions.
+  if (parsed.facets?.friction_points?.some(fp => fp.category === 'tooling-limitation')) {
+    console.warn('[friction-monitor] LLM classified friction as "tooling-limitation" — verify this is a genuine tool limitation, not an agent/rate-limit/approach issue');
+  }
+
   return { success: true, data: parsed };
 }
 
@@ -413,6 +434,7 @@ Extract session facets — a holistic assessment of how the session went:
 2. workflow_pattern: The dominant pattern, or null. Values: "plan-then-implement", "iterative-refinement", "debug-fix-verify", "explore-then-build", "direct-execution"
 3. friction_points: Up to 5 moments where progress stalled (array).
    Each: { category (kebab-case, prefer: ${CANONICAL_FRICTION_CATEGORIES.join(', ')}), description (one sentence), severity ("high"|"medium"|"low"), resolution ("resolved"|"workaround"|"unresolved") }
+${FRICTION_CLASSIFICATION_GUIDANCE}
 4. effective_patterns: Up to 3 things that worked well (array).
    Each: { description (specific technique), confidence (0-100) }
 5. had_course_correction: true/false — did the user redirect the AI?
