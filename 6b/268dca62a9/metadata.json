@@ -3,7 +3,7 @@
   "checkpoint_id": "6b268dca62a9",
   "strategy": "manual-commit",
   "branch": "chore/docs-audit-cleanup",
-  "checkpoints_count": 1,
+  "checkpoints_count": 3,
   "files_touched": [
     ".claude/hookify.ci-gate-before-pr-mcp.local.md",
     ".claude/hookify.ci-gate-before-pr.local.md",
@@ -24,13 +24,20 @@
       "context": "/6b/268dca62a9/0/context.md",
       "content_hash": "/6b/268dca62a9/0/content_hash.txt",
       "prompt": "/6b/268dca62a9/0/prompt.txt"
+    },
+    {
+      "metadata": "/6b/268dca62a9/1/metadata.json",
+      "transcript": "/6b/268dca62a9/1/full.jsonl",
+      "context": "/6b/268dca62a9/1/context.md",
+      "content_hash": "/6b/268dca62a9/1/content_hash.txt",
+      "prompt": "/6b/268dca62a9/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 45,
-    "cache_creation_tokens": 114083,
-    "cache_read_tokens": 3848307,
-    "output_tokens": 34247,
-    "api_call_count": 39
+    "input_tokens": 82,
+    "cache_creation_tokens": 284330,
+    "cache_read_tokens": 5560505,
+    "output_tokens": 45637,
+    "api_call_count": 66
   }
 }
