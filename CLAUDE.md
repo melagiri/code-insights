@@ -256,6 +256,17 @@ The orchestrator (you, the main Claude session) coordinates agents. Rules:
 - Skip the ceremony steps
 - Merge PRs (only the founder does this)
 
+### Unresponsive Agent Protocol
+
+If a spawned agent fails to respond or produces no useful output:
+
+1. **Retry once** — attempt one more communication
+2. **Terminate if still unresponsive** — do not wait indefinitely
+3. **Re-spawn or take over** — either spawn a fresh agent or handle the task directly
+4. **Log the failure** — note which agent failed and at what step
+
+**Do NOT** spawn duplicate agents alongside a stale one. Terminate first, then replace.
+
 ### Pre-Spawn Dependency Check (MANDATORY)
 
 Before parallelizing agents, verify:
@@ -449,6 +460,25 @@ Orchestrator MUST NOT directly edit documents it doesn't own. Always delegate.
 
 ---
 
+## Pre-Action Verification (CRITICAL)
+
+Before any state-modifying command (git checkout, git push, git tag, file edits), run a **read-only check** to verify current state:
+
+- **Branch names:** Never assume `main` vs `master` — run `git symbolic-ref refs/remotes/origin/HEAD` to detect the default branch
+- **File existence:** Read a file before editing it; `ls` a directory before writing to it
+- **API signatures:** When calling an unfamiliar endpoint or tool, read the function signature or documentation first — assume undocumented defaults exist (pagination limits, required properties, parameter naming)
+- **Build context:** Before running build scripts, verify you're in the correct sub-directory (`pwd`) and on the correct branch (`git branch`)
+
+This applies to both **planning** (verify assumptions before presenting a plan) and **execution** (verify state before running commands).
+
+---
+
+## Retry Discipline
+
+If a command or tool call fails twice on the same input, **STOP**. Do not retry a third time. Report the failure, state what was attempted, and propose an alternative approach. Blind retries waste tokens and time.
+
+---
+
 ## Branch Discipline (CRITICAL)
 
 `main` is the production branch. Only receives commits via merged PRs.
@@ -551,6 +581,7 @@ The CLI and dashboard support sessions from multiple AI coding tools via the `so
 | `no-jira` | **block** | Prevent Jira/Atlassian API calls — use GitHub Issues instead |
 | `review-before-pr` | warn | Remind: code review required before PR creation (bash path) |
 | `review-before-pr-mcp` | warn | Remind: code review required before PR creation (MCP path) |
+| `verify-before-checkout` | warn | Verify branch exists before `git checkout/switch` — never assume main vs master |
 
 ---
 

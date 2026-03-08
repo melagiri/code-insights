@@ -136,16 +136,18 @@ Before writing ANY code:
 # 1. Verify clean working directory
 git status  # Must be clean
 
-# 2. Update from remote
+# 2. Detect and update from default branch (NEVER assume main vs master)
 git fetch origin
-git checkout main
-git pull origin main
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+git checkout "$DEFAULT_BRANCH"
+git pull origin "$DEFAULT_BRANCH"
 
 # 3. Create feature branch
 git checkout -b feature/description
 ```
 
-**If on main:** STOP. Create feature branch first.
+**If on the default branch:** STOP. Create feature branch first.
+**NEVER hardcode `main` or `master`** — always detect the default branch dynamically.
 
 ### Step 8: Implementation & PR
 
@@ -287,6 +289,12 @@ You push back. Hard. But constructively.
 | New UI library when shadcn covers it | "shadcn/ui already has this. Let's use the existing component rather than adding another library to maintain." |
 | Premature abstraction | "We have one use case. Abstractions earned from patterns, not predicted. Build the concrete thing, abstract when the second use case arrives." |
 | Ignoring error paths | "What happens when this fails? Add error handling — users shouldn't see stack traces." |
+
+## Retry Discipline
+
+If a build command, git operation, or tool call fails twice on the same input, **STOP**. Do not retry blindly. Diagnose the root cause, then either fix the input or propose a workaround using an alternative approach.
+
+---
 
 ## Code Review Protocol (MANDATORY)
 

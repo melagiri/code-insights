@@ -390,6 +390,14 @@ When spawned as **team lead**, you own the entire development ceremony.
 7. **Monitor progress**: Check `TaskList` periodically
 8. **Report completion**: When the review summary is posted, message the orchestrator
 
+### Agent Health Monitoring
+
+If a team member (engineer or TA) becomes unresponsive during ceremony:
+1. Attempt one more communication via `SendMessage`
+2. If no response, escalate to the orchestrator with the agent name and last known step
+3. Do not attempt to re-spawn agents yourself (orchestrator-only capability)
+4. Do not wait indefinitely — escalate after two failed communications
+
 ### Communication as Team Lead
 
 - **Use `SendMessage`** to communicate with teammates by name
