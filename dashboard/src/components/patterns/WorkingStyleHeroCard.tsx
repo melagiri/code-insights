@@ -112,7 +112,7 @@ export function WorkingStyleHeroCard({
 
   return (
     <div
-      className="relative overflow-hidden rounded-xl p-6"
+      className="relative overflow-hidden rounded-xl p-6 border border-border/50"
       style={{ background: 'linear-gradient(135deg, #0f0f23, #1a1a3e)' }}
     >
       {/* Branding */}

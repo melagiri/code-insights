@@ -210,7 +210,7 @@ export default function PatternsPage() {
   const narrative = workingStyleResult?.narrative as string | undefined;
 
   return (
-    <div className="space-y-6 p-4 lg:p-6">
+    <div className="space-y-4 p-4 lg:p-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -278,7 +278,7 @@ export default function PatternsPage() {
 
       {/* Threshold gate */}
       {!hasEnoughFacets && aggregation && aggregation.totalAllSessions > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/30 p-4">
+        <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/30 p-3">
           <AlertTriangle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium">
@@ -294,7 +294,7 @@ export default function PatternsPage() {
 
       {/* Coverage warning */}
       {hasEnoughFacets && coverageRatio > 0 && coverageRatio < 0.5 && aggregation && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-4">
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-3">
           <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium">
@@ -343,7 +343,7 @@ export default function PatternsPage() {
         </TabsList>
 
         {/* INSIGHTS TAB */}
-        <TabsContent value="insights" className="mt-6 space-y-6">
+        <TabsContent value="insights" className="mt-4 space-y-4">
           {/* Working style narrative */}
           {narrative && (
             <Card className="border-l-2 border-primary">
@@ -362,12 +362,12 @@ export default function PatternsPage() {
               {outcomeData.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Outcome Distribution</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Outcome Distribution</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={180}>
+                    <ResponsiveContainer width="100%" height={260}>
                       <PieChart>
-                        <Pie data={outcomeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                        <Pie data={outcomeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
                           {outcomeData.map((_, i) => (
                             <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                           ))}
@@ -383,12 +383,12 @@ export default function PatternsPage() {
               {workflowData.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Workflow Patterns</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Workflow Patterns</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={180}>
+                    <ResponsiveContainer width="100%" height={260}>
                       <PieChart>
-                        <Pie data={workflowData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                        <Pie data={workflowData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
                           {workflowData.map((_, i) => (
                             <Cell key={i} fill={PALETTE[(i + 2) % PALETTE.length]} />
                           ))}
@@ -404,12 +404,12 @@ export default function PatternsPage() {
               {characterData.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Session Types</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Session Types</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={180}>
+                    <ResponsiveContainer width="100%" height={260}>
                       <PieChart>
-                        <Pie data={characterData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
+                        <Pie data={characterData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
                           {characterData.map((_, i) => (
                             <Cell key={i} fill={PALETTE[(i + 4) % PALETTE.length]} />
                           ))}
@@ -424,54 +424,76 @@ export default function PatternsPage() {
             </div>
           )}
 
-          {/* Friction narrative */}
-          {frictionWinsResult?.narrative && (
-            <Card className="border-l-2 border-primary">
-              <CardHeader>
-                <CardTitle className="text-base">Friction Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {String(frictionWinsResult.narrative)}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {/* Friction & Wins section */}
+          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Friction &amp; Wins</h3>
 
-          {/* Friction bar chart — severity-colored bars */}
-          {frictionData.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Friction Categories</CardTitle>
-                <CardDescription>Most common blockers across sessions — color indicates severity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={Math.max(200, frictionData.length * 36)}>
-                  <BarChart data={frictionData} layout="vertical" margin={{ left: 120 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis type="number" />
-                    <YAxis type="category" dataKey="category" width={110} tick={{ fontSize: 12 }} />
-                    <Tooltip
-                      contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8 }}
-                    />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                      {frictionData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+          <div className="grid gap-4 lg:grid-cols-5">
+            {/* Friction bar chart — with narrative merged in */}
+            <div className="lg:col-span-3">
+              {frictionData.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Friction Categories</CardTitle>
+                    <CardDescription>Most common blockers across sessions — color indicates severity</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {frictionWinsResult?.narrative && (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground mb-4">
+                        {String(frictionWinsResult.narrative)}
+                      </p>
+                    )}
+                    <ResponsiveContainer width="100%" height={Math.max(200, frictionData.length * 36)}>
+                      <BarChart data={frictionData} layout="vertical" margin={{ left: 20, right: 12 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis type="number" />
+                        <YAxis type="category" dataKey="category" width={130} tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8 }}
+                        />
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
+                          {frictionData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    No friction data yet. Analyze sessions to extract facets.
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Effective patterns */}
+            <div className="lg:col-span-2">
+              {(aggregation?.effectivePatterns || []).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Effective Patterns</CardTitle>
+                    <CardDescription>Techniques that work well across sessions</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="divide-y">
+                      {aggregation!.effectivePatterns.slice(0, 8).map((ep, i) => (
+                        <li key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
+                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary shrink-0 mt-0.5">
+                            {ep.frequency}x
+                          </span>
+                          <span className="text-sm">{ep.description}</span>
+                        </li>
                       ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                No friction data yet. Analyze sessions to extract facets.
-              </CardContent>
-            </Card>
-          )}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
 
-          {/* Rate limit usage insight */}
+          {/* Rate limit usage insight — moved to bottom of insights tab */}
           {aggregation?.rateLimitInfo && aggregation.rateLimitInfo.count > 0 && (
             <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-4">
               <Zap className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
@@ -485,32 +507,10 @@ export default function PatternsPage() {
               </div>
             </div>
           )}
-
-          {/* Effective patterns — styled frequency badges */}
-          {(aggregation?.effectivePatterns || []).length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Effective Patterns</CardTitle>
-                <CardDescription>Techniques that work well across sessions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="divide-y">
-                  {aggregation!.effectivePatterns.slice(0, 8).map((ep, i) => (
-                    <li key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary shrink-0 mt-0.5">
-                        {ep.frequency}x
-                      </span>
-                      <span className="text-sm">{ep.description}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* ARTIFACTS TAB */}
-        <TabsContent value="artifacts" className="mt-6 space-y-6">
+        <TabsContent value="artifacts" className="mt-4 space-y-4">
           {rulesSkillsResult ? (
             <>
               {/* CLAUDE.md Rules */}
