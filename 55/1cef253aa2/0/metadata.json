@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "551cef253aa2",
+  "session_id": "de12801b-3a19-4491-b8f3-a578996dff74",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-09T16:47:55.218768Z",
+  "branch": "master",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "docs/plans/2026-03-09-effective-pattern-normalization.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "520802a9e883",
+  "token_usage": {
+    "input_tokens": 57,
+    "cache_creation_tokens": 192023,
+    "cache_read_tokens": 1861172,
+    "output_tokens": 23947,
+    "api_call_count": 27
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-09T16:47:54.649327Z",
+    "agent_lines": 516,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 516,
+    "agent_percentage": 100
+  }
+}
