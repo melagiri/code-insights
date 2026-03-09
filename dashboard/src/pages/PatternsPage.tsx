@@ -1,14 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useProjects } from '@/hooks/useProjects';
 import { useFacetAggregation, useReflectSnapshot } from '@/hooks/useReflect';
-import { reflectGenerateStream } from '@/lib/api';
+import { reflectGenerateStream, fetchOutdatedFacetCount } from '@/lib/api';
 import { parseSSEStream } from '@/lib/sse';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ErrorCard } from '@/components/ErrorCard';
 import { WorkingStyleHeroCard } from '@/components/patterns/WorkingStyleHeroCard';
 import { useThemeColors } from '@/lib/hooks/useThemeColors';
@@ -78,6 +79,14 @@ export default function PatternsPage() {
     period: range,
     project: selectedProject,
   });
+
+  const { data: outdatedData } = useQuery({
+    queryKey: ['facets', 'outdated', selectedProject],
+    queryFn: () => fetchOutdatedFacetCount({ project: selectedProject }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const outdatedCount = outdatedData?.count ?? 0;
 
   // Abort in-flight generation on unmount
   useEffect(() => {
@@ -477,13 +486,35 @@ export default function PatternsPage() {
                     <CardDescription>Techniques that work well across sessions</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {outdatedCount > 0 && (
+                      <Alert className="mb-4 border-amber-500/30 bg-amber-50 dark:bg-amber-950/20">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+                          {outdatedCount} session{outdatedCount !== 1 ? 's have' : ' has'} outdated insight formats. Re-analyze them from the Session Insights page to improve pattern accuracy.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <ul className="divide-y">
                       {aggregation!.effectivePatterns.slice(0, 8).map((ep, i) => (
-                        <li key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
-                          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary shrink-0 mt-0.5">
-                            {ep.frequency}x
-                          </span>
-                          <span className="text-sm">{ep.description}</span>
+                        <li key={i} className="py-3 first:pt-0 last:pb-0">
+                          <div className="flex items-start gap-3 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
+                            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary shrink-0 mt-0.5">
+                              {ep.frequency}x
+                            </span>
+                            <span className="text-sm font-medium">{ep.label}</span>
+                          </div>
+                          {ep.descriptions.length > 0 && (
+                            <ul className="ml-10 mt-1.5 space-y-1">
+                              {ep.descriptions.slice(0, 3).map((desc, j) => (
+                                <li key={j} className="text-xs text-muted-foreground">{desc}</li>
+                              ))}
+                              {ep.descriptions.length > 3 && (
+                                <li className="text-xs text-muted-foreground italic">
+                                  +{ep.descriptions.length - 3} more
+                                </li>
+                              )}
+                            </ul>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -608,7 +639,7 @@ export default function PatternsPage() {
                         {aggregation.effectivePatterns.filter(ep => ep.frequency >= 2).map((ep, i) => (
                           <li key={i} className="text-sm flex items-center gap-2">
                             <span className="text-xs font-mono text-muted-foreground">{ep.frequency}x</span>
-                            {ep.description}
+                            {ep.label}
                           </li>
                         ))}
                       </ul>
