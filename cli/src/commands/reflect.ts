@@ -131,7 +131,9 @@ async function backfillBatch(
   const res = await fetch(`${baseUrl}/api/facets/backfill`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionIds }),
+    // force=true so outdated sessions (which already have facets) are re-processed.
+    // Missing sessions are unaffected — the guard only fires when a row exists.
+    body: JSON.stringify({ sessionIds, force: true }),
     signal,
   });
 
@@ -306,23 +308,44 @@ async function backfillAction(options: {
   params.set('period', options.period || 'all');
   if (options.project) params.set('project', options.project);
 
-  const res = await fetch(`${baseUrl}/api/facets/missing?${params.toString()}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
+  const missingRes = await fetch(`${baseUrl}/api/facets/missing?${params.toString()}`);
+  if (!missingRes.ok) {
+    const text = await missingRes.text().catch(() => missingRes.statusText);
     console.log(chalk.red(`  Error: ${text}`));
     process.exit(1);
   }
 
-  const { sessionIds, count } = await res.json() as { sessionIds: string[]; count: number };
+  const { sessionIds: missingIds, count: missingCount } = await missingRes.json() as { sessionIds: string[]; count: number };
+
+  const outdatedRes = await fetch(`${baseUrl}/api/facets/outdated?${params.toString()}`);
+  if (!outdatedRes.ok) {
+    const text = await outdatedRes.text().catch(() => outdatedRes.statusText);
+    console.log(chalk.red(`  Error fetching outdated sessions: ${text}`));
+    process.exit(1);
+  }
+
+  const { sessionIds: outdatedIds, count: outdatedCount } = await outdatedRes.json() as { sessionIds: string[]; count: number };
+
+  // Merge and deduplicate — a session could theoretically appear in both lists
+  // (e.g., if it got a partial facets row). Set deduplication ensures we count correctly.
+  const mergedSet = new Set([...missingIds, ...outdatedIds]);
+  const sessionIds = Array.from(mergedSet);
+  const count = sessionIds.length;
 
   console.log();
   if (count === 0) {
-    console.log(chalk.green('  All analyzed sessions already have facets.'));
+    console.log(chalk.green('  All analyzed sessions already have up-to-date facets.'));
     console.log();
     return;
   }
 
-  console.log(chalk.cyan(`  Found ${count} session${count !== 1 ? 's' : ''} with insights but missing facets.`));
+  if (missingCount > 0 && outdatedCount > 0) {
+    console.log(chalk.cyan(`  Found ${missingCount} session${missingCount !== 1 ? 's' : ''} missing facets and ${outdatedCount} with outdated analysis. Processing ${count} total.`));
+  } else if (missingCount > 0) {
+    console.log(chalk.cyan(`  Found ${missingCount} session${missingCount !== 1 ? 's' : ''} with insights but missing facets.`));
+  } else {
+    console.log(chalk.cyan(`  Found ${outdatedCount} session${outdatedCount !== 1 ? 's' : ''} with outdated analysis.`));
+  }
   console.log(chalk.dim(`  This will make ${count} LLM call${count !== 1 ? 's' : ''}.`));
 
   if (options.dryRun) {

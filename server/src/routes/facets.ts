@@ -116,7 +116,7 @@ app.get('/missing', (c) => {
 });
 
 // GET /api/facets/outdated
-// Returns count of session_facets rows where:
+// Returns count and sessionIds of session_facets rows where:
 //   - effective_patterns entries lack a category or driver field, OR
 //   - friction_points entries lack an attribution field
 // Accepts period + project to scope to the user's current view — avoids misleading counts
@@ -130,43 +130,42 @@ app.get('/outdated', (c) => {
 
   // UNION of two subqueries — each finds session_ids with a specific outdated signal.
   // UNION (not UNION ALL) deduplicates sessions that fail both checks.
-  // COUNT(DISTINCT) is not needed here since UNION already deduplicates.
   // The effective_patterns arm uses OR to catch both missing category and missing driver
   // in a single scan rather than two separate UNION arms.
-  const row = db.prepare(`
-    SELECT COUNT(*) as count FROM (
-      SELECT DISTINCT sf.session_id
-      FROM session_facets sf
-      JOIN sessions s ON sf.session_id = s.id
-      CROSS JOIN json_each(sf.effective_patterns) je
-      ${where}
-      AND json_array_length(sf.effective_patterns) > 0
-      AND (json_extract(je.value, '$.category') IS NULL
-           OR json_extract(je.value, '$.driver') IS NULL)
-      UNION
-      SELECT DISTINCT sf.session_id
-      FROM session_facets sf
-      JOIN sessions s ON sf.session_id = s.id
-      CROSS JOIN json_each(sf.friction_points) je
-      ${where}
-      AND json_array_length(sf.friction_points) > 0
-      AND json_extract(je.value, '$.attribution') IS NULL
-    )
-  `).get(...params, ...params) as { count: number };
+  const rows = db.prepare(`
+    SELECT DISTINCT sf.session_id
+    FROM session_facets sf
+    JOIN sessions s ON sf.session_id = s.id
+    CROSS JOIN json_each(sf.effective_patterns) je
+    ${where}
+    AND json_array_length(sf.effective_patterns) > 0
+    AND (json_extract(je.value, '$.category') IS NULL
+         OR json_extract(je.value, '$.driver') IS NULL)
+    UNION
+    SELECT DISTINCT sf.session_id
+    FROM session_facets sf
+    JOIN sessions s ON sf.session_id = s.id
+    CROSS JOIN json_each(sf.friction_points) je
+    ${where}
+    AND json_array_length(sf.friction_points) > 0
+    AND json_extract(je.value, '$.attribution') IS NULL
+  `).all(...params, ...params) as Array<{ session_id: string }>;
 
-  return c.json({ count: row.count });
+  const sessionIds = rows.map(r => r.session_id);
+  return c.json({ count: sessionIds.length, sessionIds });
 });
 
 // POST /api/facets/backfill
-// Body: { sessionIds: string[] }
+// Body: { sessionIds: string[], force?: boolean }
 // Streams progress as facets are extracted one-by-one for sessions that lack them.
+// force=true skips the existing-facets guard, allowing re-extraction of outdated rows.
 // Uses extractFacetsOnly (lightweight prompt: summary + first/last 20 messages).
 app.post('/backfill', async (c) => {
   if (!isLLMConfigured()) {
     return c.json({ error: 'LLM not configured.' }, 400);
   }
 
-  const body = await c.req.json<{ sessionIds?: string[] }>();
+  const body = await c.req.json<{ sessionIds?: string[]; force?: boolean }>();
   if (!body.sessionIds || !Array.isArray(body.sessionIds) || body.sessionIds.length === 0) {
     return c.json({ error: 'sessionIds array required' }, 400);
   }
@@ -204,22 +203,25 @@ app.post('/backfill', async (c) => {
         continue;
       }
 
-      // Skip sessions that already have facets (race condition guard)
-      const existingFacet = db.prepare(
-        'SELECT 1 FROM session_facets WHERE session_id = ?'
-      ).get(sessionId);
-      if (existingFacet) {
-        completed++;
-        await stream.writeSSE({
-          event: 'progress',
-          data: JSON.stringify({
-            completed,
-            failed,
-            total,
-            currentSessionId: sessionId,
-          }),
-        });
-        continue;
+      // Skip sessions that already have facets unless force=true (used when re-processing
+      // outdated sessions that have stale attribution/driver/category fields).
+      if (!body.force) {
+        const existingFacet = db.prepare(
+          'SELECT 1 FROM session_facets WHERE session_id = ?'
+        ).get(sessionId);
+        if (existingFacet) {
+          completed++;
+          await stream.writeSSE({
+            event: 'progress',
+            data: JSON.stringify({
+              completed,
+              failed,
+              total,
+              currentSessionId: sessionId,
+            }),
+          });
+          continue;
+        }
       }
 
       // Only load first 20 and last 20 messages for facet extraction
