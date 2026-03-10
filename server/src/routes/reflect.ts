@@ -12,12 +12,12 @@ import {
   WORKING_STYLE_SYSTEM_PROMPT,
   generateWorkingStylePrompt,
 } from '../llm/reflect-prompts.js';
-import { buildWhereClause, buildPeriodFilter, getAggregatedData } from './shared-aggregation.js';
+import { buildWhereClause, buildPeriodFilter, parseIsoWeek, formatIsoWeek, getAggregatedData } from './shared-aggregation.js';
 import type { ReflectSection } from '@code-insights/cli/types';
 
 const app = new Hono();
 
-const MIN_FACETS_FOR_REFLECT = 20;
+const MIN_FACETS_FOR_REFLECT = 8;
 
 const ALL_SECTIONS: ReflectSection[] = ['friction-wins', 'rules-skills', 'working-style'];
 
@@ -185,8 +185,15 @@ app.post('/generate', async (c) => {
       // Only save snapshot if the request was not aborted mid-generation.
       // Saving partial results would cause stale/incomplete data to auto-load on next visit.
       if (!c.req.raw.signal.aborted) {
-        const windowEnd = new Date().toISOString();
-        const windowStart = buildPeriodFilter(period);
+        // For ISO week periods, use the exact week boundaries as window metadata.
+        // This ensures the snapshot metadata accurately reflects the week it covers.
+        const isoWeekBounds = parseIsoWeek(period);
+        const windowStart = isoWeekBounds
+          ? isoWeekBounds.start.toISOString()
+          : buildPeriodFilter(period);
+        const windowEnd = isoWeekBounds
+          ? isoWeekBounds.end.toISOString()
+          : new Date().toISOString();
         const projectKey = body.project || '__all__';
 
         db.prepare(`
@@ -238,6 +245,75 @@ app.get('/results', (c) => {
   const aggregated = getAggregatedData(db, where, params, project, source);
 
   return c.json(aggregated);
+});
+
+// GET /api/reflect/weeks
+// Returns the last 8 ISO weeks that have sessions, with snapshot status for each.
+// Used by the WeekSelector component to show which weeks have reflections.
+app.get('/weeks', (c) => {
+  const db = getDb();
+  const project = c.req.query('project');
+
+  // Compute the Monday of the current ISO week so we can generate the last 8 weeks
+  const now = new Date();
+  const nowDay = now.getUTCDay(); // 0=Sun
+  const daysToMonday = nowDay === 0 ? 6 : nowDay - 1;
+  const thisMondayMs = now.getTime() - daysToMonday * 86400000;
+
+  // Build list of last 8 ISO week strings (most recent first) with their boundaries
+  type WeekEntry = { week: string; start: string; end: string };
+  const weekEntries: WeekEntry[] = [];
+  for (let i = 0; i < 8; i++) {
+    const weekMonday = new Date(thisMondayMs - i * 7 * 86400000);
+    const week = formatIsoWeek(weekMonday);
+    const bounds = parseIsoWeek(week)!;
+    weekEntries.push({ week, start: bounds.start.toISOString(), end: bounds.end.toISOString() });
+  }
+
+  // Oldest week start and newest week end span the full 8-week range
+  const rangeStart = weekEntries[weekEntries.length - 1].start;
+  const rangeEnd = weekEntries[0].end;
+  const projectKey = project || '__all__';
+
+  // Bulk query 1: session counts per week boundary using CASE bucketing.
+  // Each session is assigned to its week by checking which Monday-to-Monday
+  // range its started_at falls into. Avoids 8 separate COUNT queries.
+  const projectCondition = project ? 'AND s.project_id = ?' : '';
+  const projectParams: string[] = project ? [project] : [];
+
+  const sessionCountRows = db.prepare(`
+    SELECT
+      ${weekEntries.map((_, i) => `SUM(CASE WHEN s.started_at >= ? AND s.started_at < ? THEN 1 ELSE 0 END) as w${i}`).join(',\n      ')}
+    FROM sessions s
+    WHERE s.deleted_at IS NULL
+      AND s.started_at >= ?
+      AND s.started_at < ?
+      ${projectCondition}
+  `).get(
+    ...weekEntries.flatMap(e => [e.start, e.end]),
+    rangeStart,
+    rangeEnd,
+    ...projectParams
+  ) as Record<string, number> | undefined;
+
+  // Bulk query 2: all snapshots for these weeks in one query
+  const weekPlaceholders = weekEntries.map(() => '?').join(', ');
+  const snapshotRows = db.prepare(`
+    SELECT period, generated_at
+    FROM reflect_snapshots
+    WHERE period IN (${weekPlaceholders}) AND project_id = ?
+  `).all(...weekEntries.map(e => e.week), projectKey) as Array<{ period: string; generated_at: string }>;
+
+  const snapshotMap = new Map(snapshotRows.map(r => [r.period, r.generated_at]));
+
+  const weeks = weekEntries.map((entry, i) => ({
+    week: entry.week,
+    sessionCount: (sessionCountRows?.[`w${i}`] ?? 0),
+    hasSnapshot: snapshotMap.has(entry.week),
+    generatedAt: snapshotMap.get(entry.week) ?? null,
+  }));
+
+  return c.json({ weeks });
 });
 
 // GET /api/reflect/snapshot

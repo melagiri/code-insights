@@ -189,25 +189,64 @@ async function backfillBatch(
 // Actions
 // ---------------------------------------------------------------------------
 
+// Mirrors formatIsoWeek/parseIsoWeek in server/src/routes/shared-aggregation.ts
+// -- kept here so the CLI doesn't import server code.
+// IMPORTANT: keep in sync with the canonical server implementation.
+function getCurrentIsoWeek(): string {
+  const now = new Date();
+  const nowDay = now.getUTCDay();
+  const daysToMonday = nowDay === 0 ? 6 : nowDay - 1;
+  const monday = new Date(now.getTime() - daysToMonday * 86400000);
+
+  const thursday = new Date(monday.getTime() + 3 * 86400000);
+  const year = thursday.getUTCFullYear();
+
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay();
+  const daysToW1Monday = jan4Day === 0 ? 6 : jan4Day - 1;
+  const week1Monday = new Date(jan4.getTime() - daysToW1Monday * 86400000);
+
+  const weekNum = Math.round((monday.getTime() - week1Monday.getTime()) / (7 * 86400000)) + 1;
+  return `${year}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+const ISO_WEEK_RE = /^(\d{4})-W(\d{2})$/;
+
 async function reflectAction(options: {
   section?: string;
-  period?: string;
+  week?: string;
   project?: string;
 }): Promise<void> {
   const baseUrl = getBaseUrl();
+  const week = options.week || getCurrentIsoWeek();
+
+  // Validate --week format: must be YYYY-WNN with year 2020-2100 and week number 1-53
+  if (options.week) {
+    const match = ISO_WEEK_RE.exec(options.week);
+    const year = match ? parseInt(match[1], 10) : 0;
+    const weekNum = match ? parseInt(match[2], 10) : 0;
+    if (!match || weekNum < 1 || weekNum > 53 || year < 2020 || year > 2100) {
+      console.log(chalk.red('  Invalid week format: "' + options.week + '"'));
+      console.log(chalk.dim('  Use YYYY-WNN format with year 2020-2100, e.g., 2026-W10'));
+      console.log();
+      process.exit(1);
+    }
+  }
 
   await checkServer(baseUrl);
 
+  console.log(chalk.dim(`  Generating reflection for ${week}...`));
+
   // Check minimum session threshold
   const checkParams = new URLSearchParams();
-  checkParams.set('period', options.period || '30d');
+  checkParams.set('period', week);
   if (options.project) checkParams.set('project', options.project);
   const aggRes = await fetch(`${baseUrl}/api/facets/aggregated?${checkParams.toString()}`);
   if (aggRes.ok) {
     const agg = await aggRes.json() as { totalSessions: number; totalAllSessions: number };
-    if (agg.totalSessions < 20) {
+    if (agg.totalSessions < 8) {
       console.log(chalk.yellow(`  Not enough analyzed sessions for meaningful synthesis.`));
-      console.log(chalk.dim(`  Need at least 20 sessions with facets (currently ${agg.totalSessions}).`));
+      console.log(chalk.dim(`  Need at least 8 sessions with facets this week (currently ${agg.totalSessions}).`));
       console.log(chalk.dim(`  Run session analysis to extract facets from more sessions.`));
       console.log();
       process.exit(1);
@@ -221,7 +260,7 @@ async function reflectAction(options: {
   }
 
   const body: Record<string, unknown> = {
-    period: options.period || '30d',
+    period: week,
   };
   if (options.section) {
     body.sections = [options.section];
@@ -397,7 +436,7 @@ const backfillCommand = new Command('backfill')
 export const reflectCommand = new Command('reflect')
   .description('Generate cross-session analysis (friction, rules, working style)')
   .option('--section <name>', 'Generate specific section: friction-wins, rules-skills, working-style')
-  .option('-p, --period <period>', 'Time range: 7d, 30d, 90d, all', '30d')
+  .option('--week <week>', 'ISO week to reflect on (e.g., 2026-W10), defaults to current week')
   .option('--project <name>', 'Scope to a single project')
   .addCommand(backfillCommand)
   .action(reflectAction);

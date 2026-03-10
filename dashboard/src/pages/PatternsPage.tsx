@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useProjects } from '@/hooks/useProjects';
-import { useFacetAggregation, useReflectSnapshot } from '@/hooks/useReflect';
+import { useFacetAggregation, useReflectSnapshot, useReflectWeeks } from '@/hooks/useReflect';
 import { reflectGenerateStream, fetchOutdatedFacetCount } from '@/lib/api';
+import { WeekSelector } from '@/components/patterns/WeekSelector';
 import { parseSSEStream } from '@/lib/sse';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,21 +66,33 @@ function formatRelativeDate(iso: string): string {
   return `${days}d ago`;
 }
 
-function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+// Compute the current ISO week identifier (YYYY-WNN) in UTC.
+// Mirrors formatIsoWeek/parseIsoWeek in server/src/routes/shared-aggregation.ts
+// -- kept here to avoid a server-side import in the dashboard bundle.
+// IMPORTANT: keep in sync with the canonical server implementation.
+function getCurrentIsoWeek(): string {
+  const now = new Date();
+  const nowDay = now.getUTCDay();
+  const daysToMonday = nowDay === 0 ? 6 : nowDay - 1;
+  const monday = new Date(now.getTime() - daysToMonday * 86400000);
+
+  // Thursday of this week determines the ISO year
+  const thursday = new Date(monday.getTime() + 3 * 86400000);
+  const year = thursday.getUTCFullYear();
+
+  // Find Monday of week 1 for this ISO year
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay();
+  const daysToW1Monday = jan4Day === 0 ? 6 : jan4Day - 1;
+  const week1Monday = new Date(jan4.getTime() - daysToW1Monday * 86400000);
+
+  const weekNum = Math.round((monday.getTime() - week1Monday.getTime()) / (7 * 86400000)) + 1;
+  return `${year}-W${String(weekNum).padStart(2, '0')}`;
 }
 
-type PatternsRange = '7d' | '30d' | '90d' | 'all';
-
-const rangeOptions: { value: PatternsRange; label: string }[] = [
-  { value: '7d', label: '7d' },
-  { value: '30d', label: '30d' },
-  { value: '90d', label: '90d' },
-  { value: 'all', label: 'All' },
-];
-
 export default function PatternsPage() {
-  const [range, setRange] = useState<PatternsRange>('30d');
+  const [currentWeek, setCurrentWeek] = useState<string>(() => getCurrentIsoWeek());
   const [selectedProject, setSelectedProject] = useState<string | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
@@ -91,19 +104,22 @@ export default function PatternsPage() {
 
   const { data: projects = [] } = useProjects();
 
+  const { data: weeksData } = useReflectWeeks({ project: selectedProject });
+  const weeks = weeksData?.weeks ?? [];
+
   const { data: snapshotData } = useReflectSnapshot({
-    period: range,
+    period: currentWeek,
     project: selectedProject,
   });
 
   const { data: aggregation, isLoading, isError, refetch } = useFacetAggregation({
-    period: range,
+    period: currentWeek,
     project: selectedProject,
   });
 
   const { data: outdatedData } = useQuery({
-    queryKey: ['facets', 'outdated', selectedProject, range],
-    queryFn: () => fetchOutdatedFacetCount({ project: selectedProject, period: range }),
+    queryKey: ['facets', 'outdated', selectedProject, currentWeek],
+    queryFn: () => fetchOutdatedFacetCount({ project: selectedProject, period: currentWeek }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -116,6 +132,20 @@ export default function PatternsPage() {
     };
   }, []);
 
+  // On initial load, jump to the most recent week that has a snapshot.
+  // This avoids showing the current week with no data when reflections exist for recent weeks.
+  // Only runs once (when weeks first loads) — tracked by whether currentWeek is still the computed default.
+  const initialWeekRef = useRef<string>(getCurrentIsoWeek());
+  useEffect(() => {
+    if (!weeksData?.weeks.length) return;
+    if (currentWeek !== initialWeekRef.current) return; // user already navigated
+    const mostRecentWithSnapshot = weeksData.weeks.find(w => w.hasSnapshot);
+    if (mostRecentWithSnapshot && mostRecentWithSnapshot.week !== currentWeek) {
+      handleWeekChange(mostRecentWithSnapshot.week);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeksData]);
+
   // Auto-load cached snapshot when it arrives and no local results exist yet
   useEffect(() => {
     if (snapshotData?.snapshot?.results && !reflectResults && !generating) {
@@ -123,14 +153,19 @@ export default function PatternsPage() {
     }
   }, [snapshotData, reflectResults, generating]);
 
-  const handleRangeChange = useCallback((newRange: PatternsRange) => {
-    setRange(newRange);
+  const handleWeekChange = useCallback((week: string) => {
+    setCurrentWeek(week);
     setReflectResults(null);
   }, []);
 
   const handleProjectChange = useCallback((projectId: string | undefined) => {
     setSelectedProject(projectId);
     setReflectResults(null);
+    // Reset to current week so auto-navigation re-fires for the new project context.
+    // The initialWeekRef guard in the auto-navigate effect uses getCurrentIsoWeek(),
+    // so resetting currentWeek to that value re-enables the "jump to most recent snapshot" logic.
+    setCurrentWeek(getCurrentIsoWeek());
+    initialWeekRef.current = getCurrentIsoWeek();
   }, []);
 
   const handleGenerate = useCallback(async () => {
@@ -144,7 +179,7 @@ export default function PatternsPage() {
 
     try {
       const response = await reflectGenerateStream(
-        { period: range, project: selectedProject },
+        { period: currentWeek, project: selectedProject },
         controller.signal
       );
 
@@ -175,7 +210,7 @@ export default function PatternsPage() {
     } finally {
       setGenerating(false);
     }
-  }, [range, selectedProject]);
+  }, [currentWeek, selectedProject]);
 
   const handleCopy = useCallback((text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -228,7 +263,7 @@ export default function PatternsPage() {
     value,
   }));
 
-  const hasEnoughFacets = (aggregation?.totalSessions ?? 0) >= 20;
+  const hasEnoughFacets = (aggregation?.totalSessions ?? 0) >= 8;
   const coverageRatio = aggregation && aggregation.totalAllSessions > 0
     ? aggregation.totalSessions / aggregation.totalAllSessions
     : 0;
@@ -249,76 +284,78 @@ export default function PatternsPage() {
           <p className="text-sm text-muted-foreground">
             Cross-session analysis — friction, wins, and working style
           </p>
-          {/* Snapshot metadata line — shown near controls */}
+          {/* Snapshot metadata line — shown when a reflection exists for this week */}
           {snapshotData?.snapshot && reflectResults && (
             <p className="text-xs text-muted-foreground mt-1">
               Generated {formatRelativeDate(snapshotData.snapshot.generatedAt)}
               {' · '}
-              {snapshotData.snapshot.windowStart
-                ? `${formatShortDate(snapshotData.snapshot.windowStart)} – ${formatShortDate(snapshotData.snapshot.windowEnd)}`
-                : 'All time'}
-              {' · '}
-              {snapshotData.snapshot.sessionCount} sessions
+              {snapshotData.snapshot.sessionCount} sessions analyzed
               {aggregation && aggregation.totalSessions > snapshotData.snapshot.sessionCount && (
                 <> — <span className="text-amber-500">{aggregation.totalSessions - snapshotData.snapshot.sessionCount} new since</span></>
               )}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex rounded-lg border bg-muted p-0.5">
-            {rangeOptions.map(opt => (
-              <Button
-                key={opt.value}
-                variant={range === opt.value ? 'default' : 'ghost'}
-                size="sm"
-                className="h-7 px-3 text-xs"
-                onClick={() => handleRangeChange(opt.value)}
+        <div className="flex flex-col items-end gap-2">
+          {/* Week selector replaces the 7d/30d/90d/all button group */}
+          <WeekSelector
+            currentWeek={currentWeek}
+            weeks={weeks}
+            onWeekChange={handleWeekChange}
+          />
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {projects.length > 1 && (
+              <select
+                value={selectedProject || ''}
+                onChange={(e) => handleProjectChange(e.target.value || undefined)}
+                className="h-8 rounded-md border bg-background px-2 text-xs"
               >
-                {opt.label}
-              </Button>
-            ))}
-          </div>
-          {projects.length > 1 && (
-            <select
-              value={selectedProject || ''}
-              onChange={(e) => handleProjectChange(e.target.value || undefined)}
-              className="h-8 rounded-md border bg-background px-2 text-xs"
-            >
-              <option value="">All Projects</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
-          <Button
-            onClick={handleGenerate}
-            disabled={generating || !hasEnoughFacets}
-            size="sm"
-          >
-            {generating ? (
-              <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Generating...</>
-            ) : reflectResults ? (
-              <><Sparkles className="h-4 w-4 mr-1.5" />Regenerate</>
-            ) : (
-              <><Sparkles className="h-4 w-4 mr-1.5" />Generate</>
+                <option value="">All Projects</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             )}
-          </Button>
+            <Button
+              onClick={handleGenerate}
+              disabled={generating || !hasEnoughFacets}
+              size="sm"
+            >
+              {generating ? (
+                <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Generating...</>
+              ) : reflectResults ? (
+                <><Sparkles className="h-4 w-4 mr-1.5" />Regenerate</>
+              ) : (
+                <><Sparkles className="h-4 w-4 mr-1.5" />Generate</>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Threshold gate */}
-      {!hasEnoughFacets && aggregation && aggregation.totalAllSessions > 0 && (
+      {!hasEnoughFacets && aggregation && (
         <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/30 p-3">
           <AlertTriangle className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium">
-              Not enough analyzed sessions for pattern synthesis
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Need at least 20 sessions with facets (currently {aggregation.totalSessions}).
-              Run session analysis to extract facets from more sessions.
-            </p>
+            {aggregation.totalAllSessions === 0 ? (
+              <>
+                <p className="text-sm font-medium">No sessions in this week</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Navigate to a week with sessions using the arrows above.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium">
+                  Not enough analyzed sessions for pattern synthesis
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Need at least 8 sessions with facets this week (currently {aggregation.totalSessions}).
+                  Run session analysis to extract facets from more sessions.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -575,7 +612,7 @@ export default function PatternsPage() {
                   Usage Insight: API Rate Limits
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  You hit API rate limits {aggregation.rateLimitInfo.count} time{aggregation.rateLimitInfo.count !== 1 ? 's' : ''} in the last {range} ({aggregation.rateLimitInfo.sessionsAffected} session{aggregation.rateLimitInfo.sessionsAffected !== 1 ? 's' : ''} affected). Consider upgrading your subscription or checking your API rate limits — your usage may exceed your current plan's token or request limits.
+                  You hit API rate limits {aggregation.rateLimitInfo.count} time{aggregation.rateLimitInfo.count !== 1 ? 's' : ''} this week ({aggregation.rateLimitInfo.sessionsAffected} session{aggregation.rateLimitInfo.sessionsAffected !== 1 ? 's' : ''} affected). Consider upgrading your subscription or checking your API rate limits — your usage may exceed your current plan's token or request limits.
                 </p>
               </div>
             </div>

@@ -360,6 +360,13 @@ export async function backfillFacets(sessionIds: string[]): Promise<{ completed:
   return result;
 }
 
+export interface WeekInfo {
+  week: string;
+  sessionCount: number;
+  hasSnapshot: boolean;
+  generatedAt: string | null;
+}
+
 export interface ReflectSnapshot {
   period: string;
   projectId: string;
@@ -380,6 +387,13 @@ export function fetchReflectSnapshot(params?: {
   if (params?.project) q.set('project', params.project);
   const qs = q.toString() ? `?${q.toString()}` : '';
   return request<{ snapshot: ReflectSnapshot | null }>(`/reflect/snapshot${qs}`);
+}
+
+export function fetchReflectWeeks(params?: { project?: string }) {
+  const q = new URLSearchParams();
+  if (params?.project) q.set('project', params.project);
+  const qs = q.toString() ? `?${q.toString()}` : '';
+  return request<{ weeks: WeekInfo[] }>(`/reflect/weeks${qs}`);
 }
 
 export async function reflectGenerateStream(

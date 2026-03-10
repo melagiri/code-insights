@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchFacetAggregation, fetchReflectSnapshot } from '@/lib/api';
-import type { FacetAggregation, ReflectSnapshot } from '@/lib/api';
+import { fetchFacetAggregation, fetchReflectSnapshot, fetchReflectWeeks } from '@/lib/api';
+import type { FacetAggregation, ReflectSnapshot, WeekInfo } from '@/lib/api';
 
 export function useFacetAggregation(params?: {
   project?: string;
@@ -22,5 +22,13 @@ export function useReflectSnapshot(params?: {
     queryKey: ['reflect', 'snapshot', params?.period, params?.project],
     queryFn: () => fetchReflectSnapshot(params),
     staleTime: 30_000,
+  });
+}
+
+export function useReflectWeeks(params?: { project?: string }) {
+  return useQuery<{ weeks: WeekInfo[] }>({
+    queryKey: ['reflect', 'weeks', params?.project],
+    queryFn: () => fetchReflectWeeks(params),
+    staleTime: 60_000,
   });
 }
