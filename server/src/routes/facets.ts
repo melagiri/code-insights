@@ -156,8 +156,9 @@ app.get('/outdated', (c) => {
 });
 
 // POST /api/facets/backfill
-// Body: { sessionIds: string[] }
+// Body: { sessionIds: string[], force?: boolean }
 // Streams progress as facets are extracted one-by-one for sessions that lack them.
+// force=true skips the existing-facets guard, allowing re-extraction of outdated rows.
 // Uses extractFacetsOnly (lightweight prompt: summary + first/last 20 messages).
 app.post('/backfill', async (c) => {
   if (!isLLMConfigured()) {
