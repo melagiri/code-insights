@@ -5,6 +5,58 @@ import { getDb } from '@code-insights/cli/db/client';
 import { normalizeFrictionCategory } from '../llm/friction-normalize.js';
 import { normalizePatternCategory, getPatternCategoryLabel } from '../llm/pattern-normalize.js';
 
+// ISO week regex: matches YYYY-WNN format (e.g., 2026-W10)
+const ISO_WEEK_RE = /^(\d{4})-W(\d{2})$/;
+
+/**
+ * Parse an ISO week string (YYYY-WNN) into UTC Monday/Sunday boundaries.
+ * Returns { start: Monday 00:00 UTC, end: next Monday 00:00 UTC } (exclusive end).
+ *
+ * ISO 8601 week rules: week 1 contains the first Thursday of the year,
+ * weeks start on Monday. We use the "Thursday trick": Jan 4 is always
+ * in week 1, so we find that Monday, then step to the target week.
+ */
+export function parseIsoWeek(weekStr: string): { start: Date; end: Date } | null {
+  const match = ISO_WEEK_RE.exec(weekStr);
+  if (!match) return null;
+
+  const year = parseInt(match[1], 10);
+  const week = parseInt(match[2], 10);
+
+  // Jan 4 is always in ISO week 1. Find that Monday.
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  // Days to Monday of week 1: if Sunday (0), go back 6; else go back (day - 1)
+  const daysToMonday = jan4Day === 0 ? 6 : jan4Day - 1;
+  const week1Monday = new Date(jan4.getTime() - daysToMonday * 86400000);
+
+  // Offset to the target week's Monday
+  const start = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
+  const end = new Date(start.getTime() + 7 * 86400000);
+
+  return { start, end };
+}
+
+/**
+ * Format a Date (representing a Monday) as an ISO week string (YYYY-WNN).
+ * Used when generating week inventory from a list of Mondays.
+ */
+export function formatIsoWeek(monday: Date): string {
+  // Find which ISO week number this Monday belongs to.
+  // The Monday's Thursday (3 days ahead) determines the year and week.
+  const thursday = new Date(monday.getTime() + 3 * 86400000);
+  const year = thursday.getUTCFullYear();
+
+  // Find the Monday of week 1 for this ISO year
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay();
+  const daysToMonday = jan4Day === 0 ? 6 : jan4Day - 1;
+  const week1Monday = new Date(jan4.getTime() - daysToMonday * 86400000);
+
+  const weekNum = Math.round((monday.getTime() - week1Monday.getTime()) / (7 * 86400000)) + 1;
+  return `${year}-W${String(weekNum).padStart(2, '0')}`;
+}
+
 export function buildPeriodFilter(period: string): string | null {
   const now = new Date();
   if (period === '7d') return new Date(now.getTime() - 7 * 86400000).toISOString();
@@ -22,11 +74,21 @@ export function buildWhereClause(
   const conditions: string[] = ['s.deleted_at IS NULL'];
   const params: (string | number)[] = [];
 
-  const periodStart = buildPeriodFilter(period);
-  if (periodStart) {
+  // ISO week period: use precise Monday-to-Monday UTC boundaries
+  const isoWeekBounds = parseIsoWeek(period);
+  if (isoWeekBounds) {
     conditions.push('s.started_at >= ?');
-    params.push(periodStart);
+    params.push(isoWeekBounds.start.toISOString());
+    conditions.push('s.started_at < ?');
+    params.push(isoWeekBounds.end.toISOString());
+  } else {
+    const periodStart = buildPeriodFilter(period);
+    if (periodStart) {
+      conditions.push('s.started_at >= ?');
+      params.push(periodStart);
+    }
   }
+
   if (project) {
     conditions.push('s.project_id = ?');
     params.push(project);
