@@ -229,11 +229,11 @@ describe('getAggregatedData', () => {
     expect(result.frictionCategories.length).toBeGreaterThanOrEqual(2);
     expect(result.frictionTotal).toBe(3);
 
-    // type-error should appear with count 2 (from both sessions)
-    const typeError = result.frictionCategories.find(fc => fc.category === 'type-error');
-    expect(typeError).toBeDefined();
-    expect(typeError!.count).toBe(2);
-    expect(typeError!.examples).toHaveLength(2);
+    // type-error aliases to knowledge-gap, so both sessions merge under knowledge-gap
+    const knowledgeGap = result.frictionCategories.find(fc => fc.category === 'knowledge-gap');
+    expect(knowledgeGap).toBeDefined();
+    expect(knowledgeGap!.count).toBe(2);
+    expect(knowledgeGap!.examples).toHaveLength(2);
   });
 
   it('aggregates effective patterns with frequency', () => {
@@ -306,24 +306,25 @@ describe('getAggregatedData', () => {
     expect(result.totalAllSessions).toBe(1);
   });
 
-  it('normalizes similar friction categories via Levenshtein', () => {
-    // "type-eror" (typo) should normalize to "type-error"
+  it('normalizes similar friction categories via Levenshtein and aliases', () => {
+    // "wrong-aproach" (typo, distance 1 from "wrong-approach") normalizes via Levenshtein
+    // "type-error" normalizes to "knowledge-gap" via alias
     seedSessionWithFacets(testDb, 'sess-1', {
       frictionPoints: [
-        { category: 'type-eror', description: 'typo in category', severity: 'low', resolution: 'resolved' },
+        { category: 'wrong-aproach', description: 'typo in category', severity: 'low', resolution: 'resolved' },
       ],
     });
     seedSessionWithFacets(testDb, 'sess-2', {
       frictionPoints: [
-        { category: 'type-error', description: 'real type error', severity: 'medium', resolution: 'resolved' },
+        { category: 'wrong-approach', description: 'real wrong approach', severity: 'medium', resolution: 'resolved' },
       ],
     });
 
     const result = getAggregatedData(testDb, '', []);
-    // Both should be merged under "type-error"
-    const typeError = result.frictionCategories.find(fc => fc.category === 'type-error');
-    expect(typeError).toBeDefined();
-    expect(typeError!.count).toBe(2);
+    // Both should be merged under "wrong-approach"
+    const wrongApproach = result.frictionCategories.find(fc => fc.category === 'wrong-approach');
+    expect(wrongApproach).toBeDefined();
+    expect(wrongApproach!.count).toBe(2);
   });
 
   // ────────────────────────────────────────────────────
@@ -355,9 +356,9 @@ describe('getAggregatedData', () => {
     const rateLimit = result.frictionCategories.find(fc => fc.category === 'rate-limit-hit');
     expect(rateLimit).toBeUndefined();
 
-    // type-error should still be present
-    const typeError = result.frictionCategories.find(fc => fc.category === 'type-error');
-    expect(typeError).toBeDefined();
+    // type-error aliases to knowledge-gap and should still be present
+    const knowledgeGap = result.frictionCategories.find(fc => fc.category === 'knowledge-gap');
+    expect(knowledgeGap).toBeDefined();
 
     // rateLimitInfo should be populated
     expect(result.rateLimitInfo).not.toBeNull();
@@ -433,8 +434,8 @@ describe('getAggregatedData', () => {
     expect(result.rateLimitInfo!.sessionsAffected).toBe(1);
     expect(result.rateLimitInfo!.examples[0]).toBe('API throttled mid-session');
 
-    // Unrelated friction should remain
-    const typeError = result.frictionCategories.find(fc => fc.category === 'type-error');
-    expect(typeError).toBeDefined();
+    // type-error aliases to knowledge-gap — unrelated friction should remain
+    const knowledgeGap = result.frictionCategories.find(fc => fc.category === 'knowledge-gap');
+    expect(knowledgeGap).toBeDefined();
   });
 });
