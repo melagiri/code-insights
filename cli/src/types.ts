@@ -206,6 +206,7 @@ export interface InsightMetadata {
 
 export interface FrictionPoint {
   category: string;
+  attribution?: 'user-actionable' | 'ai-capability' | 'environmental';
   description: string;
   severity: 'high' | 'medium' | 'low';
   resolution: 'resolved' | 'workaround' | 'unresolved';

@@ -11,15 +11,18 @@ describe('normalizeFrictionCategory', () => {
   // ────────────────────────────────────────────────────
 
   it('returns canonical for exact match', () => {
-    expect(normalizeFrictionCategory('type-error')).toBe('type-error');
+    expect(normalizeFrictionCategory('knowledge-gap')).toBe('knowledge-gap');
     expect(normalizeFrictionCategory('wrong-approach')).toBe('wrong-approach');
-    expect(normalizeFrictionCategory('race-condition')).toBe('race-condition');
+    expect(normalizeFrictionCategory('stale-assumptions')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('context-loss')).toBe('context-loss');
+    expect(normalizeFrictionCategory('scope-creep')).toBe('scope-creep');
+    expect(normalizeFrictionCategory('repeated-mistakes')).toBe('repeated-mistakes');
   });
 
   it('matches case-insensitively', () => {
-    expect(normalizeFrictionCategory('Type-Error')).toBe('type-error');
+    expect(normalizeFrictionCategory('Knowledge-Gap')).toBe('knowledge-gap');
     expect(normalizeFrictionCategory('WRONG-APPROACH')).toBe('wrong-approach');
-    expect(normalizeFrictionCategory('Missing-Dependency')).toBe('missing-dependency');
+    expect(normalizeFrictionCategory('Stale-Assumptions')).toBe('stale-assumptions');
   });
 
   // ────────────────────────────────────────────────────
@@ -27,10 +30,9 @@ describe('normalizeFrictionCategory', () => {
   // ────────────────────────────────────────────────────
 
   it('normalizes typos within Levenshtein distance 2', () => {
-    expect(normalizeFrictionCategory('type-eror')).toBe('type-error');       // distance 1
-    expect(normalizeFrictionCategory('tpye-error')).toBe('type-error');      // distance 2 (transposition)
+    expect(normalizeFrictionCategory('knowlede-gap')).toBe('knowledge-gap');   // distance 1
     expect(normalizeFrictionCategory('wrong-aproach')).toBe('wrong-approach'); // distance 1
-    expect(normalizeFrictionCategory('stale-cach')).toBe('stale-cache');     // distance 1
+    expect(normalizeFrictionCategory('scope-crepp')).toBe('scope-creep');      // distance 1
   });
 
   it('does not match when Levenshtein distance > 2', () => {
@@ -44,8 +46,8 @@ describe('normalizeFrictionCategory', () => {
   // ────────────────────────────────────────────────────
 
   it('matches when canonical is a significant substring', () => {
-    // "config-drift-issue" contains "config-drift" (12 chars, 12/18 = 0.67 > 0.5)
-    expect(normalizeFrictionCategory('config-drift-issue')).toBe('config-drift');
+    // "scope-creep-issue" contains "scope-creep" (11 chars, 11/17 = 0.65 > 0.5)
+    expect(normalizeFrictionCategory('scope-creep-issue')).toBe('scope-creep');
   });
 
   it('does not match short substrings (< 5 chars)', () => {
@@ -57,6 +59,26 @@ describe('normalizeFrictionCategory', () => {
   // ────────────────────────────────────────────────────
   // Rule 1.5: Explicit alias match
   // ────────────────────────────────────────────────────
+
+  it('remaps legacy canonical categories to new taxonomy', () => {
+    // These were canonical in the old 15-category taxonomy; they now map to new categories
+    expect(normalizeFrictionCategory('missing-dependency')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('config-drift')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('stale-cache')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('version-mismatch')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('permission-issue')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('environment-mismatch')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('race-condition')).toBe('wrong-approach');
+    expect(normalizeFrictionCategory('circular-dependency')).toBe('wrong-approach');
+    expect(normalizeFrictionCategory('test-failure')).toBe('wrong-approach');
+    expect(normalizeFrictionCategory('type-error')).toBe('knowledge-gap');
+    expect(normalizeFrictionCategory('api-misunderstanding')).toBe('knowledge-gap');
+  });
+
+  it('remaps legacy aliases case-insensitively', () => {
+    expect(normalizeFrictionCategory('Missing-Dependency')).toBe('stale-assumptions');
+    expect(normalizeFrictionCategory('TYPE-ERROR')).toBe('knowledge-gap');
+  });
 
   it('resolves all agent-orchestration alias variants to the cluster target', () => {
     expect(normalizeFrictionCategory('agent-lifecycle-issue')).toBe('agent-orchestration-failure');
@@ -112,12 +134,17 @@ describe('normalizeFrictionCategory', () => {
   // All canonical categories are recognized
   // ────────────────────────────────────────────────────
 
-  it('recognizes all 15 canonical categories', () => {
+  it('recognizes all 9 canonical categories', () => {
     const canonicals = [
-      'wrong-approach', 'missing-dependency', 'config-drift', 'test-failure',
-      'type-error', 'api-misunderstanding', 'stale-cache', 'version-mismatch',
-      'permission-issue', 'incomplete-requirements', 'circular-dependency',
-      'race-condition', 'environment-mismatch', 'documentation-gap', 'tooling-limitation',
+      'wrong-approach',
+      'knowledge-gap',
+      'stale-assumptions',
+      'incomplete-requirements',
+      'context-loss',
+      'scope-creep',
+      'repeated-mistakes',
+      'documentation-gap',
+      'tooling-limitation',
     ];
     for (const cat of canonicals) {
       expect(normalizeFrictionCategory(cat)).toBe(cat);

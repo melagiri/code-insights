@@ -15,8 +15,7 @@ import { WorkingStyleHeroCard } from '@/components/patterns/WorkingStyleHeroCard
 import { useThemeColors } from '@/lib/hooks/useThemeColors';
 import { CHART_COLORS } from '@/lib/constants/colors';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
   AlertTriangle, Sparkles, Shield, Brain, Copy, Check, Loader2, Zap,
@@ -189,6 +188,7 @@ export default function PatternsPage() {
     count: fc.count,
     severity: Math.round(fc.avg_severity * 10) / 10,
     color: frictionBarColor(fc.avg_severity),
+    examples: fc.examples,
   }));
 
   const outcomeData = Object.entries(aggregation?.outcomeDistribution || {}).map(([name, value]) => ({
@@ -437,13 +437,13 @@ export default function PatternsPage() {
           <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Friction &amp; Wins</h3>
 
           <div className="grid gap-4 lg:grid-cols-5">
-            {/* Friction bar chart — with narrative merged in */}
+            {/* Friction category list */}
             <div className="lg:col-span-3">
               {frictionData.length > 0 ? (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Friction Categories</CardTitle>
-                    <CardDescription>Most common blockers across sessions — color indicates severity</CardDescription>
+                    <CardDescription>Most common blockers across sessions — badge color indicates severity</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {frictionWinsResult?.narrative && (
@@ -451,21 +451,33 @@ export default function PatternsPage() {
                         {String(frictionWinsResult.narrative)}
                       </p>
                     )}
-                    <ResponsiveContainer width="100%" height={Math.max(200, frictionData.length * 36)}>
-                      <BarChart data={frictionData} layout="vertical" margin={{ left: 20, right: 12 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                        <XAxis type="number" />
-                        <YAxis type="category" dataKey="category" width={130} tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8 }}
-                        />
-                        <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
-                          {frictionData.map((entry, i) => (
-                            <Cell key={i} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <ul className="divide-y">
+                      {frictionData.map((fc) => (
+                        <li key={fc.category} className="py-3 first:pt-0 last:pb-0">
+                          <div className="flex items-start gap-3 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
+                            <span
+                              className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold shrink-0 mt-0.5"
+                              style={{ backgroundColor: `${fc.color}20`, color: fc.color }}
+                            >
+                              {fc.count}x
+                            </span>
+                            <span className="text-sm font-medium">{fc.category}</span>
+                          </div>
+                          {fc.examples.length > 0 && (
+                            <ul className="ml-10 mt-1.5 space-y-1">
+                              {fc.examples.slice(0, 3).map((ex, j) => (
+                                <li key={j} className="text-xs text-muted-foreground">{ex}</li>
+                              ))}
+                              {fc.examples.length > 3 && (
+                                <li className="text-xs text-muted-foreground italic">
+                                  +{fc.examples.length - 3} more
+                                </li>
+                              )}
+                            </ul>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </CardContent>
                 </Card>
               ) : (
