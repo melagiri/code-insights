@@ -167,6 +167,7 @@ DRIVER — classify WHO drove this pattern:
 - "user-driven": The user explicitly initiated this pattern (asked for a plan, requested tests, directed the investigation, specified the tool or approach).
 - "ai-driven": The AI exhibited this pattern without user prompting (self-corrected, proactively ran tests, applied expertise without being asked to, independently explored the codebase).
 - "collaborative": Both contributed, or the pattern emerged naturally from the interaction (user described the problem, AI chose the debugging methodology; user asked for a feature, AI chose to work incrementally).
+When uncertain between user-driven and ai-driven, prefer the more specific label. Use "collaborative" only when BOTH the user AND the AI made distinct, identifiable contributions to this pattern.
 
 When no canonical category fits, create a specific kebab-case category (a precise novel category is better than forcing a poor fit).`;
 
@@ -498,7 +499,8 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
     console.warn('[friction-monitor] LLM classified friction as "tooling-limitation" — verify this is a genuine tool limitation, not an agent/rate-limit/approach issue');
   }
 
-  // Observability: warn when LLM returns effective_pattern without category or driver field.
+  // Observability: warn when LLM returns effective_pattern without category or driver field,
+  // or with an unrecognized driver value.
   // Catches models that ignore the classification instructions (especially smaller Ollama models).
   // Remove after confirming classification quality over ~20 new sessions.
   if (parsed.facets?.effective_patterns?.some(ep => !ep.category)) {
@@ -506,6 +508,10 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
   }
   if (parsed.facets?.effective_patterns?.some(ep => !ep.driver)) {
     console.warn('[pattern-monitor] LLM returned effective_pattern without driver field — driver classification may be incomplete');
+  }
+  const VALID_DRIVERS = new Set(['user-driven', 'ai-driven', 'collaborative']);
+  if (parsed.facets?.effective_patterns?.some(ep => ep.driver && !VALID_DRIVERS.has(ep.driver))) {
+    console.warn('[pattern-monitor] LLM returned unexpected driver value — check classification quality');
   }
 
   return { success: true, data: parsed };

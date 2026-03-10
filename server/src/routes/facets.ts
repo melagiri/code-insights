@@ -117,8 +117,7 @@ app.get('/missing', (c) => {
 
 // GET /api/facets/outdated
 // Returns count of session_facets rows where:
-//   - effective_patterns entries lack a category field, OR
-//   - effective_patterns entries lack a driver field, OR
+//   - effective_patterns entries lack a category or driver field, OR
 //   - friction_points entries lack an attribution field
 // Accepts period + project to scope to the user's current view — avoids misleading counts
 // when the user is viewing "last 7 days" but sees outdated sessions from all time.
@@ -129,9 +128,11 @@ app.get('/outdated', (c) => {
 
   const { where, params } = buildWhereClause(period, project);
 
-  // UNION of three subqueries — each finds session_ids with a specific outdated signal.
-  // UNION (not UNION ALL) deduplicates sessions that fail multiple checks.
+  // UNION of two subqueries — each finds session_ids with a specific outdated signal.
+  // UNION (not UNION ALL) deduplicates sessions that fail both checks.
   // COUNT(DISTINCT) is not needed here since UNION already deduplicates.
+  // The effective_patterns arm uses OR to catch both missing category and missing driver
+  // in a single scan rather than two separate UNION arms.
   const row = db.prepare(`
     SELECT COUNT(*) as count FROM (
       SELECT DISTINCT sf.session_id
@@ -140,15 +141,8 @@ app.get('/outdated', (c) => {
       CROSS JOIN json_each(sf.effective_patterns) je
       ${where}
       AND json_array_length(sf.effective_patterns) > 0
-      AND json_extract(je.value, '$.category') IS NULL
-      UNION
-      SELECT DISTINCT sf.session_id
-      FROM session_facets sf
-      JOIN sessions s ON sf.session_id = s.id
-      CROSS JOIN json_each(sf.effective_patterns) je
-      ${where}
-      AND json_array_length(sf.effective_patterns) > 0
-      AND json_extract(je.value, '$.driver') IS NULL
+      AND (json_extract(je.value, '$.category') IS NULL
+           OR json_extract(je.value, '$.driver') IS NULL)
       UNION
       SELECT DISTINCT sf.session_id
       FROM session_facets sf
@@ -158,7 +152,7 @@ app.get('/outdated', (c) => {
       AND json_array_length(sf.friction_points) > 0
       AND json_extract(je.value, '$.attribution') IS NULL
     )
-  `).get(...params, ...params, ...params) as { count: number };
+  `).get(...params, ...params) as { count: number };
 
   return c.json({ count: row.count });
 });
