@@ -9,6 +9,18 @@ import { CANONICAL_FRICTION_CATEGORIES } from './prompts.js';
 // Insert alias lookup runs AFTER exact canonical match but BEFORE Levenshtein,
 // so well-known emergent variants are clustered deterministically.
 const FRICTION_ALIASES: Record<string, string> = {
+  // legacy canonical → new canonical (15→9 taxonomy revision)
+  'missing-dependency': 'stale-assumptions',
+  'config-drift': 'stale-assumptions',
+  'stale-cache': 'stale-assumptions',
+  'version-mismatch': 'stale-assumptions',
+  'permission-issue': 'stale-assumptions',
+  'environment-mismatch': 'stale-assumptions',
+  'race-condition': 'wrong-approach',
+  'circular-dependency': 'wrong-approach',
+  'test-failure': 'wrong-approach',
+  'type-error': 'knowledge-gap',
+  'api-misunderstanding': 'knowledge-gap',
   // agent orchestration variants → cluster under one emergent name
   'agent-lifecycle-issue': 'agent-orchestration-failure',
   'agent-communication-failure': 'agent-orchestration-failure',

@@ -80,23 +80,34 @@ export function formatMessagesForAnalysis(messages: SQLiteMessageRow[]): string 
 }
 
 // Shared guidance for friction category precision.
-// Steers the LLM away from the `tooling-limitation` catch-all via negative anchoring
-// and contrastive examples. Novel categories are encouraged for specific patterns.
+// Contrastive pairs help the LLM distinguish between visually-similar categories.
+// Novel categories are encouraged for specific patterns that don't fit.
 export const FRICTION_CLASSIFICATION_GUIDANCE = `
-IMPORTANT — "tooling-limitation" precision:
-Do NOT use "tooling-limitation" for these situations (use a more specific category instead):
-- Agent spawned via Task tool becomes unresponsive/fails to communicate → use "agent-orchestration-failure"
-- AI uses wrong command/edits before reading/wrong syntax, then self-corrects → "wrong-approach"
-- API rate limit hit, session paused → use "rate-limit-hit"
-- User rejects a tool call → not friction (omit entirely)
-Only use "tooling-limitation" when a tool genuinely cannot do what was needed (e.g., WebFetch returned incomplete content, CLI tool has no flag for needed behavior).
+IMPORTANT — friction category precision:
+Use contrastive examples to pick the right category:
+- wrong-approach = bad STRATEGY (tried rewriting instead of patching; chose wrong algorithm)
+- knowledge-gap = incorrect KNOWLEDGE (used deprecated API, wrong function signature, misread docs)
+- stale-assumptions = incorrect STATE assumption (assumed package installed, assumed file existed, wrong version)
+- context-loss = AI FORGOT something it knew earlier in the same session
+- repeated-mistakes = same error 2+ times after correction
+- scope-creep = AI did MORE than asked (added unrequested features, changed files not mentioned)
+- incomplete-requirements = the USER's request was ambiguous or missing critical detail
+- documentation-gap = official docs were missing, wrong, or too sparse to resolve the issue
+- tooling-limitation = tool genuinely cannot do what was needed (e.g., WebFetch returned incomplete content, CLI has no flag for needed behavior)
+Do NOT use "tooling-limitation" for: agent spawning failures (→ "agent-orchestration-failure"), API rate limits (→ "rate-limit-hit"), or wrong approaches that self-corrected (→ "wrong-approach").
+User rejects a tool call → not friction (omit entirely).
 When no preferred category fits, create a specific kebab-case category — a precise novel category is better than a vague canonical one.`;
 
 export const CANONICAL_FRICTION_CATEGORIES = [
-  'wrong-approach', 'missing-dependency', 'config-drift', 'test-failure',
-  'type-error', 'api-misunderstanding', 'stale-cache', 'version-mismatch',
-  'permission-issue', 'incomplete-requirements', 'circular-dependency',
-  'race-condition', 'environment-mismatch', 'documentation-gap', 'tooling-limitation',
+  'wrong-approach',
+  'knowledge-gap',
+  'stale-assumptions',
+  'incomplete-requirements',
+  'context-loss',
+  'scope-creep',
+  'repeated-mistakes',
+  'documentation-gap',
+  'tooling-limitation',
 ] as const;
 
 export const CANONICAL_PATTERN_CATEGORIES = [
