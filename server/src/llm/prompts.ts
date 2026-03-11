@@ -657,38 +657,39 @@ Respond with valid JSON only, wrapped in <json>...</json> tags.`;
 
 // --- Prompt Quality Analysis ---
 
-export const PROMPT_QUALITY_SYSTEM_PROMPT = `You are a prompt engineering coach helping developers communicate more effectively with AI coding assistants. You review conversations and identify specific moments where better prompting would have saved time.
+export const PROMPT_QUALITY_SYSTEM_PROMPT = `You are a prompt engineering coach helping developers communicate more effectively with AI coding assistants. You review conversations and identify specific moments where better prompting would have saved time — AND moments where the user prompted particularly well.
 
-You will identify:
-1. **Wasted turns**: User messages that led to clarifications, corrections, or repeated instructions because the original prompt was unclear, missing context, or too vague.
-2. **Anti-patterns**: Recurring bad habits in the user's prompting style, with specific fixes.
-3. **Session traits**: Higher-level behavioral patterns about how the session was structured and managed.
-4. **Efficiency score**: A 0-100 rating of how optimally the user communicated.
-5. **Actionable tips**: Specific improvements the user can make.
+You will produce:
+1. **Takeaways**: Concrete before/after examples the user can learn from (max 4)
+2. **Findings**: Categorized findings for cross-session aggregation (max 8)
+3. **Dimension scores**: 5 numeric dimensions for progress tracking
+4. **Efficiency score**: 0-100 overall rating
+5. **Assessment**: 2-3 sentence summary
 
 Before evaluating, mentally walk through the conversation and identify:
 1. Each time the assistant asked for clarification that could have been avoided
 2. Each time the user corrected the assistant's interpretation
 3. Each time the user repeated an instruction they gave earlier
-4. Whether the session covers too many unrelated objectives (context drift / session bloat)
-5. Whether the user provided critical context or requirements late that should have been mentioned upfront
-6. Whether the user discussed the plan/approach before jumping into implementation, or dove straight into code
+4. Whether critical context or requirements were provided late
+5. Whether the user discussed the plan/approach before implementation
+6. Moments where the user's prompt was notably well-crafted
 These are your candidate findings. Only include them if they are genuinely actionable.
+
+${PROMPT_QUALITY_CLASSIFICATION_GUIDANCE}
 
 Guidelines:
 - Focus on USER messages only — don't critique the assistant's responses
-- A "wasted turn" is when the user had to send a follow-up message to clarify, correct, or repeat something that could have been included in the original prompt
-- Only mark a wasted turn if the assistant explicitly asked for clarification or corrected a misunderstanding
 - Be constructive, not judgmental — the goal is to help users improve
-- Consider the context: some clarification exchanges are normal and expected
 - A score of 100 means every user message was perfectly clear and complete
 - A score of 50 means about half the messages could have been more efficient
+- Include BOTH deficits and strengths — what went right matters as much as what went wrong
+- If the user prompted well, say so — don't manufacture issues
 
 Length Guidance:
-- Max 5 wasted turns, max 3 anti-patterns, max 3 session traits, max 5 tips
-- suggestedRewrite must be a complete, usable prompt — not vague meta-advice
-- overallAssessment: 2-3 sentences
-- Total response: stay under 2000 tokens
+- Max 4 takeaways (ordered: improve first, then reinforce), max 8 findings
+- better_prompt must be a complete, usable prompt — not vague meta-advice
+- assessment: 2-3 sentences
+- Total response: stay under 2500 tokens
 
 Respond with valid JSON only, wrapped in <json>...</json> tags. Do not include any other text.`;
 
@@ -697,7 +698,7 @@ export function generatePromptQualityPrompt(
   formattedMessages: string,
   messageCount: number
 ): string {
-  return `Analyze the user's prompting efficiency in this AI coding session.
+  return `Analyze the user's prompting quality in this AI coding session.
 
 Project: ${projectName}
 Total messages: ${messageCount}
@@ -708,96 +709,116 @@ ${formattedMessages}
 
 Evaluate the user's prompting quality and respond with this JSON format:
 {
-  "efficiencyScore": 75,
-  "potentialMessageReduction": 3,
-  "overallAssessment": "2-3 sentence summary of the user's prompting style and efficiency",
-  "wastedTurns": [
+  "efficiency_score": 75,
+  "message_overhead": 3,
+  "assessment": "2-3 sentence summary of prompting style and efficiency",
+  "takeaways": [
     {
-      "messageIndex": 5,
-      "originalMessage": "The user's original message (abbreviated if long)",
-      "whatWentWrong": "What information was missing or ambiguous that caused a follow-up",
-      "suggestedRewrite": "A concrete rewrite that includes the missing context — must be a complete, usable prompt",
-      "turnsWasted": 2
+      "type": "improve",
+      "category": "late-constraint",
+      "label": "Short human-readable heading",
+      "message_ref": "User#5",
+      "original": "The user's original message (abbreviated)",
+      "better_prompt": "A concrete rewrite with the missing context included",
+      "why": "One sentence: why the original caused friction"
+    },
+    {
+      "type": "reinforce",
+      "category": "precise-request",
+      "label": "Short human-readable heading",
+      "message_ref": "User#0",
+      "what_worked": "What the user did well",
+      "why_effective": "Why it led to a good outcome"
     }
   ],
-  "antiPatterns": [
+  "findings": [
     {
-      "name": "Vague Instructions",
-      "description": "Requests that lack specificity about what file, function, or behavior to change",
-      "count": 3,
-      "examples": ["User#2: 'fix it'", "User#5: 'make it work'"],
-      "fix": "Include the file path, function name, and expected vs actual behavior in the initial request"
+      "category": "late-constraint",
+      "type": "deficit",
+      "description": "One neutral sentence with specific details",
+      "message_ref": "User#5",
+      "impact": "high",
+      "confidence": 90,
+      "suggested_improvement": "Concrete rewrite or behavioral change"
+    },
+    {
+      "category": "precise-request",
+      "type": "strength",
+      "description": "One sentence describing what the user did well",
+      "message_ref": "User#0",
+      "impact": "medium",
+      "confidence": 85
     }
   ],
-  "sessionTraits": [
-    {
-      "trait": "context_drift | objective_bloat | late_context | no_planning | good_structure",
-      "severity": "high | medium | low",
-      "description": "What was observed and why it matters",
-      "evidence": "User#3 switched from auth to styling, then back to auth at User#12",
-      "suggestion": "Break into separate sessions: one for auth, one for styling"
-    }
-  ],
-  "tips": [
-    "Always include file paths when asking to modify code",
-    "Provide error messages verbatim when reporting bugs"
-  ]
+  "dimension_scores": {
+    "context_provision": 70,
+    "request_specificity": 65,
+    "scope_management": 80,
+    "information_timing": 55,
+    "correction_quality": 75
+  }
 }
 
-Session trait definitions:
-- **context_drift**: Session covers too many unrelated objectives, causing the AI to lose context and produce lower quality output
-- **objective_bloat**: Too many different tasks crammed into one session instead of focused, single-purpose sessions
-- **late_context**: Critical requirements, constraints, or context provided late in the conversation that should have been mentioned upfront — causing rework or wasted turns
-- **no_planning**: User jumped straight into implementation without discussing approach, requirements, or plan — leading to course corrections mid-session
-- **good_structure**: Session was well-structured with clear objectives, upfront context, and logical flow (only include this if truly exemplary)
+Category values — use these PREFERRED categories:
+Deficits: ${CANONICAL_PQ_DEFICIT_CATEGORIES.join(', ')}
+Strengths: ${CANONICAL_PQ_STRENGTH_CATEGORIES.join(', ')}
+Create a new kebab-case category only when none of these fit.
 
 Rules:
-- messageIndex refers to the 0-based index of the USER message, as labeled in the conversation (e.g., User#0)
-- Only include genuinely wasted turns, not normal back-and-forth
-- Tips should be specific and actionable, not generic; include the relevant user message index in parentheses
-- If the user prompted well, say so — don't manufacture issues
-- potentialMessageReduction is how many fewer messages the session could have taken with better prompts
+- message_ref uses the labeled turns in the conversation (e.g., "User#0", "User#5")
+- Only include genuinely notable findings, not normal back-and-forth
+- Takeaways are the user-facing highlights — max 4, ordered: improve first, then reinforce
+- Findings are the full categorized set for aggregation — max 8
+- If the user prompted well, include strength findings and reinforce takeaways — don't manufacture issues
+- message_overhead is how many fewer messages the session could have taken with better prompts
+- dimension_scores: each 0-100. Score correction_quality as 75 if no corrections were needed.
 
 Respond with valid JSON only, wrapped in <json>...</json> tags. Do not include any other text.`;
 }
 
-export interface WastedTurn {
-  messageIndex: number;
-  originalMessage?: string;
-  whatWentWrong?: string;
-  suggestedRewrite: string;
-  turnsWasted?: number;
-}
-
-export interface AntiPattern {
-  name: string;
-  description?: string;
-  count: number;
-  examples: string[];
-  fix?: string;
-}
-
-export interface SessionTrait {
-  trait: 'context_drift' | 'objective_bloat' | 'late_context' | 'no_planning' | 'good_structure';
-  severity: 'high' | 'medium' | 'low';
+export interface PromptQualityFinding {
+  category: string;
+  type: 'deficit' | 'strength';
   description: string;
-  evidence?: string;
-  suggestion?: string;
+  message_ref: string;
+  impact: 'high' | 'medium' | 'low';
+  confidence: number;
+  suggested_improvement?: string;
+}
+
+export interface PromptQualityTakeaway {
+  type: 'improve' | 'reinforce';
+  category: string;
+  label: string;
+  message_ref: string;
+  // improve fields
+  original?: string;
+  better_prompt?: string;
+  why?: string;
+  // reinforce fields
+  what_worked?: string;
+  why_effective?: string;
+}
+
+export interface PromptQualityDimensionScores {
+  context_provision: number;
+  request_specificity: number;
+  scope_management: number;
+  information_timing: number;
+  correction_quality: number;
 }
 
 export interface PromptQualityResponse {
-  efficiencyScore: number;
-  potentialMessageReduction: number;
-  overallAssessment: string;
-  wastedTurns: WastedTurn[];
-  antiPatterns: AntiPattern[];
-  sessionTraits: SessionTrait[];
-  tips: string[];
+  efficiency_score: number;
+  message_overhead: number;
+  assessment: string;
+  takeaways: PromptQualityTakeaway[];
+  findings: PromptQualityFinding[];
+  dimension_scores: PromptQualityDimensionScores;
 }
 
 export function parsePromptQualityResponse(response: string): ParseResult<PromptQualityResponse> {
   const response_length = response.length;
-
   const preview = buildResponsePreview(response);
 
   const jsonPayload = extractJsonPayload(response);
@@ -817,7 +838,7 @@ export function parsePromptQualityResponse(response: string): ParseResult<Prompt
       parsed = JSON.parse(jsonrepair(jsonPayload)) as PromptQualityResponse;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('Failed to parse prompt quality response (after jsonrepair):', err);
+      console.error('Failed to parse prompt quality response (after jsonrepair):', msg);
       return {
         success: false,
         error: { error_type: 'json_parse_error', error_message: msg, response_length, response_preview: preview },
@@ -825,21 +846,37 @@ export function parsePromptQualityResponse(response: string): ParseResult<Prompt
     }
   }
 
-  if (typeof parsed.efficiencyScore !== 'number') {
-    console.error('Invalid prompt quality response: missing efficiencyScore');
+  if (typeof parsed.efficiency_score !== 'number') {
+    console.error('Invalid prompt quality response: missing efficiency_score');
     return {
       success: false,
-      error: { error_type: 'invalid_structure', error_message: 'Missing or invalid efficiencyScore field', response_length, response_preview: preview },
+      error: { error_type: 'invalid_structure', error_message: 'Missing or invalid efficiency_score field', response_length, response_preview: preview },
     };
   }
 
-  parsed.efficiencyScore = Math.max(0, Math.min(100, Math.round(parsed.efficiencyScore)));
-  parsed.potentialMessageReduction = parsed.potentialMessageReduction || 0;
-  parsed.overallAssessment = parsed.overallAssessment || '';
-  parsed.wastedTurns = parsed.wastedTurns || [];
-  parsed.antiPatterns = parsed.antiPatterns || [];
-  parsed.sessionTraits = parsed.sessionTraits || [];
-  parsed.tips = parsed.tips || [];
+  // Clamp and default
+  parsed.efficiency_score = Math.max(0, Math.min(100, Math.round(parsed.efficiency_score)));
+  parsed.message_overhead = parsed.message_overhead || 0;
+  parsed.assessment = parsed.assessment || '';
+  parsed.takeaways = parsed.takeaways || [];
+  parsed.findings = parsed.findings || [];
+  parsed.dimension_scores = parsed.dimension_scores || {
+    context_provision: 50,
+    request_specificity: 50,
+    scope_management: 50,
+    information_timing: 50,
+    correction_quality: 50,
+  };
+
+  // Clamp dimension scores
+  for (const key of Object.keys(parsed.dimension_scores) as Array<keyof PromptQualityDimensionScores>) {
+    parsed.dimension_scores[key] = Math.max(0, Math.min(100, Math.round(parsed.dimension_scores[key] || 50)));
+  }
+
+  // Observability: warn when findings missing category
+  if (parsed.findings.some(f => !f.category)) {
+    console.warn('[pq-monitor] LLM returned finding without category field');
+  }
 
   return { success: true, data: parsed };
 }
