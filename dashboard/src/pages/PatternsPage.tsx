@@ -4,6 +4,9 @@ import { useProjects } from '@/hooks/useProjects';
 import { useFacetAggregation, useReflectSnapshot, useReflectWeeks } from '@/hooks/useReflect';
 import { reflectGenerateStream, fetchOutdatedFacetCount } from '@/lib/api';
 import { WeekSelector } from '@/components/patterns/WeekSelector';
+import { WeekAtAGlanceStrip } from '@/components/patterns/WeekAtAGlanceStrip';
+import { CollapsibleCategoryList } from '@/components/patterns/CollapsibleCategoryList';
+import { WorkingStyleHighlights } from '@/components/patterns/WorkingStyleHighlights';
 import { parseSSEStream } from '@/lib/sse';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,48 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ErrorCard } from '@/components/ErrorCard';
-import { WorkingStyleHeroCard } from '@/components/patterns/WorkingStyleHeroCard';
-import { useThemeColors } from '@/lib/hooks/useThemeColors';
-import { CHART_COLORS } from '@/lib/constants/colors';
-import {
-  PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import { frictionBarColor, getDominantDriver } from '@/lib/constants/patterns';
 import {
   AlertTriangle, Sparkles, Shield, Brain, Copy, Check, Loader2, Zap,
 } from 'lucide-react';
-
-// CHART_COLORS.models is the shared hex color array for multi-series charts
-const PALETTE = CHART_COLORS.models;
-
-// Returns the dominant driver key from a driver breakdown record.
-// Used to show a single pill label rather than a full breakdown.
-// Returns null when no driver data exists (pre-driver sessions).
-function getDominantDriver(drivers: Record<string, number> | undefined): string | null {
-  if (!drivers) return null;
-  const entries = Object.entries(drivers);
-  if (entries.length === 0) return null;
-  return entries.sort((a, b) => b[1] - a[1])[0][0];
-}
-
-const DRIVER_LABELS: Record<string, string> = {
-  'user-driven': 'User',
-  'ai-driven': 'AI',
-  'collaborative': 'Collab',
-};
-
-const DRIVER_STYLES: Record<string, string> = {
-  'user-driven': 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',
-  'ai-driven': 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
-  'collaborative': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-};
-
-// Friction bar severity color based on avg_severity (1=low, 2=medium, 3=high)
-function frictionBarColor(avgSeverity: number): string {
-  if (avgSeverity >= 2.5) return '#ef4444'; // red-500 (high)
-  if (avgSeverity >= 2.0) return '#f97316'; // orange-500
-  if (avgSeverity >= 1.5) return '#f59e0b'; // amber-500
-  return '#22c55e'; // green-500 (low)
-}
 
 function formatRelativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -65,7 +30,6 @@ function formatRelativeDate(iso: string): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
-
 
 // Compute the current ISO week identifier (YYYY-WNN) in UTC.
 // Mirrors formatIsoWeek/parseIsoWeek in server/src/routes/shared-aggregation.ts
@@ -98,7 +62,6 @@ export default function PatternsPage() {
   const [generationProgress, setGenerationProgress] = useState('');
   const [reflectResults, setReflectResults] = useState<Record<string, unknown> | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const { tooltipBg, tooltipBorder } = useThemeColors();
   const abortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
 
@@ -210,7 +173,7 @@ export default function PatternsPage() {
     } finally {
       setGenerating(false);
     }
-  }, [currentWeek, selectedProject]);
+  }, [currentWeek, selectedProject, queryClient]);
 
   const handleCopy = useCallback((text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -240,27 +203,21 @@ export default function PatternsPage() {
     );
   }
 
-  const frictionData = (aggregation?.frictionCategories || []).slice(0, 10).map(fc => ({
+  // --- Derived data ---
+
+  const frictionItems = (aggregation?.frictionCategories || []).slice(0, 10).map(fc => ({
     category: fc.category,
     count: fc.count,
     severity: Math.round(fc.avg_severity * 10) / 10,
     color: frictionBarColor(fc.avg_severity),
-    examples: fc.examples,
+    descriptions: fc.examples,
   }));
 
-  const outcomeData = Object.entries(aggregation?.outcomeDistribution || {}).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
-  const workflowData = Object.entries(aggregation?.workflowDistribution || {}).map(([name, value]) => ({
-    name: name.replace(/-/g, ' '),
-    value,
-  }));
-
-  const characterData = Object.entries(aggregation?.characterDistribution || {}).map(([name, value]) => ({
-    name: name.replace(/_/g, ' '),
-    value,
+  const patternItems = (aggregation?.effectivePatterns || []).slice(0, 8).map(ep => ({
+    category: ep.label,
+    count: ep.frequency,
+    descriptions: ep.descriptions,
+    driver: getDominantDriver(ep.drivers),
   }));
 
   const hasEnoughFacets = (aggregation?.totalSessions ?? 0) >= 8;
@@ -274,6 +231,29 @@ export default function PatternsPage() {
 
   const tagline = workingStyleResult?.tagline as string | undefined;
   const narrative = workingStyleResult?.narrative as string | undefined;
+
+  // Derive working style highlights from aggregation data
+  const successCount = aggregation?.outcomeDistribution?.['success'] ?? 0;
+
+  const topCharacterEntry = aggregation?.characterDistribution
+    ? Object.entries(aggregation.characterDistribution).sort((a, b) => b[1] - a[1])[0]
+    : null;
+  const totalCharacters = aggregation?.characterDistribution
+    ? Object.values(aggregation.characterDistribution).reduce((s, v) => s + v, 0)
+    : 0;
+  const topCharacter = topCharacterEntry && totalCharacters > 0
+    ? { name: topCharacterEntry[0], percentage: Math.round((topCharacterEntry[1] / totalCharacters) * 100) }
+    : undefined;
+
+  const topFrictionEntry = frictionItems[0];
+  const topFriction = topFrictionEntry
+    ? { category: topFrictionEntry.category, count: topFrictionEntry.count }
+    : undefined;
+
+  const topPatternEntry = patternItems[0];
+  const topPattern = topPatternEntry
+    ? { label: topPatternEntry.category, frequency: topPatternEntry.count }
+    : undefined;
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
@@ -297,7 +277,7 @@ export default function PatternsPage() {
           )}
         </div>
         <div className="flex flex-col items-end gap-2">
-          {/* Week selector replaces the 7d/30d/90d/all button group */}
+          {/* Week selector */}
           <WeekSelector
             currentWeek={currentWeek}
             weeks={weeks}
@@ -375,6 +355,16 @@ export default function PatternsPage() {
         </div>
       )}
 
+      {/* Outdated sessions alert — page-level so it's visible regardless of active tab */}
+      {outdatedCount > 0 && (
+        <Alert className="border-amber-500/30 bg-amber-50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
+            {outdatedCount} session{outdatedCount !== 1 ? 's have' : ' has'} outdated insight formats. Re-analyze them from the Session Insights page to improve pattern accuracy.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Generation progress */}
       {generating && (
         <Card>
@@ -387,13 +377,12 @@ export default function PatternsPage() {
         </Card>
       )}
 
-      {/* Hero card — always visible above tabs */}
-      <WorkingStyleHeroCard
+      {/* Week at-a-glance strip — replaces WorkingStyleHeroCard + 3 pie charts */}
+      <WeekAtAGlanceStrip
         tagline={tagline}
-        sessionsAnalyzed={aggregation?.totalSessions ?? 0}
-        streak={aggregation?.streak ?? 0}
-        toolsUsed={aggregation?.sourceToolCount ?? 0}
-        characterDistribution={aggregation?.characterDistribution ?? {}}
+        totalSessions={aggregation?.totalSessions ?? 0}
+        totalAllSessions={aggregation?.totalAllSessions ?? 0}
+        outcomeDistribution={aggregation?.outcomeDistribution ?? {}}
         hasGenerated={!!reflectResults}
       />
 
@@ -412,198 +401,72 @@ export default function PatternsPage() {
 
         {/* INSIGHTS TAB */}
         <TabsContent value="insights" className="mt-4 space-y-4">
-          {/* Working style narrative */}
-          {narrative && (
+          {/* Working style summary — auto-generated bullets + expandable LLM narrative */}
+          {(reflectResults || (aggregation?.totalSessions ?? 0) > 0) && (
             <Card className="border-l-2 border-primary">
               <CardHeader>
                 <CardTitle className="text-base">Working Style</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{narrative}</p>
+                <WorkingStyleHighlights
+                  narrative={narrative}
+                  totalSessions={aggregation?.totalSessions ?? 0}
+                  successCount={successCount}
+                  topCharacter={topCharacter}
+                  topFriction={topFriction}
+                  topPattern={topPattern}
+                />
               </CardContent>
             </Card>
           )}
 
-          {/* Distribution pie charts */}
-          {(outcomeData.length > 0 || workflowData.length > 0 || characterData.length > 0) && (
-            <div className="grid gap-4 md:grid-cols-3">
-              {outcomeData.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Outcome Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie data={outcomeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
-                          {outcomeData.map((_, i) => (
-                            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8 }} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
-
-              {workflowData.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Workflow Patterns</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie data={workflowData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
-                          {workflowData.map((_, i) => (
-                            <Cell key={i} fill={PALETTE[(i + 2) % PALETTE.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8 }} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
-
-              {characterData.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Session Types</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie data={characterData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65}>
-                          {characterData.map((_, i) => (
-                            <Cell key={i} fill={PALETTE[(i + 4) % PALETTE.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8 }} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              )}
+          {/* Friction narrative callout — shown above the lists when available */}
+          {frictionWinsResult?.narrative && (
+            <div className="border-l-2 border-primary rounded-sm px-4 py-3 bg-muted/30">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                {String(frictionWinsResult.narrative)}
+              </p>
             </div>
           )}
 
-          {/* Friction & Wins section */}
-          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Friction &amp; Wins</h3>
-
-          <div className="grid gap-4 lg:grid-cols-5">
-            {/* Friction category list */}
-            <div className="lg:col-span-3">
-              {frictionData.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Friction Categories</CardTitle>
-                    <CardDescription>Most common blockers across sessions — badge color indicates severity</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {frictionWinsResult?.narrative && (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground mb-4">
-                        {String(frictionWinsResult.narrative)}
-                      </p>
-                    )}
-                    <ul className="divide-y">
-                      {frictionData.map((fc) => (
-                        <li key={fc.category} className="py-3 first:pt-0 last:pb-0">
-                          <div className="flex items-start gap-3 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
-                            <span
-                              className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold shrink-0 mt-0.5"
-                              style={{ backgroundColor: `${fc.color}20`, color: fc.color }}
-                            >
-                              {fc.count}x
-                            </span>
-                            <span className="text-sm font-medium">{fc.category}</span>
-                          </div>
-                          {fc.examples.length > 0 && (
-                            <ul className="ml-10 mt-1.5 space-y-1">
-                              {fc.examples.slice(0, 3).map((ex, j) => (
-                                <li key={j} className="text-xs text-muted-foreground">{ex}</li>
-                              ))}
-                              {fc.examples.length > 3 && (
-                                <li className="text-xs text-muted-foreground italic">
-                                  +{fc.examples.length - 3} more
-                                </li>
-                              )}
-                            </ul>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
+          {/* Friction + Patterns — 50/50 grid */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Friction Points */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Friction Points</CardTitle>
+                <CardDescription>Most common blockers across sessions — badge color indicates severity</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {frictionItems.length > 0 ? (
+                  <CollapsibleCategoryList items={frictionItems} variant="friction" />
+                ) : (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
                     No friction data yet. Analyze sessions to extract facets.
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
-            {/* Effective patterns */}
-            <div className="lg:col-span-2">
-              {(aggregation?.effectivePatterns || []).length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Effective Patterns</CardTitle>
-                    <CardDescription>Techniques that work well across sessions</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {outdatedCount > 0 && (
-                      <Alert className="mb-4 border-amber-500/30 bg-amber-50 dark:bg-amber-950/20">
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
-                          {outdatedCount} session{outdatedCount !== 1 ? 's have' : ' has'} outdated insight formats. Re-analyze them from the Session Insights page to improve pattern accuracy.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    <ul className="divide-y">
-                      {aggregation!.effectivePatterns.slice(0, 8).map((ep) => {
-                        const dominantDriver = getDominantDriver(ep.drivers);
-                        return (
-                        <li key={ep.category} className="py-3 first:pt-0 last:pb-0">
-                          <div className="flex items-start gap-3 hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
-                            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary shrink-0 mt-0.5">
-                              {ep.frequency}x
-                            </span>
-                            <span className="text-sm font-medium flex-1">{ep.label}</span>
-                            {dominantDriver && (
-                              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium shrink-0 mt-0.5 ${DRIVER_STYLES[dominantDriver] ?? 'bg-muted text-muted-foreground'}`}>
-                                {DRIVER_LABELS[dominantDriver] ?? dominantDriver}
-                              </span>
-                            )}
-                          </div>
-                          {ep.descriptions.length > 0 && (
-                            <ul className="ml-10 mt-1.5 space-y-1">
-                              {ep.descriptions.slice(0, 3).map((desc, j) => (
-                                <li key={j} className="text-xs text-muted-foreground">{desc}</li>
-                              ))}
-                              {ep.descriptions.length > 3 && (
-                                <li className="text-xs text-muted-foreground italic">
-                                  +{ep.descriptions.length - 3} more
-                                </li>
-                              )}
-                            </ul>
-                          )}
-                        </li>
-                        );
-                      })}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            {/* Effective Patterns */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Effective Patterns</CardTitle>
+                <CardDescription>Techniques that work well across sessions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {patternItems.length > 0 ? (
+                  <CollapsibleCategoryList items={patternItems} variant="pattern" />
+                ) : (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    No pattern data yet. Analyze sessions to extract facets.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Rate limit usage insight — moved to bottom of insights tab */}
+          {/* Rate limit usage insight */}
           {aggregation?.rateLimitInfo && aggregation.rateLimitInfo.count > 0 && (
             <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-4">
               <Zap className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />

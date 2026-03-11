@@ -109,7 +109,6 @@ export function WeekSelector({ currentWeek, weeks, onWeekChange }: WeekSelectorP
 
         <div className="min-w-[160px] text-center">
           <span className="text-sm font-medium">{formatWeekLabel(currentWeek)}</span>
-          <span className="text-xs text-muted-foreground ml-1.5">({currentWeek})</span>
         </div>
 
         <Button
@@ -158,20 +157,6 @@ export function WeekSelector({ currentWeek, weeks, onWeekChange }: WeekSelectorP
               />
             );
           })}
-        </div>
-      )}
-
-      {/* Compact legend */}
-      {weeks.length > 0 && (
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/60" />
-            Reflected
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full border border-muted-foreground/40" />
-            Sessions only
-          </span>
         </div>
       )}
 
