@@ -78,7 +78,6 @@ Respond with valid JSON only, wrapped in <json>...</json> tags.`;
 export function generateRulesSkillsPrompt(data: {
   recurringFriction: Array<{ category: string; count: number; avg_severity: number; examples: string[] }>;
   effectivePatterns: Array<{ category: string; label: string; frequency: number; avg_confidence: number; descriptions: string[] }>;
-  antiPatterns?: Array<{ name: string; count: number; examples: string[] }>;
   targetTool: string;
 }): string {
   return `Generate actionable artifacts from these recurring patterns.
@@ -90,8 +89,6 @@ ${JSON.stringify(data.recurringFriction, null, 2)}
 
 EFFECTIVE PATTERNS (2+ occurrences):
 ${JSON.stringify(data.effectivePatterns, null, 2)}
-
-${data.antiPatterns ? `PROMPT ANTI-PATTERNS:\n${JSON.stringify(data.antiPatterns, null, 2)}` : ''}
 
 Respond with this JSON format:
 {
