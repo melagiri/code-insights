@@ -142,9 +142,28 @@ export function formatAgentRules(sessions: SessionRow[], insights: InsightRow[])
 
   const pqInsights = byType.get('prompt_quality');
   if (pqInsights && pqInsights.length > 0) {
-    const antiPatternLines: string[] = [];
+    const avoidLines: string[] = [];
     for (const insight of pqInsights) {
       const meta = parseMetadata(insight.metadata);
+
+      // New schema: read deficit findings
+      const findings = meta.findings as Array<{
+        category?: string;
+        type?: string;
+        description?: string;
+        suggested_improvement?: string;
+      }> | undefined;
+
+      if (findings && Array.isArray(findings)) {
+        for (const f of findings.filter(f => f.type === 'deficit')) {
+          const category = f.category ? ` [${f.category}]` : '';
+          const fix = f.suggested_improvement ? `. Instead: ${f.suggested_improvement}` : '';
+          avoidLines.push(`- AVOID: ${f.description ?? 'Prompting issue detected'}${category}${fix}`);
+        }
+        continue;
+      }
+
+      // Legacy schema: read antiPatterns
       const antiPatterns = meta.antiPatterns as Array<{
         name?: string;
         description?: string;
@@ -154,14 +173,14 @@ export function formatAgentRules(sessions: SessionRow[], insights: InsightRow[])
         for (const pattern of antiPatterns) {
           const desc = pattern.description ? `: ${pattern.description}` : '';
           const fix = pattern.fix ? `. Instead: ${pattern.fix}` : '';
-          antiPatternLines.push(`- AVOID ${pattern.name ?? 'unknown pattern'}${desc}${fix}`);
+          avoidLines.push(`- AVOID ${pattern.name ?? 'unknown pattern'}${desc}${fix}`);
         }
       }
     }
-    if (antiPatternLines.length > 0) {
+    if (avoidLines.length > 0) {
       lines.push('## Prompt Patterns to Avoid');
       lines.push('');
-      lines.push(...antiPatternLines);
+      lines.push(...avoidLines);
       lines.push('');
     }
   }

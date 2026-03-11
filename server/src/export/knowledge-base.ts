@@ -137,11 +137,49 @@ function renderTechniques(insights: InsightRow[], lines: string[]) {
 function renderPromptQuality(insight: InsightRow, lines: string[]) {
   const meta = parseMetadata(insight.metadata);
   lines.push('### Prompt Quality');
-  const score = meta.efficiencyScore as number | undefined;
-  const reduction = meta.potentialMessageReduction as number | undefined;
-  if (score !== undefined) lines.push(`**Efficiency:** ${score}/100`);
-  if (reduction !== undefined) lines.push(`**Potential Savings:** ${reduction} fewer messages`);
 
+  // Dual-read: new schema uses efficiency_score; legacy uses efficiencyScore
+  const score = (meta.efficiency_score ?? meta.efficiencyScore) as number | undefined;
+  const overhead = (meta.message_overhead ?? meta.potentialMessageReduction) as number | undefined;
+  if (score !== undefined) lines.push(`**Efficiency:** ${score}/100`);
+  if (overhead !== undefined && overhead > 0) lines.push(`**Potential Savings:** ${overhead} fewer messages`);
+
+  // New schema: categorized findings
+  const findings = meta.findings as Array<{
+    category?: string;
+    type?: string;
+    description?: string;
+    impact?: string;
+    suggested_improvement?: string;
+  }> | undefined;
+
+  if (findings && findings.length > 0) {
+    const deficits = findings.filter(f => f.type === 'deficit');
+    const strengths = findings.filter(f => f.type === 'strength');
+
+    if (deficits.length > 0) {
+      lines.push('');
+      lines.push('**Prompting Issues:**');
+      for (const f of deficits) {
+        const category = f.category ? ` [${f.category}]` : '';
+        const improvement = f.suggested_improvement ? ` — Fix: ${f.suggested_improvement}` : '';
+        lines.push(`- ${f.description ?? 'Issue detected'}${category}${improvement}`);
+      }
+    }
+
+    if (strengths.length > 0) {
+      lines.push('');
+      lines.push('**Prompting Strengths:**');
+      for (const f of strengths) {
+        const category = f.category ? ` [${f.category}]` : '';
+        lines.push(`- ${f.description ?? 'Strength observed'}${category}`);
+      }
+    }
+
+    return;
+  }
+
+  // Legacy schema: antiPatterns and wastedTurns
   const antiPatterns = meta.antiPatterns as Array<{
     name?: string;
     count?: number;
