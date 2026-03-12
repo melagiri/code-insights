@@ -224,26 +224,11 @@ app.post('/backfill', async (c) => {
         }
       }
 
-      // Only load first 20 and last 20 messages for facet extraction
-      const firstMessages = db.prepare(
+      // Load all messages for full-context facet extraction
+      const messages = db.prepare(
         `SELECT id, session_id, type, content, thinking, tool_calls, tool_results, usage, timestamp, parent_id
-         FROM messages WHERE session_id = ? ORDER BY timestamp ASC LIMIT 20`
+         FROM messages WHERE session_id = ? ORDER BY timestamp ASC`
       ).all(sessionId) as SQLiteMessageRow[];
-
-      const lastMessages = db.prepare(
-        `SELECT id, session_id, type, content, thinking, tool_calls, tool_results, usage, timestamp, parent_id
-         FROM messages WHERE session_id = ? ORDER BY timestamp DESC LIMIT 20`
-      ).all(sessionId) as SQLiteMessageRow[];
-
-      // Merge and deduplicate (for sessions with <= 40 messages, some overlap)
-      const seenIds = new Set<string>();
-      const messages: SQLiteMessageRow[] = [];
-      for (const msg of [...firstMessages, ...lastMessages.reverse()]) {
-        if (!seenIds.has(msg.id)) {
-          seenIds.add(msg.id);
-          messages.push(msg);
-        }
-      }
 
       const result = await extractFacetsOnly(session, messages, { signal: abortSignal });
       if (result.success) {

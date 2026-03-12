@@ -169,17 +169,21 @@ export async function analyzeSession(
 
       analysisResponse = mergeAnalysisResponses(chunkResponses);
 
-      // Chunked sessions: extract facets separately using lightweight prompt
+      // Chunked sessions: extract facets separately using dedicated facet prompt
       // (facets are holistic — can't be merged across chunks)
       if (!analysisResponse.facets) {
         try {
-          const firstMsgs = formatMessagesForAnalysis(messages.slice(0, 20));
-          const lastMsgs = formatMessagesForAnalysis(messages.slice(-20));
+          // Use full conversation for best quality; truncate here if exceeding token limits
+          let facetMessages = formatMessagesForAnalysis(messages);
+          const facetTokens = client.estimateTokens(facetMessages);
+          if (facetTokens > MAX_INPUT_TOKENS) {
+            const targetLength = Math.floor((MAX_INPUT_TOKENS / facetTokens) * facetMessages.length * 0.8);
+            facetMessages = facetMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
+          }
           const facetPrompt = generateFacetOnlyPrompt(
             session.project_name,
             session.summary,
-            firstMsgs,
-            lastMsgs
+            facetMessages
           );
 
           const facetResponse = await client.chat([
@@ -877,7 +881,8 @@ function saveFacetsToDb(
 
 /**
  * Extract facets only for a session that already has insights (backfill).
- * Uses lightweight prompt with summary + first/last 20 messages.
+ * Uses the full conversation transcript for accurate friction attribution.
+ * Falls back to truncation for sessions exceeding token limits.
  */
 export async function extractFacetsOnly(
   session: SessionData,
@@ -894,13 +899,19 @@ export async function extractFacetsOnly(
 
   try {
     const client = createLLMClient();
-    const firstMsgs = formatMessagesForAnalysis(messages.slice(0, 20));
-    const lastMsgs = formatMessagesForAnalysis(messages.slice(-20));
+    let formattedMessages = formatMessagesForAnalysis(messages);
+
+    // Truncate if conversation exceeds token limits (same pattern as PQ analysis)
+    const estimatedTokens = client.estimateTokens(formattedMessages);
+    if (estimatedTokens > MAX_INPUT_TOKENS) {
+      const targetLength = Math.floor((MAX_INPUT_TOKENS / estimatedTokens) * formattedMessages.length * 0.8);
+      formattedMessages = formattedMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
+    }
+
     const prompt = generateFacetOnlyPrompt(
       session.project_name,
       session.summary,
-      firstMsgs,
-      lastMsgs
+      formattedMessages
     );
 
     const response = await client.chat([
