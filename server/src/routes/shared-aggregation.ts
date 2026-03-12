@@ -4,6 +4,8 @@
 import { getDb } from '@code-insights/cli/db/client';
 import { normalizeFrictionCategory } from '../llm/friction-normalize.js';
 import { normalizePatternCategory, getPatternCategoryLabel } from '../llm/pattern-normalize.js';
+import { normalizePromptQualityCategory, PQ_CATEGORY_LABELS } from '../llm/prompt-quality-normalize.js';
+import { CANONICAL_PQ_STRENGTH_CATEGORIES } from '../llm/prompts.js';
 
 // ISO week regex: matches YYYY-WNN format (e.g., 2026-W10)
 const ISO_WEEK_RE = /^(\d{4})-W(\d{2})$/;
@@ -121,6 +123,13 @@ export interface AggregatedEffectivePattern {
   drivers: Record<string, number>;  // driver -> count breakdown (user-driven, ai-driven, collaborative)
 }
 
+export interface AggregatedPQCategory {
+  category: string;
+  label: string;
+  count: number;
+  sessionsAffected: number;
+}
+
 export interface RateLimitInfo {
   count: number;
   sessionsAffected: number;
@@ -139,6 +148,8 @@ export interface AggregatedData {
   rateLimitInfo: RateLimitInfo | null;
   streak: number;            // consecutive days with at least one session (ignores period filter)
   sourceToolCount: number;   // distinct AI tools used within the scope
+  pqDeficits: AggregatedPQCategory[];
+  pqStrengths: AggregatedPQCategory[];
 }
 
 /**
@@ -393,6 +404,8 @@ export function getAggregatedData(
     }
   }
 
+  const { pqDeficits, pqStrengths } = aggregatePQFindings(db, where, params);
+
   return {
     frictionCategories: mergedFriction,
     effectivePatterns,
@@ -405,5 +418,64 @@ export function getAggregatedData(
     rateLimitInfo,
     streak,
     sourceToolCount: sourceToolRow.count,
+    pqDeficits,
+    pqStrengths,
   };
+}
+
+/**
+ * Aggregate prompt quality findings from the insights table for the given scope.
+ * Returns deficits and strengths as separate arrays, pre-filtered to count >= 2.
+ * Count is session-level (unique session IDs), not finding-level — more honest signal.
+ *
+ * Uses the same where/params scope as getAggregatedData so period/project/source filters apply.
+ */
+export function aggregatePQFindings(
+  db: ReturnType<typeof getDb>,
+  where: string,
+  params: (string | number)[]
+): { pqDeficits: AggregatedPQCategory[]; pqStrengths: AggregatedPQCategory[] } {
+  // where may be '' (empty) in tests or a full WHERE clause.
+  // We always need a condition on i.type, so use AND if where is present, WHERE otherwise.
+  const hasWhere = where.length > 0;
+  const typeCondition = hasWhere ? 'AND i.type = \'prompt_quality\'' : 'WHERE i.type = \'prompt_quality\'';
+
+  const rows = db.prepare(`
+    SELECT i.metadata, i.session_id
+    FROM insights i
+    JOIN sessions s ON i.session_id = s.id
+    ${where}
+    ${typeCondition}
+  `).all(...params) as Array<{ metadata: string; session_id: string }>;
+
+  const deficitCounts = new Map<string, Set<string>>();
+  const strengthCounts = new Map<string, Set<string>>();
+  const strengthSet = new Set<string>(CANONICAL_PQ_STRENGTH_CATEGORIES);
+
+  for (const row of rows) {
+    let metadata: Record<string, unknown>;
+    try { metadata = JSON.parse(row.metadata); } catch { continue; }
+    const findings = metadata.findings;
+    if (!Array.isArray(findings)) continue;
+    for (const finding of findings) {
+      if (typeof finding?.category !== 'string') continue;
+      const normalized = normalizePromptQualityCategory(finding.category);
+      const bucket = strengthSet.has(normalized) ? strengthCounts : deficitCounts;
+      if (!bucket.has(normalized)) bucket.set(normalized, new Set());
+      bucket.get(normalized)!.add(row.session_id);
+    }
+  }
+
+  const toSorted = (map: Map<string, Set<string>>): AggregatedPQCategory[] =>
+    [...map.entries()]
+      .map(([category, sessions]) => ({
+        category,
+        label: PQ_CATEGORY_LABELS[category] ?? category,
+        count: sessions.size,
+        sessionsAffected: sessions.size,
+      }))
+      .filter(e => e.count >= 2)
+      .sort((a, b) => b.count - a.count);
+
+  return { pqDeficits: toSorted(deficitCounts), pqStrengths: toSorted(strengthCounts) };
 }
