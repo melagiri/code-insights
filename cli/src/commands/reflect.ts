@@ -128,7 +128,28 @@ async function backfillBatch(
   total: number,
   signal?: AbortSignal
 ): Promise<{ completed: number; failed: number }> {
-  const res = await fetch(`${baseUrl}/api/facets/backfill`, {
+  return backfillBatchToEndpoint(baseUrl, '/api/facets/backfill', sessionIds, offset, total, signal);
+}
+
+async function backfillPqBatch(
+  baseUrl: string,
+  sessionIds: string[],
+  offset: number,
+  total: number,
+  signal?: AbortSignal
+): Promise<{ completed: number; failed: number }> {
+  return backfillBatchToEndpoint(baseUrl, '/api/facets/backfill-pq', sessionIds, offset, total, signal);
+}
+
+async function backfillBatchToEndpoint(
+  baseUrl: string,
+  endpoint: string,
+  sessionIds: string[],
+  offset: number,
+  total: number,
+  signal?: AbortSignal
+): Promise<{ completed: number; failed: number }> {
+  const res = await fetch(`${baseUrl}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // force=true so outdated sessions (which already have facets) are re-processed.
@@ -422,6 +443,94 @@ async function backfillAction(options: {
   console.log();
 }
 
+async function backfillPqAction(options: {
+  period?: string;
+  project?: string;
+  dryRun?: boolean;
+}): Promise<void> {
+  const baseUrl = getBaseUrl();
+  await checkServer(baseUrl);
+  await checkLlmConfigured(baseUrl);
+
+  const params = new URLSearchParams();
+  params.set('period', options.period || 'all');
+  if (options.project) params.set('project', options.project);
+
+  const missingRes = await fetch(`${baseUrl}/api/facets/missing-pq?${params.toString()}`);
+  if (!missingRes.ok) {
+    const text = await missingRes.text().catch(() => missingRes.statusText);
+    console.log(chalk.red(`  Error: ${text}`));
+    process.exit(1);
+  }
+
+  const { sessionIds: missingIds, count: missingCount } = await missingRes.json() as { sessionIds: string[]; count: number };
+
+  const outdatedRes = await fetch(`${baseUrl}/api/facets/outdated-pq?${params.toString()}`);
+  if (!outdatedRes.ok) {
+    const text = await outdatedRes.text().catch(() => outdatedRes.statusText);
+    console.log(chalk.red(`  Error fetching outdated PQ sessions: ${text}`));
+    process.exit(1);
+  }
+
+  const { sessionIds: outdatedIds, count: outdatedCount } = await outdatedRes.json() as { sessionIds: string[]; count: number };
+
+  // Merge and deduplicate — a session could appear in both lists if it has an outdated PQ row
+  // and also got queued via missing detection (shouldn't happen but defensive merge).
+  const mergedSet = new Set([...missingIds, ...outdatedIds]);
+  const sessionIds = Array.from(mergedSet);
+  const count = sessionIds.length;
+
+  console.log();
+  if (count === 0) {
+    console.log(chalk.green('  All sessions already have up-to-date PQ analysis.'));
+    console.log();
+    return;
+  }
+
+  if (missingCount > 0 && outdatedCount > 0) {
+    console.log(chalk.cyan(`  Found ${missingCount} session${missingCount !== 1 ? 's' : ''} missing PQ analysis and ${outdatedCount} with outdated analysis. Processing ${count} total.`));
+  } else if (missingCount > 0) {
+    console.log(chalk.cyan(`  Found ${missingCount} session${missingCount !== 1 ? 's' : ''} missing PQ analysis.`));
+  } else {
+    console.log(chalk.cyan(`  Found ${outdatedCount} session${outdatedCount !== 1 ? 's' : ''} with outdated PQ analysis.`));
+  }
+  console.log(chalk.dim(`  This will make ${count} LLM call${count !== 1 ? 's' : ''}.`));
+
+  if (options.dryRun) {
+    console.log(chalk.dim('  (dry run — no changes made)'));
+    console.log();
+    return;
+  }
+
+  // Confirm before proceeding — each call costs tokens
+  const confirmed = await confirmPrompt('  Continue?');
+  if (!confirmed) {
+    console.log(chalk.dim('  Aborted.'));
+    console.log();
+    return;
+  }
+
+  console.log();
+
+  let totalCompleted = 0;
+  let totalFailed = 0;
+
+  for (let i = 0; i < sessionIds.length; i += BACKFILL_BATCH_SIZE) {
+    const batch = sessionIds.slice(i, i + BACKFILL_BATCH_SIZE);
+    const { completed, failed } = await backfillPqBatch(baseUrl, batch, i, sessionIds.length);
+    totalCompleted += completed;
+    totalFailed += failed;
+  }
+
+  console.log();
+  console.log(chalk.bold('  Summary'));
+  console.log(chalk.green(`    ${totalCompleted} sessions analyzed`));
+  if (totalFailed > 0) {
+    console.log(chalk.yellow(`    ${totalFailed} sessions failed`));
+  }
+  console.log();
+}
+
 // ---------------------------------------------------------------------------
 // Command registration
 // ---------------------------------------------------------------------------
@@ -431,7 +540,13 @@ const backfillCommand = new Command('backfill')
   .option('-p, --period <period>', 'Time range: 7d, 30d, 90d, all', 'all')
   .option('--project <name>', 'Scope to a single project')
   .option('--dry-run', 'Show count without backfilling')
-  .action(backfillAction);
+  .option('--prompt-quality', 'Run prompt quality analysis instead of facet extraction')
+  .action((options) => {
+    if (options.promptQuality) {
+      return backfillPqAction(options);
+    }
+    return backfillAction(options);
+  });
 
 export const reflectCommand = new Command('reflect')
   .description('Generate cross-session analysis (friction, rules, working style)')
