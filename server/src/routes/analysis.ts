@@ -9,6 +9,15 @@ import type { SQLiteMessageRow, SessionData } from '../llm/analysis.js';
 
 const app = new Hono();
 
+/** Auto-apply an LLM-generated summary title as the session's generated_title. */
+function applyGeneratedTitle(sessionId: string, insights: Array<{ type: string; title?: string }>) {
+  const summaryInsight = insights.find(i => i.type === 'summary');
+  if (!summaryInsight?.title) return;
+  const db = getDb();
+  db.prepare('UPDATE sessions SET generated_title = ? WHERE id = ? AND deleted_at IS NULL')
+    .run(summaryInsight.title.slice(0, 120), sessionId);
+}
+
 // POST /api/analysis/session
 // Body: { sessionId: string }
 // Fetches session + messages from SQLite, runs LLM analysis, saves insights, returns results.
@@ -66,18 +75,7 @@ app.post('/session', async (c) => {
       type: 'session',
       count: result.insights.length,
     });
-
-    // Auto-apply the LLM-suggested title if no custom_title already set
-    const summaryInsight = result.insights.find(i => i.type === 'summary');
-    if (summaryInsight?.title) {
-      const existing = db.prepare(
-        'SELECT custom_title FROM sessions WHERE id = ? AND deleted_at IS NULL'
-      ).get(body.sessionId) as { custom_title: string | null } | undefined;
-      if (existing && !existing.custom_title) {
-        db.prepare('UPDATE sessions SET custom_title = ? WHERE id = ?')
-          .run(summaryInsight.title, body.sessionId);
-      }
-    }
+    applyGeneratedTitle(body.sessionId, result.insights);
   }
   return c.json(result, result.success ? 200 : 422);
 });
@@ -167,19 +165,7 @@ app.get('/session/stream', async (c) => {
           type: 'session',
           count: result.insights.length,
         });
-        const summaryInsight = result.insights.find(i => i.type === 'summary');
-
-        // Auto-apply the LLM-suggested title (from summary insight) as custom_title.
-        // Only applies if the session doesn't already have a user-set custom_title.
-        if (summaryInsight?.title) {
-          const existing = db.prepare(
-            'SELECT custom_title FROM sessions WHERE id = ? AND deleted_at IS NULL'
-          ).get(sessionId) as { custom_title: string | null } | undefined;
-          if (existing && !existing.custom_title) {
-            db.prepare('UPDATE sessions SET custom_title = ? WHERE id = ?')
-              .run(summaryInsight.title, sessionId);
-          }
-        }
+        applyGeneratedTitle(sessionId, result.insights);
 
         await stream.writeSSE({
           event: 'complete',
@@ -351,7 +337,6 @@ app.get('/prompt-quality/stream', async (c) => {
             success: true,
             insightCount: result.insights.length,
             tokenUsage: result.usage,
-            suggestedTitle: null,
           }),
         });
       }

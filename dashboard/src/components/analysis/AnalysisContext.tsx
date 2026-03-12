@@ -175,6 +175,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
               queryClient.invalidateQueries({ queryKey: ['insights'] });
               queryClient.invalidateQueries({ queryKey: ['session', session.id] });
+              queryClient.invalidateQueries({ queryKey: ['sessions'] });
 
               const successMsg = `${result.insightCount} insight${result.insightCount !== 1 ? 's' : ''} saved for "${sessionTitle}"`;
 
