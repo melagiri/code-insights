@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "761c8a0d2928",
+  "strategy": "manual-commit",
+  "branch": "fix/backfill-full-conversation",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/llm/analysis.ts",
+    "server/src/llm/prompts.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/76/1c8a0d2928/0/metadata.json",
+      "transcript": "/76/1c8a0d2928/0/full.jsonl",
+      "context": "/76/1c8a0d2928/0/context.md",
+      "content_hash": "/76/1c8a0d2928/0/content_hash.txt",
+      "prompt": "/76/1c8a0d2928/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 257,
+    "cache_creation_tokens": 194450,
+    "cache_read_tokens": 4979047,
+    "output_tokens": 33410,
+    "api_call_count": 58
+  }
+}

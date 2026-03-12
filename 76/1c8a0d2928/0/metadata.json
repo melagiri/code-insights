@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "761c8a0d2928",
+  "session_id": "2cca5b62-a857-43cb-9690-a9834087a141",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-12T02:30:10.130086Z",
+  "branch": "fix/backfill-full-conversation",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "server/src/llm/analysis.ts",
+    "server/src/llm/prompts.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d6eb444e91ba",
+  "token_usage": {
+    "input_tokens": 257,
+    "cache_creation_tokens": 194450,
+    "cache_read_tokens": 4979047,
+    "output_tokens": 33410,
+    "api_call_count": 58
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-12T02:30:09.433506Z",
+    "agent_lines": 22,
+    "human_added": 3,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 29,
+    "agent_percentage": 75.86206896551724
+  }
+}
