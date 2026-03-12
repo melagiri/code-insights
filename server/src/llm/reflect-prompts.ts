@@ -18,6 +18,8 @@ RULES:
 - Do not give advice — that's for the Rules & Skills section.
 - Be specific: "wrong-approach appeared 7 times with high severity" not "there were some issues"
 - Keep the narrative under 500 words.
+- Where PQ deficit signals corroborate friction categories, note the reinforcing evidence briefly.
+- PQ signals are supplementary context, not primary evidence. Never dedicate a full pattern to PQ alone — mention PQ only within friction or wins paragraphs.
 
 Respond with valid JSON only, wrapped in <json>...</json> tags.`;
 
@@ -26,7 +28,24 @@ export function generateFrictionWinsPrompt(data: {
   effectivePatterns: Array<{ category: string; label: string; frequency: number; avg_confidence: number; descriptions: string[] }>;
   totalSessions: number;
   period: string;
+  pqSignals?: {
+    deficits: Array<{ category: string; count: number }>;
+    strengths: Array<{ category: string; count: number }>;
+  };
 }): string {
+  const hasPQData = data.pqSignals?.deficits.length || data.pqSignals?.strengths.length;
+  const pqSection = hasPQData
+    ? `
+PROMPT QUALITY SIGNALS (supplementary):
+
+Deficits:
+${((data.pqSignals?.deficits ?? []).map(d => `  ${d.category}: ${d.count}`).join('\n') || '  (none above threshold)')}
+
+Strengths:
+${((data.pqSignals?.strengths ?? []).map(s => `  ${s.category}: ${s.count}`).join('\n') || '  (none above threshold)')}
+`
+    : '';
+
   return `Analyze these cross-session patterns from ${data.totalSessions} sessions over ${data.period}.
 
 FRICTION CATEGORIES (ranked by frequency × severity):
@@ -34,7 +53,7 @@ ${JSON.stringify(data.frictionCategories.slice(0, 15), null, 2)}
 
 EFFECTIVE PATTERNS (ranked by frequency, grouped by category):
 ${JSON.stringify(data.effectivePatterns.slice(0, 10), null, 2)}
-
+${pqSection}
 Respond with this JSON format:
 {
   "narrative": "Your 300-500 word analysis of the most significant patterns",

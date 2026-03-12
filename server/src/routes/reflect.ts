@@ -116,6 +116,9 @@ app.post('/generate', async (c) => {
             effectivePatterns: aggregated.effectivePatterns,
             totalSessions: aggregated.totalSessions,
             period,
+            pqSignals: (aggregated.pqDeficits.length || aggregated.pqStrengths.length)
+              ? { deficits: aggregated.pqDeficits, strengths: aggregated.pqStrengths }
+              : undefined,
           });
           const response = await client.chat([
             { role: 'system', content: FRICTION_WINS_SYSTEM_PROMPT },
@@ -127,6 +130,8 @@ app.post('/generate', async (c) => {
             ...(parsed ?? {}),
             frictionCategories: aggregated.frictionCategories,
             effectivePatterns: aggregated.effectivePatterns,
+            pqDeficits: aggregated.pqDeficits,
+            pqStrengths: aggregated.pqStrengths,
             generatedAt: new Date().toISOString(),
           };
         } else if (section === 'rules-skills') {
