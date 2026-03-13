@@ -63,6 +63,9 @@ export interface Session {
   models_used: string | null;   // JSON-encoded string array from SQLite
   primary_model: string | null;
   usage_source: string | null;
+  compact_count: number;
+  auto_compact_count: number;
+  slash_commands: string;       // JSON-encoded string array from SQLite
 }
 
 export type InsightType = 'summary' | 'decision' | 'learning' | 'technique' | 'prompt_quality';
