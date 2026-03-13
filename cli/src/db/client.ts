@@ -2,12 +2,13 @@ import Database from 'better-sqlite3';
 import { join } from 'path';
 import { homedir } from 'os';
 import { mkdirSync, existsSync } from 'fs';
-import { runMigrations } from './migrate.js';
+import { runMigrations, type MigrationResult } from './migrate.js';
 
 const DB_DIR = join(homedir(), '.code-insights');
 const DB_PATH = join(DB_DIR, 'data.db');
 
 let _db: Database.Database | null = null;
+let _migrationResult: MigrationResult | null = null;
 
 /**
  * Get (or initialize) the singleton SQLite database instance.
@@ -30,7 +31,7 @@ export function getDb(): Database.Database {
   // Foreign key enforcement
   db.pragma('foreign_keys = ON');
 
-  runMigrations(db);
+  _migrationResult = runMigrations(db);
 
   _db = db;
 
@@ -45,6 +46,15 @@ export function getDb(): Database.Database {
 }
 
 /**
+ * Get the migration result from the last getDb() call.
+ * Returns null if the DB has not been initialized yet.
+ * Used by sync.ts to detect V6 migration and trigger auto force-sync.
+ */
+export function getMigrationResult(): MigrationResult | null {
+  return _migrationResult;
+}
+
+/**
  * Close the database connection. Used in tests and graceful shutdown.
  * Also called by the process 'exit' handler to ensure WAL checkpointing.
  */
@@ -53,6 +63,7 @@ export function closeDb(): void {
     _db.close();
     _db = null;
   }
+  _migrationResult = null;
 }
 
 /**
