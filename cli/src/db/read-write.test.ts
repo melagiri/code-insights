@@ -811,4 +811,70 @@ describe('Database read/write operations', () => {
       expect(getSessionCount()).toBe(1);
     });
   });
+
+  // ────────────────────────────────────────────────────
+  // V6 fields: compact_count, auto_compact_count, slash_commands
+  // ────────────────────────────────────────────────────
+
+  describe('V6 compact and slash command fields', () => {
+    it('writes and reads compact_count correctly', () => {
+      const session = makeParsedSession({
+        id: 'sess-v6-compact',
+        compactCount: 3,
+        autoCompactCount: 1,
+        slashCommands: ['/compact', '/compact', '/compact', '/plan'],
+      });
+      insertSessionWithProject(session);
+
+      const row = testDb
+        .prepare('SELECT compact_count, auto_compact_count, slash_commands FROM sessions WHERE id = ?')
+        .get('sess-v6-compact') as { compact_count: number; auto_compact_count: number; slash_commands: string };
+
+      expect(row.compact_count).toBe(3);
+      expect(row.auto_compact_count).toBe(1);
+      const cmds = JSON.parse(row.slash_commands) as string[];
+      expect(cmds).toEqual(['/compact', '/compact', '/compact', '/plan']);
+    });
+
+    it('upserts slash_commands on conflict', () => {
+      const session = makeParsedSession({
+        id: 'sess-v6-upsert',
+        compactCount: 0,
+        slashCommands: [],
+      });
+      insertSessionWithProject(session);
+
+      const updated = makeParsedSession({
+        id: 'sess-v6-upsert',
+        compactCount: 2,
+        slashCommands: ['/compact', '/compact'],
+      });
+      insertSessionWithProject(updated);
+
+      const row = testDb
+        .prepare('SELECT compact_count, slash_commands FROM sessions WHERE id = ?')
+        .get('sess-v6-upsert') as { compact_count: number; slash_commands: string };
+
+      expect(row.compact_count).toBe(2);
+      expect(JSON.parse(row.slash_commands)).toEqual(['/compact', '/compact']);
+    });
+
+    it('defaults to 0 / [] when new fields are not set', () => {
+      const session = makeParsedSession({
+        id: 'sess-v6-defaults',
+        compactCount: 0,
+        autoCompactCount: 0,
+        slashCommands: [],
+      });
+      insertSessionWithProject(session);
+
+      const row = testDb
+        .prepare('SELECT compact_count, auto_compact_count, slash_commands FROM sessions WHERE id = ?')
+        .get('sess-v6-defaults') as { compact_count: number; auto_compact_count: number; slash_commands: string };
+
+      expect(row.compact_count).toBe(0);
+      expect(row.auto_compact_count).toBe(0);
+      expect(JSON.parse(row.slash_commands)).toEqual([]);
+    });
+  });
 });
