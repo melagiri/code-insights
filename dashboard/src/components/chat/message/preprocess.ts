@@ -154,11 +154,11 @@ const COMMAND_NAME_RE = /<command-name>(\/[^<]*)<\/command-name>/;
  * Must be called on RAW content before any preprocessing. Only 'human' messages
  * flow through to UserMarkdown / preprocessUserContent.
  *
- * Detection order mirrors CLI parser (cli/src/parser/jsonl.ts):
+ * Detection order mirrors CLI parser (cli/src/parser/jsonl.ts classifyUserMessage):
  * 1. Auto-compaction continuation messages (context window overflow)
  * 2. Skill load artifacts (protocol noise)
- * 3. Local command output frames (protocol noise)
- * 4. Slash command wrappers (/exit|/quit → hidden; /compact → user-compact; others → slash-command)
+ * 3. Slash command wrappers (/exit|/quit → hidden; /compact → user-compact; others → slash-command)
+ * 4. Local command output frames (protocol noise) — AFTER slash commands, matching CLI order
  * 5. Default → human
  */
 export function classifyUserMessage(content: string): UserMessageClass {
@@ -170,14 +170,12 @@ export function classifyUserMessage(content: string): UserMessageClass {
     return { kind: 'skill-load' };
   }
 
-  if (content.startsWith('<local-command-caveat>') || content.startsWith('<local-command-stdout>')) {
-    return { kind: 'command-frame' };
-  }
-
+  // Slash commands checked BEFORE command-frame, matching CLI parser order.
+  // extractCommandName splits on space to handle args: "/compact focus on auth" → "/compact"
   if (content.includes('<command-name>')) {
     const match = COMMAND_NAME_RE.exec(content);
     if (match) {
-      const cmd = match[1].trim();
+      const cmd = extractCommandName(match[1]);
       if (cmd === '/exit' || cmd === '/quit') {
         return { kind: 'exit-command' };
       }
@@ -188,7 +186,20 @@ export function classifyUserMessage(content: string): UserMessageClass {
     }
   }
 
+  if (content.startsWith('<local-command-caveat>') || content.startsWith('<local-command-stdout>')) {
+    return { kind: 'command-frame' };
+  }
+
   return { kind: 'human' };
+}
+
+/**
+ * Extract the base command name from a command-name tag value.
+ * Handles args: "/compact focus on auth" → "/compact"
+ * Mirrors CLI's extractSlashCommandName() split behavior.
+ */
+function extractCommandName(raw: string): string {
+  return raw.trim().split(' ')[0];
 }
 
 // ─── User content preprocessing ───────────────────────────────────────────────

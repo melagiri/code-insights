@@ -17,7 +17,7 @@ export function ContextBreakDivider({ timestamp }: ContextBreakDividerProps) {
     <div
       role="separator"
       aria-label={`Context compacted at ${formattedTime}. Session continued after context window overflow.`}
-      className="flex items-center gap-3 px-4 py-3 my-2 border-y border-amber-500/20 bg-amber-500/5 transition-colors hover:bg-amber-500/8"
+      className="flex items-center gap-3 px-4 py-3 my-2 border-y border-amber-500/20 bg-amber-500/5 transition-colors hover:bg-amber-500/10"
     >
       <div className="flex-1 border-t border-dashed border-amber-500/30" />
       <div className="flex flex-col items-center gap-0.5 shrink-0">
