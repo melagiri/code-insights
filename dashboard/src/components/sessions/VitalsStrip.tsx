@@ -26,6 +26,20 @@ export function VitalsStrip({ session }: VitalsStripProps) {
   const endedAt = new Date(session.ended_at);
   const modelsUsed = parseJsonField<string[]>(session.models_used, []);
 
+  // Build message sublabel with compact indicators
+  const compactCount = session.compact_count ?? 0;
+  const autoCompactCount = session.auto_compact_count ?? 0;
+  const messageSublabelParts: string[] = [
+    `${session.user_message_count} user \u00B7 ${session.assistant_message_count} asst`,
+  ];
+  if (compactCount > 0) {
+    messageSublabelParts.push(`${compactCount} compact${compactCount > 1 ? 's' : ''}`);
+  }
+  if (autoCompactCount > 0) {
+    messageSublabelParts.push(`${autoCompactCount} ctx overflow${autoCompactCount > 1 ? 's' : ''}`);
+  }
+  const messageSublabel = messageSublabelParts.join(' \u00B7 ');
+
   // Token calculations — fields are independent additive values per Anthropic API convention:
   // input_tokens = non-cached input; cache tokens are separate counts, not subsets of input
   const inputTokens = session.total_input_tokens ?? 0;
@@ -55,7 +69,7 @@ export function VitalsStrip({ session }: VitalsStripProps) {
         <StatCell
           label="Messages"
           value={String(session.message_count)}
-          sublabel={`${session.user_message_count} user \u00B7 ${session.assistant_message_count} asst`}
+          sublabel={messageSublabel}
         />
         <StatCell
           label="Tokens"

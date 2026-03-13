@@ -30,7 +30,8 @@ app.get('/', (c) => {
            claude_version, source_tool, device_id, device_hostname,
            device_platform, synced_at, total_input_tokens, total_output_tokens,
            cache_creation_tokens, cache_read_tokens, estimated_cost_usd,
-           models_used, primary_model, usage_source
+           models_used, primary_model, usage_source,
+           compact_count, auto_compact_count, slash_commands
     FROM sessions
     ${where}
     ORDER BY started_at DESC
@@ -68,7 +69,8 @@ app.get('/:id', (c) => {
            claude_version, source_tool, device_id, device_hostname,
            device_platform, synced_at, total_input_tokens, total_output_tokens,
            cache_creation_tokens, cache_read_tokens, estimated_cost_usd,
-           models_used, primary_model, usage_source
+           models_used, primary_model, usage_source,
+           compact_count, auto_compact_count, slash_commands
     FROM sessions WHERE id = ? AND deleted_at IS NULL
   `).get(c.req.param('id'));
   if (!session) return c.json({ error: 'Not found' }, 404);

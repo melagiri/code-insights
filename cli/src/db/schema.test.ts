@@ -272,4 +272,54 @@ describe('runMigrations', () => {
 
     db.close();
   });
+
+  it('V6 adds compact_count, auto_compact_count, slash_commands columns with defaults', () => {
+    const db = new Database(':memory:');
+    runMigrations(db);
+
+    // Insert a session without specifying the new columns — defaults should apply
+    db.prepare(`
+      INSERT INTO projects (id, name, path, last_activity, session_count)
+      VALUES ('proj-v6', 'v6-proj', '/v6', datetime('now'), 0)
+    `).run();
+    db.prepare(`
+      INSERT INTO sessions (id, project_id, project_name, project_path, started_at, ended_at)
+      VALUES ('sess-v6', 'proj-v6', 'v6-proj', '/v6', datetime('now'), datetime('now'))
+    `).run();
+
+    const row = db.prepare(`
+      SELECT compact_count, auto_compact_count, slash_commands FROM sessions WHERE id = 'sess-v6'
+    `).get() as { compact_count: number; auto_compact_count: number; slash_commands: string };
+
+    expect(row.compact_count).toBe(0);
+    expect(row.auto_compact_count).toBe(0);
+    expect(row.slash_commands).toBe('[]');
+
+    db.close();
+  });
+
+  it('V6 schema version is 6 after migration', () => {
+    const db = new Database(':memory:');
+    runMigrations(db);
+
+    const row = db.prepare('SELECT MAX(version) AS v FROM schema_version').get() as { v: number };
+    expect(row.v).toBe(6);
+
+    db.close();
+  });
+
+  it('runMigrations returns v6Applied=true on fresh database', () => {
+    const db = new Database(':memory:');
+    const result = runMigrations(db);
+    expect(result.v6Applied).toBe(true);
+    db.close();
+  });
+
+  it('runMigrations returns v6Applied=false when already on V6', () => {
+    const db = new Database(':memory:');
+    runMigrations(db);           // first run — applies all migrations
+    const result = runMigrations(db);  // second run — nothing to apply
+    expect(result.v6Applied).toBe(false);
+    db.close();
+  });
 });

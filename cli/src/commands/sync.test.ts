@@ -18,6 +18,7 @@ vi.mock('../utils/config.js', () => ({
 
 vi.mock('../db/client.js', () => ({
   getDb: () => ({}),
+  getMigrationResult: () => ({ v6Applied: false }),
 }));
 
 const insertSessionWithProjectAndReturnIsNew = vi.fn();

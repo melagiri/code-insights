@@ -71,6 +71,9 @@ export interface ParsedSession {
   userMessageCount: number;
   assistantMessageCount: number;
   toolCallCount: number;
+  compactCount: number;
+  autoCompactCount: number;
+  slashCommands: string[];  // All non-exit slash commands used, e.g., ["/compact", "/login", "/plan"]
   customTitle?: string;
   gitBranch: string | null;
   claudeVersion: string | null;

@@ -16,6 +16,109 @@ import type {
 import { generateTitle } from './titles.js';
 import { calculateCost, type UsageEntry } from '../utils/pricing.js';
 
+// ──────────────────────────────────────────────────────
+// Message classification — distinguishes genuine human input from
+// the many non-conversational entry types that appear as type:'user' in JSONL.
+// Tool results make up ~80% of 'user' entries in typical sessions.
+// ──────────────────────────────────────────────────────
+
+export type UserMessageClass =
+  | 'human'            // Genuine human input — counts toward user_message_count
+  | 'tool-result'      // API protocol: tool call response
+  | 'task-notification' // System: agent task callbacks
+  | 'skill-load'       // System: skill/command injection
+  | 'auto-compact'     // Context window overflow: tool-initiated compaction summary
+  | 'user-compact'     // User-initiated /compact command
+  | 'slash-command'    // Any other slash command (caveat/stdout frames are 'command-frame')
+  | 'command-frame'    // Slash command wrapper: <local-command-caveat> or <local-command-stdout>
+  | 'exit-command';    // /exit or /quit — session end signal, excluded from everything
+
+/**
+ * Tier 1 workflow commands: deliberate workflow decisions.
+ * These count as user messages AND are stored in slash_commands[].
+ * All other commands (Tier 2) are stored but NOT counted.
+ * /exit is excluded from both (Tier 3).
+ */
+export const WORKFLOW_COMMANDS = new Set([
+  '/compact', '/clear', '/reset', '/new', '/diff', '/review',
+  '/security-review', '/pr-comments', '/fork', '/resume', '/continue',
+  '/rewind', '/checkpoint', '/export', '/plan', '/model', '/btw',
+  '/add-dir', '/memory', '/init', '/fast', '/context', '/cost',
+  '/rename', '/simplify', '/batch', '/debug', '/loop', '/claude-api',
+]);
+
+/**
+ * Extract the command name from a <command-name>/foo</command-name> XML fragment.
+ * Returns the command string (e.g., "/compact") or null if not found.
+ */
+export function extractSlashCommandName(text: string): string | null {
+  const match = text.match(/<command-name>(\/[^<]+)<\/command-name>/);
+  return match ? match[1].trim().split(' ')[0] : null;  // split to handle "/compact instructions" → "/compact"
+}
+
+/**
+ * Classify a type:'user' JSONL entry to determine if it represents genuine
+ * human input or a system/protocol artifact. Order matters — most specific first.
+ */
+export function classifyUserMessage(msg: ClaudeMessage): UserMessageClass {
+  const content = msg.message.content;
+
+  // 1. Array content with any tool_result block → API protocol, not human input
+  if (Array.isArray(content)) {
+    if (content.some(part => part.type === 'tool_result')) {
+      return 'tool-result';
+    }
+  }
+
+  // For remaining checks, work with text content
+  const text = typeof content === 'string'
+    ? content
+    : content.filter(p => p.type === 'text' && p.text).map(p => p.text).join('');
+
+  // 2. Task/agent notifications
+  if (text.startsWith('<task-notification>')) {
+    return 'task-notification';
+  }
+
+  // 3. Skill loads (injected by Claude Code skill system)
+  if (text.startsWith('Base directory for this skill:')) {
+    return 'skill-load';
+  }
+
+  // 4. Auto-compact summary (context window overflow — tool-initiated)
+  if (text.startsWith('This session is being continued')) {
+    return 'auto-compact';
+  }
+
+  // 5. User /compact command (Tier 1 workflow command, tracked separately)
+  // Use extractSlashCommandName to handle "/compact focus on auth" → "/compact"
+  if (extractSlashCommandName(text) === '/compact') {
+    return 'user-compact';
+  }
+
+  // 6. Exit/quit commands — excluded from all counts and slash_commands[]
+  const cmdName = extractSlashCommandName(text);
+  if (cmdName === '/exit' || cmdName === '/quit') {
+    return 'exit-command';
+  }
+
+  // 7. Any other slash command (Tier 1 or Tier 2 — differentiated at count time)
+  if (cmdName !== null) {
+    return 'slash-command';
+  }
+
+  // 8. Command frame wrappers (caveat/stdout) — always excluded
+  if (
+    text.startsWith('<local-command-caveat>') ||
+    text.startsWith('<local-command-stdout>')
+  ) {
+    return 'command-frame';
+  }
+
+  // 9. Everything else is genuine human input
+  return 'human';
+}
+
 /**
  * Parse a single JSONL file and extract session data
  */
@@ -81,6 +184,9 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
   let toolCallCount = 0;
   let userMessageCount = 0;
   let assistantMessageCount = 0;
+  let compactCount = 0;
+  let autoCompactCount = 0;
+  const slashCommands: string[] = [];
 
   for (const msg of messages) {
     // Skip meta messages
@@ -91,7 +197,37 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
       parsedMessages.push(parsed);
       toolCallCount += parsed.toolCalls.length;
 
-      if (msg.type === 'user') userMessageCount++;
+      if (msg.type === 'user') {
+        const msgClass = classifyUserMessage(msg);
+
+        if (msgClass === 'human') {
+          userMessageCount++;
+        } else if (msgClass === 'user-compact') {
+          // /compact is Tier 1: counts as user message + tracked separately
+          userMessageCount++;
+          compactCount++;
+          slashCommands.push('/compact');
+        } else if (msgClass === 'slash-command') {
+          // Extract command name and apply tier logic
+          const cmdName = extractSlashCommandName(
+            typeof msg.message.content === 'string'
+              ? msg.message.content
+              : msg.message.content.filter(p => p.type === 'text' && p.text).map(p => p.text).join('')
+          );
+          if (cmdName) {
+            // Store all non-exit slash commands regardless of tier
+            slashCommands.push(cmdName);
+            // Only Tier 1 counts as user message
+            if (WORKFLOW_COMMANDS.has(cmdName)) {
+              userMessageCount++;
+            }
+          }
+        } else if (msgClass === 'auto-compact') {
+          autoCompactCount++;
+        }
+        // tool-result, task-notification, skill-load, command-frame, exit-command: excluded from all
+      }
+
       if (msg.type === 'assistant') assistantMessageCount++;
     }
   }
@@ -148,6 +284,7 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
   const endedAt = new Date(Math.max(...timestamps));
 
   // Build session object
+  // messageCount = conversational turns (user + assistant), not raw JSONL entry count
   const session: ParsedSession = {
     id: sessionId,
     projectPath,
@@ -158,10 +295,13 @@ function buildSession(filePath: string, entries: JsonlEntry[]): ParsedSession | 
     sessionCharacter: null,
     startedAt,
     endedAt,
-    messageCount: parsedMessages.length,
+    messageCount: userMessageCount + assistantMessageCount,
     userMessageCount,
     assistantMessageCount,
     toolCallCount,
+    compactCount,
+    autoCompactCount,
+    slashCommands,
     gitBranch,
     claudeVersion,
     messages: parsedMessages,

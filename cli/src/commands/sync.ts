@@ -5,7 +5,7 @@ import ora from 'ora';
 import { loadSyncState, saveSyncState } from '../utils/config.js';
 import { trackEvent, identifyUser, captureError, classifyError } from '../utils/telemetry.js';
 import { insertSessionWithProjectAndReturnIsNew, insertMessages, recalculateUsageStats } from '../db/write.js';
-import { getDb } from '../db/client.js';
+import { getDb, getMigrationResult } from '../db/client.js';
 import { getAllProviders, getProvider } from '../providers/registry.js';
 import { setProviderVerbose } from '../providers/context.js';
 import type { SessionProvider } from '../providers/types.js';
@@ -61,6 +61,23 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   } catch (error) {
     spinner.fail('Failed to initialize database');
     throw new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  // Check if V6 migration was just applied — triggers auto force-sync for interactive sessions
+  const migrationResult = getMigrationResult();
+  const v6JustApplied = migrationResult?.v6Applied === true;
+
+  if (v6JustApplied && options.quiet) {
+    // Hook-triggered sync: defer re-parse to avoid adding 30-60s to a sub-second operation
+    process.stderr.write("Message counts updated in v6. Run 'code-insights sync --force' to recalculate.\n");
+  }
+
+  // Auto force-sync on V6 migration (interactive only, not quiet/hook mode)
+  if (v6JustApplied && !options.quiet && !options.force && !options.dryRun) {
+    log(chalk.cyan('\n  V6 migration: recalculating message counts across all sessions...'));
+    log(chalk.dim('  Fixed: user messages were previously overcounted by including tool results and system messages'));
+    // Trigger force re-parse by treating this as a force sync for state reset
+    options = { ...options, force: true };
   }
 
   // Dry-run banner
@@ -242,6 +259,18 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
         console.error(chalk.red(`  ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
     }
+  }
+
+  // After V6 auto force-sync: all re-synced sessions have updated message counts.
+  // Any existing insights were generated from the old (inflated) counts — show advisory.
+  if (v6JustApplied && !options.quiet && totalSyncedCount > 0) {
+    log(chalk.dim(`\n  i ${totalSyncedCount} sessions have updated message counts. Existing insights may reflect old data.`));
+    log(chalk.dim(`    Run 'code-insights reflect backfill' to regenerate (uses LLM API credits).`));
+
+    trackEvent('migration_v6_resync', {
+      sessions_recalculated: totalSyncedCount,
+      insight_count: totalSyncedCount,
+    });
   }
 
   // Save sync state

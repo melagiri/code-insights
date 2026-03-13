@@ -492,6 +492,9 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
       userMessageCount: userMessages.length,
       assistantMessageCount: assistantMessages.length,
       toolCallCount,
+      compactCount: 0,
+      autoCompactCount: 0,
+      slashCommands: [],
       gitBranch: null, // Not available from Cursor's DB
       claudeVersion: null,
       sourceTool: 'cursor',

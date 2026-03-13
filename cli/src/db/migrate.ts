@@ -1,6 +1,10 @@
 import type Database from 'better-sqlite3';
 import { SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './schema.js';
 
+export interface MigrationResult {
+  v6Applied: boolean;
+}
+
 /**
  * Apply schema migrations to the database.
  * Called once on startup before any reads or writes.
@@ -10,8 +14,9 @@ import { SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './schema.js';
  * Version 3: Add session_facets table for cross-session analysis
  * Version 4: Add reflect_snapshots table for caching LLM-generated synthesis results
  * Version 5: Add deleted_at column to sessions for soft-delete (user-initiated hide)
+ * Version 6: Add compact_count, auto_compact_count, slash_commands columns to sessions
  */
-export function runMigrations(db: Database.Database): void {
+export function runMigrations(db: Database.Database): MigrationResult {
   // Create schema_version table first if it doesn't exist.
   // This table is created inline (not via SCHEMA_SQL) so migrations can check it.
   db.exec(`
@@ -42,6 +47,14 @@ export function runMigrations(db: Database.Database): void {
   if (currentVersion < 5) {
     applyV5(db);
   }
+
+  let v6Applied = false;
+  if (currentVersion < 6) {
+    applyV6(db);
+    v6Applied = true;
+  }
+
+  return { v6Applied };
 }
 
 function getCurrentVersion(db: Database.Database): number {
@@ -103,4 +116,11 @@ function applyV5(db: Database.Database): void {
   db.exec(`ALTER TABLE sessions ADD COLUMN deleted_at TEXT`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_deleted_at ON sessions(deleted_at)`);
   db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(5);
+}
+
+function applyV6(db: Database.Database): void {
+  db.exec(`ALTER TABLE sessions ADD COLUMN compact_count INTEGER NOT NULL DEFAULT 0`);
+  db.exec(`ALTER TABLE sessions ADD COLUMN auto_compact_count INTEGER NOT NULL DEFAULT 0`);
+  db.exec(`ALTER TABLE sessions ADD COLUMN slash_commands TEXT NOT NULL DEFAULT '[]'`);
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(6);
 }

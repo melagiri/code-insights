@@ -31,7 +31,8 @@ export type TelemetryEventName =
   | 'export_run'
   | 'dashboard_loaded'
   | 'telemetry_opted_out'
-  | 'telemetry_opted_in';
+  | 'telemetry_opted_in'
+  | 'migration_v6_resync';
 
 // PostHog client — lazily initialized on first trackEvent call.
 // null when telemetry is disabled or init hasn't happened yet.
