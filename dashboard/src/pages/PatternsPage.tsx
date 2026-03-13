@@ -387,6 +387,7 @@ export default function PatternsPage() {
         characterDistribution={aggregation?.characterDistribution}
         streak={aggregation?.streak}
         rateLimitCount={aggregation?.rateLimitInfo?.count}
+        rateLimitSessionsAffected={aggregation?.rateLimitInfo?.sessionsAffected}
       />
 
       {/* 2-tab layout */}
@@ -394,14 +395,14 @@ export default function PatternsPage() {
         <TabsList variant="line" className="w-full justify-start border-b rounded-none px-0 h-auto pb-0">
           <TabsTrigger
             value="insights"
-            className="flex items-center gap-1.5 pb-2.5 data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+            className="flex items-center gap-1.5 pb-2.5 data-[state=active]:after:bg-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
           >
             <Brain className="h-4 w-4" />
             Insights
           </TabsTrigger>
           <TabsTrigger
             value="artifacts"
-            className="flex items-center gap-1.5 pb-2.5 data-[state=active]:border-b-2 data-[state=active]:border-violet-500 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400"
+            className="flex items-center gap-1.5 pb-2.5 data-[state=active]:after:bg-violet-500 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400"
           >
             <Shield className="h-4 w-4" />
             Artifacts

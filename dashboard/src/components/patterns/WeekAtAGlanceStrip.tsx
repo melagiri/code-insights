@@ -18,6 +18,7 @@ interface WeekAtAGlanceStripProps {
   characterDistribution?: Record<string, number>;
   streak?: number;
   rateLimitCount?: number;
+  rateLimitSessionsAffected?: number;
 }
 
 // DB outcome_satisfaction values: 'high' | 'medium' | 'low' | 'abandoned'
@@ -47,6 +48,7 @@ export function WeekAtAGlanceStrip({
   characterDistribution,
   streak,
   rateLimitCount,
+  rateLimitSessionsAffected,
 }: WeekAtAGlanceStripProps) {
   const outcomeTotal = Object.values(outcomeDistribution).reduce((s, v) => s + v, 0);
   const hasOutcomes = outcomeTotal > 0;
@@ -109,7 +111,13 @@ export function WeekAtAGlanceStrip({
             </span>
           )}
           {(rateLimitCount ?? 0) > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 text-xs font-medium border border-amber-500/20">
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 text-xs font-medium border border-amber-500/20"
+              title={rateLimitSessionsAffected != null
+                ? `${rateLimitCount} rate limit${rateLimitCount !== 1 ? 's' : ''} affecting ${rateLimitSessionsAffected} session${rateLimitSessionsAffected !== 1 ? 's' : ''}`
+                : `${rateLimitCount} rate limit${rateLimitCount !== 1 ? 's' : ''}`
+              }
+            >
               <Zap className="h-3 w-3" />
               {rateLimitCount} rate limit{rateLimitCount !== 1 ? 's' : ''}
             </span>

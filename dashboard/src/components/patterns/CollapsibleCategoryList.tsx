@@ -116,7 +116,10 @@ export function CollapsibleCategoryList({
             {isExpanded && hasDescriptions && (
               <ul className="ml-8 mt-1 space-y-1 pb-1 bg-muted/30 rounded-md p-2">
                 {item.descriptions.slice(0, MAX_DESC_VISIBLE).map((desc, j) => (
-                  <li key={j} className="text-xs text-muted-foreground">{desc}</li>
+                  <li key={j} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <span className="mt-0.5 shrink-0 select-none">·</span>
+                    <span>{desc}</span>
+                  </li>
                 ))}
                 {item.descriptions.length > MAX_DESC_VISIBLE && (
                   <li className="text-xs text-muted-foreground italic">

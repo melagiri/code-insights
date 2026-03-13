@@ -43,7 +43,7 @@ export function WorkingStyleHighlights({
     pills.push({
       icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
       value: `${successCount}/${totalSessions}`,
-      sublabel: 'completed',
+      sublabel: 'high-quality',
       className: 'bg-emerald-500/10 border-emerald-500/20',
     });
   }
