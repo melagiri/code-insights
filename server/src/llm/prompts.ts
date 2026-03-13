@@ -27,8 +27,43 @@ interface ParsedToolResult {
 }
 
 /**
+ * Detect the class of a stored user message from its content string.
+ * Operates on the DB content field (stringified), not raw JSONL.
+ *
+ * This mirrors classifyUserMessage() in cli/src/parser/jsonl.ts but works on
+ * stored content strings instead of parsed JSONL message objects. The DB stores
+ * message content as a plain string — tool-results are JSON arrays stringified,
+ * human text is stored as-is.
+ *
+ * Order matters — most specific checks first.
+ */
+export function classifyStoredUserMessage(content: string): 'human' | 'tool-result' | 'system-artifact' {
+  // Tool-result: content is a JSON array containing tool_result blocks.
+  // The DB stores these as stringified JSON arrays starting with '['.
+  if (content.startsWith('[') && content.includes('"tool_result"')) return 'tool-result';
+
+  // Auto-compact summary: Claude Code uses two known prefixes for LLM-initiated
+  // context compaction summaries. Both must be checked.
+  if (content.startsWith('Here is a summary of our conversation')) return 'system-artifact';
+  if (content.startsWith('This session is being continued')) return 'system-artifact';
+
+  // Slash command or skill load: single-line starting with / followed by a lowercase letter.
+  // Requires content.trim() to be short (≤2 lines) to avoid false-positives on messages
+  // containing file paths like "/usr/bin/..." as part of a longer instruction.
+  const trimmed = content.trim();
+  if (/^\/[a-z]/.test(trimmed) && trimmed.split('\n').length <= 2) return 'system-artifact';
+
+  return 'human';
+}
+
+/**
  * Format SQLite message rows for LLM consumption.
  * Handles snake_case fields and JSON-encoded tool_calls/tool_results.
+ *
+ * User#N indices only increment for genuine human messages. Tool-results and
+ * system artifacts (auto-compacts, slash commands) receive bracketed labels
+ * instead. This ensures User#N references in PQ takeaways and evidence fields
+ * align with actual human turns, not inflated by tool-result rows.
  */
 export function formatMessagesForAnalysis(messages: SQLiteMessageRow[]): string {
   let userIndex = 0;
@@ -36,12 +71,23 @@ export function formatMessagesForAnalysis(messages: SQLiteMessageRow[]): string 
 
   return messages
     .map((m) => {
-      const role = m.type === 'user' ? 'User' : m.type === 'assistant' ? 'Assistant' : 'System';
-      const roleLabel = role === 'User'
-        ? `User#${userIndex++}`
-        : role === 'Assistant'
-          ? `Assistant#${assistantIndex++}`
-          : 'System';
+      let roleLabel: string;
+
+      if (m.type === 'user') {
+        const msgClass = classifyStoredUserMessage(m.content);
+        if (msgClass === 'tool-result') {
+          roleLabel = '[tool-result]';
+        } else if (msgClass === 'system-artifact') {
+          roleLabel = '[auto-compact]';
+        } else {
+          // Genuine human message — increment counter
+          roleLabel = `User#${userIndex++}`;
+        }
+      } else if (m.type === 'assistant') {
+        roleLabel = `Assistant#${assistantIndex++}`;
+      } else {
+        roleLabel = 'System';
+      }
 
       // Parse JSON-encoded tool_calls
       let toolCalls: ParsedToolCall[] = [];
@@ -76,6 +122,44 @@ export function formatMessagesForAnalysis(messages: SQLiteMessageRow[]): string 
       return `### ${roleLabel}:\n${m.content}${thinkingInfo}${toolInfo}${resultInfo}`;
     })
     .join('\n\n');
+}
+
+/**
+ * Optional session metadata from V6 columns.
+ * Passed to prompt generators to add context signals about context compaction
+ * and slash command usage. Only present when at least one V6 field is non-empty.
+ */
+export interface SessionMetadata {
+  compactCount?: number;       // from sessions.compact_count (user-initiated /compact)
+  autoCompactCount?: number;   // from sessions.auto_compact_count (LLM-initiated compaction)
+  slashCommands?: string[];    // from sessions.slash_commands (JSON array of command names)
+}
+
+/**
+ * Format a one-line context signals header from V6 session metadata.
+ * Returns empty string when no signals are present (pre-V6 sessions with NULL columns).
+ *
+ * Example output:
+ *   "Context signals: 3 context compactions (2 auto, 1 manual) — session exceeded context window; slash commands used: /review, /test\n"
+ */
+export function formatSessionMetaLine(meta?: SessionMetadata): string {
+  if (!meta) return '';
+  const parts: string[] = [];
+
+  const totalCompacts = (meta.compactCount ?? 0) + (meta.autoCompactCount ?? 0);
+  if (totalCompacts > 0) {
+    const breakdown: string[] = [];
+    if (meta.autoCompactCount) breakdown.push(`${meta.autoCompactCount} auto`);
+    if (meta.compactCount) breakdown.push(`${meta.compactCount} manual`);
+    parts.push(`${totalCompacts} context compaction${totalCompacts > 1 ? 's' : ''} (${breakdown.join(', ')}) — session exceeded context window`);
+  }
+
+  if (meta.slashCommands?.length) {
+    parts.push(`slash commands used: ${meta.slashCommands.join(', ')}`);
+  }
+
+  if (parts.length === 0) return '';
+  return `Context signals: ${parts.join('; ')}\n`;
 }
 
 // Shared guidance for friction category and attribution classification.
@@ -343,16 +427,22 @@ Respond with valid JSON only, wrapped in <json>...</json> tags. Do not include a
 
 /**
  * Generate the user prompt for session analysis.
+ *
+ * The optional meta param adds a "Context signals" line when V6 columns
+ * (compact_count, auto_compact_count, slash_commands) are present. This lets
+ * the LLM correctly attribute friction from context-window pressure rather than
+ * inferring it from behavioral patterns in a potentially compacted transcript.
  */
 export function generateSessionAnalysisPrompt(
   projectName: string,
   sessionSummary: string | null,
-  formattedMessages: string
+  formattedMessages: string,
+  meta?: SessionMetadata
 ): string {
   return `Analyze this AI coding session and extract insights.
 
 Project: ${projectName}
-${sessionSummary ? `Session Summary: ${sessionSummary}\n` : ''}
+${sessionSummary ? `Session Summary: ${sessionSummary}\n` : ''}${formatSessionMetaLine(meta)}
 --- CONVERSATION ---
 ${formattedMessages}
 --- END CONVERSATION ---
@@ -615,12 +705,13 @@ Respond with valid JSON only, wrapped in <json>...</json> tags.`;
 export function generateFacetOnlyPrompt(
   projectName: string,
   sessionSummary: string | null,
-  conversationMessages: string
+  conversationMessages: string,
+  meta?: SessionMetadata
 ): string {
   return `Assess this AI coding session and extract facets.
 
 Project: ${projectName}
-${sessionSummary ? `Session Summary: ${sessionSummary}\n` : ''}
+${sessionSummary ? `Session Summary: ${sessionSummary}\n` : ''}${formatSessionMetaLine(meta)}
 --- CONVERSATION ---
 ${conversationMessages}
 --- END CONVERSATION ---
@@ -674,6 +765,7 @@ Before evaluating, mentally walk through the conversation and identify:
 4. Whether critical context or requirements were provided late
 5. Whether the user discussed the plan/approach before implementation
 6. Moments where the user's prompt was notably well-crafted
+7. If context compactions occurred, note that the AI may have lost context — repeated instructions after a compaction are NOT a user prompting deficit
 These are your candidate findings. Only include them if they are genuinely actionable.
 
 ${PROMPT_QUALITY_CLASSIFICATION_GUIDANCE}
@@ -685,6 +777,7 @@ Guidelines:
 - A score of 50 means about half the messages could have been more efficient
 - Include BOTH deficits and strengths — what went right matters as much as what went wrong
 - If the user prompted well, say so — don't manufacture issues
+- If the session had context compactions, do NOT penalize the user for repeating instructions after a compaction — the AI lost context, not the user
 
 Length Guidance:
 - Max 4 takeaways (ordered: improve first, then reinforce), max 8 findings
@@ -697,12 +790,16 @@ Respond with valid JSON only, wrapped in <json>...</json> tags. Do not include a
 export function generatePromptQualityPrompt(
   projectName: string,
   formattedMessages: string,
-  messageCount: number
+  sessionMeta: {
+    humanMessageCount: number;
+    assistantMessageCount: number;
+    toolExchangeCount: number;  // total messages - human - assistant
+  }
 ): string {
   return `Analyze the user's prompting quality in this AI coding session.
 
 Project: ${projectName}
-Total messages: ${messageCount}
+Session shape: ${sessionMeta.humanMessageCount} user messages, ${sessionMeta.assistantMessageCount} assistant messages, ${sessionMeta.toolExchangeCount} tool exchanges
 
 --- CONVERSATION ---
 ${formattedMessages}
