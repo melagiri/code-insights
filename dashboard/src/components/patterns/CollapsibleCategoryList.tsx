@@ -66,6 +66,17 @@ export function CollapsibleCategoryList({
               onClick={() => toggle(item.category)}
               aria-expanded={isExpanded}
             >
+              {/* Per-row 2px left color indicator */}
+              {variant === 'friction' && item.color ? (
+                <span
+                  className="w-0.5 h-4 rounded-full shrink-0"
+                  style={{ backgroundColor: item.color }}
+                  aria-hidden="true"
+                />
+              ) : variant === 'pattern' ? (
+                <span className="w-0.5 h-4 rounded-full bg-emerald-400 dark:bg-emerald-500 shrink-0" aria-hidden="true" />
+              ) : null}
+
               {/* Count badge */}
               {variant === 'friction' && item.color ? (
                 <span
@@ -103,7 +114,7 @@ export function CollapsibleCategoryList({
 
             {/* Expandable description sub-items */}
             {isExpanded && hasDescriptions && (
-              <ul className="ml-10 mt-1 space-y-1 pb-1">
+              <ul className="ml-8 mt-1 space-y-1 pb-1 bg-muted/30 rounded-md p-2">
                 {item.descriptions.slice(0, MAX_DESC_VISIBLE).map((desc, j) => (
                   <li key={j} className="text-xs text-muted-foreground">{desc}</li>
                 ))}

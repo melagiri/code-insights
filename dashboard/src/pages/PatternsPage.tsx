@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ErrorCard } from '@/components/ErrorCard';
 import { frictionBarColor, getDominantDriver } from '@/lib/constants/patterns';
 import {
-  AlertTriangle, Sparkles, Shield, Brain, Copy, Check, Loader2, Zap,
+  AlertTriangle, Sparkles, Shield, Brain, Copy, Check, Loader2,
 } from 'lucide-react';
 
 function formatRelativeDate(iso: string): string {
@@ -225,7 +225,6 @@ export default function PatternsPage() {
     ? aggregation.totalSessions / aggregation.totalAllSessions
     : 0;
 
-  const frictionWinsResult = reflectResults?.['friction-wins'] as Record<string, unknown> | undefined;
   const rulesSkillsResult = reflectResults?.['rules-skills'] as Record<string, unknown> | undefined;
   const workingStyleResult = reflectResults?.['working-style'] as Record<string, unknown> | undefined;
 
@@ -233,7 +232,8 @@ export default function PatternsPage() {
   const narrative = workingStyleResult?.narrative as string | undefined;
 
   // Derive working style highlights from aggregation data
-  const successCount = aggregation?.outcomeDistribution?.['success'] ?? 0;
+  // DB stores outcome_satisfaction as 'high' | 'medium' | 'low' | 'abandoned' — NOT 'success'
+  const successCount = aggregation?.outcomeDistribution?.['high'] ?? 0;
 
   const topCharacterEntry = aggregation?.characterDistribution
     ? Object.entries(aggregation.characterDistribution).sort((a, b) => b[1] - a[1])[0]
@@ -377,23 +377,32 @@ export default function PatternsPage() {
         </Card>
       )}
 
-      {/* Week at-a-glance strip — replaces WorkingStyleHeroCard + 3 pie charts */}
+      {/* Week hero card — richer summary with stats, character distribution, streak, and outcomes */}
       <WeekAtAGlanceStrip
         tagline={tagline}
         totalSessions={aggregation?.totalSessions ?? 0}
         totalAllSessions={aggregation?.totalAllSessions ?? 0}
         outcomeDistribution={aggregation?.outcomeDistribution ?? {}}
         hasGenerated={!!reflectResults}
+        characterDistribution={aggregation?.characterDistribution}
+        streak={aggregation?.streak}
+        rateLimitCount={aggregation?.rateLimitInfo?.count}
       />
 
       {/* 2-tab layout */}
       <Tabs defaultValue="insights">
         <TabsList variant="line" className="w-full justify-start border-b rounded-none px-0 h-auto pb-0">
-          <TabsTrigger value="insights" className="flex items-center gap-1.5 pb-2.5">
+          <TabsTrigger
+            value="insights"
+            className="flex items-center gap-1.5 pb-2.5 data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400"
+          >
             <Brain className="h-4 w-4" />
             Insights
           </TabsTrigger>
-          <TabsTrigger value="artifacts" className="flex items-center gap-1.5 pb-2.5">
+          <TabsTrigger
+            value="artifacts"
+            className="flex items-center gap-1.5 pb-2.5 data-[state=active]:border-b-2 data-[state=active]:border-violet-500 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400"
+          >
             <Shield className="h-4 w-4" />
             Artifacts
           </TabsTrigger>
@@ -401,40 +410,27 @@ export default function PatternsPage() {
 
         {/* INSIGHTS TAB */}
         <TabsContent value="insights" className="mt-4 space-y-4">
-          {/* Working style summary — auto-generated bullets + expandable LLM narrative */}
+          {/* Working style summary — borderless content, no Card wrapper */}
           {(reflectResults || (aggregation?.totalSessions ?? 0) > 0) && (
-            <Card className="border-l-2 border-primary">
-              <CardHeader>
-                <CardTitle className="text-base">Working Style</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <WorkingStyleHighlights
-                  narrative={narrative}
-                  totalSessions={aggregation?.totalSessions ?? 0}
-                  successCount={successCount}
-                  topCharacter={topCharacter}
-                  topFriction={topFriction}
-                  topPattern={topPattern}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Friction narrative callout — shown above the lists when available */}
-          {frictionWinsResult?.narrative && (
-            <div className="border-l-2 border-primary rounded-sm px-4 py-3 bg-muted/30">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                {String(frictionWinsResult.narrative)}
-              </p>
-            </div>
+            <WorkingStyleHighlights
+              narrative={narrative}
+              totalSessions={aggregation?.totalSessions ?? 0}
+              successCount={successCount}
+              topCharacter={topCharacter}
+              topFriction={topFriction}
+              topPattern={topPattern}
+            />
           )}
 
           {/* Friction + Patterns — 50/50 grid */}
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Friction Points */}
-            <Card>
+            {/* Friction Points — red left accent */}
+            <Card className="border-l-2 border-red-400 dark:border-red-500">
               <CardHeader>
-                <CardTitle className="text-base">Friction Points</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                  Friction Points
+                </CardTitle>
                 <CardDescription>Most common blockers across sessions — badge color indicates severity</CardDescription>
               </CardHeader>
               <CardContent>
@@ -448,10 +444,13 @@ export default function PatternsPage() {
               </CardContent>
             </Card>
 
-            {/* Effective Patterns */}
-            <Card>
+            {/* Effective Patterns — emerald left accent */}
+            <Card className="border-l-2 border-emerald-400 dark:border-emerald-500">
               <CardHeader>
-                <CardTitle className="text-base">Effective Patterns</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-emerald-500 shrink-0" />
+                  Effective Patterns
+                </CardTitle>
                 <CardDescription>Techniques that work well across sessions</CardDescription>
               </CardHeader>
               <CardContent>
@@ -465,21 +464,6 @@ export default function PatternsPage() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Rate limit usage insight */}
-          {aggregation?.rateLimitInfo && aggregation.rateLimitInfo.count > 0 && (
-            <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 p-4">
-              <Zap className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                  Usage Insight: API Rate Limits
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  You hit API rate limits {aggregation.rateLimitInfo.count} time{aggregation.rateLimitInfo.count !== 1 ? 's' : ''} this week ({aggregation.rateLimitInfo.sessionsAffected} session{aggregation.rateLimitInfo.sessionsAffected !== 1 ? 's' : ''} affected). Consider upgrading your subscription or checking your API rate limits — your usage may exceed your current plan's token or request limits.
-                </p>
-              </div>
-            </div>
-          )}
         </TabsContent>
 
         {/* ARTIFACTS TAB */}

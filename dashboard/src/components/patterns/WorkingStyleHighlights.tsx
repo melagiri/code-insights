@@ -1,11 +1,12 @@
 /**
- * WorkingStyleHighlights — auto-generated bullet summary of the week's working style.
- * Bullets are derived from props (no LLM call here). The full LLM narrative is
- * available via an expandable "Show full analysis" toggle below the bullets.
+ * WorkingStyleHighlights — horizontal stat pills showing the week's working style at a glance.
+ * Replaces the old bullet list with mini-cards (icon + value + sublabel), color-coded by domain.
+ * The full LLM narrative is available via an expandable "Show full analysis" toggle.
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Sparkles, User } from 'lucide-react';
+import { SESSION_CHARACTER_COLORS } from '@/lib/constants/colors';
 
 interface WorkingStyleHighlightsProps {
   narrative?: string;
@@ -30,43 +31,77 @@ export function WorkingStyleHighlights({
 }: WorkingStyleHighlightsProps) {
   const [showNarrative, setShowNarrative] = useState(false);
 
-  // Build bullet list from available data
-  const bullets: string[] = [];
-
-  if (topCharacter) {
-    bullets.push(`Mostly ${formatCharacterName(topCharacter.name)} sessions (${topCharacter.percentage}%)`);
-  }
+  // Build pill data from available props
+  const pills: Array<{
+    icon: React.ReactNode;
+    value: string;
+    sublabel: string;
+    className: string;
+  }> = [];
 
   if (totalSessions > 0) {
-    bullets.push(`${successCount}/${totalSessions} sessions completed successfully`);
+    pills.push({
+      icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+      value: `${successCount}/${totalSessions}`,
+      sublabel: 'completed',
+      className: 'bg-emerald-500/10 border-emerald-500/20',
+    });
   }
 
   if (topFriction) {
-    bullets.push(`Top friction: ${topFriction.category} (${topFriction.count} occurrence${topFriction.count !== 1 ? 's' : ''})`);
+    pills.push({
+      icon: <AlertTriangle className="h-4 w-4 text-red-500" />,
+      value: `${topFriction.count}x`,
+      sublabel: topFriction.category,
+      className: 'bg-red-500/10 border-red-500/20',
+    });
   }
 
   if (topPattern) {
-    bullets.push(`Strongest pattern: ${topPattern.label} (${topPattern.frequency}x)`);
+    pills.push({
+      icon: <Sparkles className="h-4 w-4 text-blue-500" />,
+      value: `${topPattern.frequency}x`,
+      sublabel: topPattern.label,
+      className: 'bg-blue-500/10 border-blue-500/20',
+    });
   }
 
-  if (bullets.length === 0) {
+  if (topCharacter) {
+    const charColorClass = SESSION_CHARACTER_COLORS[topCharacter.name] ?? 'bg-muted text-muted-foreground border-border';
+    pills.push({
+      icon: <User className="h-4 w-4" />,
+      value: `${topCharacter.percentage}%`,
+      sublabel: formatCharacterName(topCharacter.name),
+      // Use the character color classes but override bg/border via className merge
+      className: charColorClass,
+    });
+  }
+
+  if (pills.length === 0) {
     return null;
   }
 
   return (
-    <div className="space-y-2">
-      <ul className="space-y-1">
-        {bullets.map((bullet, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm">
-            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-            <span>{bullet}</span>
-          </li>
+    <div className="space-y-3">
+      {/* Stat pills row */}
+      <div className="flex flex-wrap gap-2">
+        {pills.map((pill, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${pill.className}`}
+          >
+            {pill.icon}
+            <div className="min-w-0">
+              <div className="text-sm font-semibold leading-tight tabular-nums">{pill.value}</div>
+              <div className="text-xs text-muted-foreground leading-tight truncate max-w-[120px]">{pill.sublabel}</div>
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
 
-      {/* Expandable narrative — only shown when it exists */}
+      {/* Expandable LLM narrative — only shown when it exists */}
       {narrative && (
-        <div className="mt-3">
+        <div>
           <button
             type="button"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
