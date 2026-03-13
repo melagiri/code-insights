@@ -104,10 +104,14 @@ describe('classifyUserMessage', () => {
   });
 
   it('classifies user /compact command', () => {
-    const msg = makeMsg('<local-command-caveat>...</local-command-caveat>\n<command-name>/compact</command-name> <command-message>compact</command-message>');
-    // The compact command-name tag is present → user-compact
-    const msg2 = makeMsg('<command-name>/compact</command-name>');
-    expect(classifyUserMessage(msg2)).toBe('user-compact');
+    const msg = makeMsg('<command-name>/compact</command-name>');
+    expect(classifyUserMessage(msg)).toBe('user-compact');
+  });
+
+  it('classifies /compact with arguments as user-compact', () => {
+    // /compact focus on auth module → <command-name>/compact focus on auth module</command-name>
+    const msg = makeMsg('<command-name>/compact focus on auth module</command-name>');
+    expect(classifyUserMessage(msg)).toBe('user-compact');
   });
 
   it('classifies /exit command', () => {

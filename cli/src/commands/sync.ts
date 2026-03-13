@@ -269,7 +269,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
 
     trackEvent('migration_v6_resync', {
       sessions_recalculated: totalSyncedCount,
-      stale_insights_found: totalSyncedCount,
+      insight_count: totalSyncedCount,
     });
   }
 

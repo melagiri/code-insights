@@ -91,20 +91,19 @@ export function classifyUserMessage(msg: ClaudeMessage): UserMessageClass {
   }
 
   // 5. User /compact command (Tier 1 workflow command, tracked separately)
-  if (text.includes('<command-name>/compact</command-name>')) {
+  // Use extractSlashCommandName to handle "/compact focus on auth" → "/compact"
+  if (extractSlashCommandName(text) === '/compact') {
     return 'user-compact';
   }
 
   // 6. Exit/quit commands — excluded from all counts and slash_commands[]
-  if (
-    text.includes('<command-name>/exit</command-name>') ||
-    text.includes('<command-name>/quit</command-name>')
-  ) {
+  const cmdName = extractSlashCommandName(text);
+  if (cmdName === '/exit' || cmdName === '/quit') {
     return 'exit-command';
   }
 
   // 7. Any other slash command (Tier 1 or Tier 2 — differentiated at count time)
-  if (text.includes('<command-name>/')) {
+  if (cmdName !== null) {
     return 'slash-command';
   }
 
