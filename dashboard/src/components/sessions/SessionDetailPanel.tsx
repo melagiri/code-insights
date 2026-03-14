@@ -9,7 +9,7 @@ import {
 } from '@/lib/utils';
 import { SESSION_CHARACTER_COLORS, SESSION_CHARACTER_LABELS, SOURCE_TOOL_COLORS, OUTCOME_DOT } from '@/lib/constants/colors';
 import { parseJsonField } from '@/lib/types';
-import { getScoreTier } from '@/lib/score-utils';
+import { getScoreTier, extractPQScore } from '@/lib/score-utils';
 import type { Insight, InsightMetadata, Session } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { ErrorCard } from '@/components/ErrorCard';
@@ -172,12 +172,9 @@ export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelPr
   );
   const hasPromptQuality = insights.some((i) => i.type === 'prompt_quality');
   const promptQualityInsight = insights.find((i) => i.type === 'prompt_quality') ?? null;
-  const promptQualityScore = (() => {
-    if (!promptQualityInsight) return undefined;
-    const meta = parseJsonField<Record<string, unknown>>(promptQualityInsight.metadata, {});
-    return typeof meta.efficiency_score === 'number' ? meta.efficiency_score
-      : typeof meta.efficiencyScore === 'number' ? meta.efficiencyScore : undefined;
-  })();
+  const promptQualityScore = promptQualityInsight
+    ? extractPQScore(parseJsonField<Record<string, unknown>>(promptQualityInsight.metadata, {}))
+    : null;
 
   const summaryInsight = insights.find((i) => i.type === 'summary');
   const summaryMetadata = summaryInsight

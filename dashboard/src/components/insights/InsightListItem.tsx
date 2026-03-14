@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { INSIGHT_TYPE_COLORS, INSIGHT_TYPE_LABELS } from '@/lib/constants/colors';
 import { cn } from '@/lib/utils';
-import { getScoreTier } from '@/lib/score-utils';
+import { getScoreTier, extractPQScore } from '@/lib/score-utils';
 import type { Insight, InsightType, InsightMetadata } from '@/lib/types';
 import { parseJsonField } from '@/lib/types';
 import { OutcomeBadge, renderTypeContent } from './insight-metadata';
@@ -80,11 +80,7 @@ export function InsightListItem({ insight, showProject = false, allInsightIds, h
 
   // Prompt quality score for collapsed badge — dual-read new and legacy schema
   const pqScore = insight.type === 'prompt_quality'
-    ? (typeof (metadata as Record<string, unknown>).efficiency_score === 'number'
-        ? (metadata as Record<string, unknown>).efficiency_score as number
-        : typeof (metadata as Record<string, unknown>).efficiencyScore === 'number'
-          ? (metadata as Record<string, unknown>).efficiencyScore as number
-          : null)
+    ? extractPQScore(metadata as Record<string, unknown>)
     : null;
 
   return (

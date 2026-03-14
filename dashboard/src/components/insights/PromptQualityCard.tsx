@@ -5,6 +5,7 @@ import { Target, AlertTriangle, Lightbulb, TrendingDown, Compass, ArrowRight, Ba
 import type { Insight } from '@/lib/types';
 import { parseJsonField } from '@/lib/types';
 import { getPQCategoryLabel, getPQCategoryType } from '@/lib/prompt-quality-utils';
+import { extractPQScore } from '@/lib/score-utils';
 
 interface PromptQualityCardProps {
   insight: Insight;
@@ -490,7 +491,7 @@ export function PromptQualityContent({ insight }: { insight: Insight }) {
   const isNewSchema = Array.isArray(metadata.findings);
 
   if (isNewSchema) {
-    const score = typeof metadata.efficiency_score === 'number' ? metadata.efficiency_score : 0;
+    const score = extractPQScore(metadata) ?? 0;
     const overhead = typeof metadata.message_overhead === 'number' ? metadata.message_overhead : 0;
     const takeaways = Array.isArray(metadata.takeaways) ? metadata.takeaways as PQTakeaway[] : [];
     const findings = metadata.findings as PQFinding[];
@@ -511,7 +512,7 @@ export function PromptQualityContent({ insight }: { insight: Insight }) {
   }
 
   // Legacy schema
-  const score = typeof metadata.efficiencyScore === 'number' ? metadata.efficiencyScore : 0;
+  const score = extractPQScore(metadata) ?? 0;
   const reduction = typeof metadata.potentialMessageReduction === 'number' ? metadata.potentialMessageReduction : 0;
   const wastedTurns = Array.isArray(metadata.wastedTurns) ? metadata.wastedTurns as WastedTurn[] : [];
   const antiPatterns = Array.isArray(metadata.antiPatterns) ? metadata.antiPatterns as AntiPattern[] : [];

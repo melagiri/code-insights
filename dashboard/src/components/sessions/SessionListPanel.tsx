@@ -12,6 +12,7 @@ import { CompactSessionRow } from './CompactSessionRow';
 import { getSessionTitle, getDateGroup, sortDateGroups } from '@/lib/utils';
 import { parseJsonField } from '@/lib/types';
 import type { Session, Insight, InsightMetadata } from '@/lib/types';
+import { extractPQScore } from '@/lib/score-utils';
 import { SearchX, Terminal, EyeOff } from 'lucide-react';
 import { useDeletedSessionCount } from '@/hooks/useSessions';
 
@@ -90,8 +91,7 @@ export function SessionListPanel({
     for (const insight of insights) {
       if (insight.type === 'prompt_quality') {
         const metadata = parseJsonField<Record<string, unknown>>(insight.metadata, {});
-        const score = typeof metadata.efficiency_score === 'number' ? metadata.efficiency_score
-          : typeof metadata.efficiencyScore === 'number' ? metadata.efficiencyScore : null;
+        const score = extractPQScore(metadata);
         if (score !== null) {
           map.set(insight.session_id, score);
         }
