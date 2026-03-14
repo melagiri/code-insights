@@ -35,10 +35,38 @@ export function formatDurationMinutes(minutes: number): string {
 }
 
 /**
- * Format a Claude model ID for display by stripping the 'claude-' prefix
- * and any trailing date suffix (e.g., '-20250929').
+ * Format a model ID into a display-friendly name.
+ *
+ * Produces friendly names (e.g. "Sonnet 3.5", "Opus 4.x") for known Claude
+ * and GPT model families. Mirrors the CLI's shortenModelName() in
+ * cli/src/commands/stats/data/aggregation.ts — keep the two in sync when
+ * adding new model families.
+ *
+ * Falls back to stripping the 'claude-' prefix and any trailing date suffix
+ * (e.g. '-20250929') for unknown model IDs.
  */
 export function formatModelName(model: string): string {
+  // Claude 4.x opus variants
+  if (/^claude-opus-4/.test(model)) return 'Opus 4.x';
+  // Claude 4.x sonnet variants
+  if (/^claude-sonnet-4/.test(model)) return 'Sonnet 4.x';
+  // Claude haiku variants (covers haiku-4-5, haiku-3-5, etc.)
+  if (/^claude-haiku/.test(model)) return 'Haiku';
+  // Claude 3.5 sonnet
+  if (/^claude-3-5-sonnet/.test(model)) return 'Sonnet 3.5';
+  // Claude 3.5 haiku
+  if (/^claude-3-5-haiku/.test(model)) return 'Haiku 3.5';
+  // Claude 3 opus
+  if (/^claude-3-opus/.test(model)) return 'Opus 3';
+  // Claude 3 sonnet
+  if (/^claude-3-sonnet/.test(model)) return 'Sonnet 3';
+  // Claude 3 haiku
+  if (/^claude-3-haiku/.test(model)) return 'Haiku 3';
+  // GPT-4o
+  if (/^gpt-4o/.test(model)) return 'GPT-4o';
+  // GPT-4-turbo
+  if (/^gpt-4-turbo/.test(model)) return 'GPT-4 Turbo';
+  // Fallback: strip 'claude-' prefix and trailing date suffix for readability
   return model.replace('claude-', '').replace(/-\d{8}$/, '');
 }
 
