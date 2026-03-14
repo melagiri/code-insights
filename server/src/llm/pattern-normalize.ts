@@ -1,8 +1,9 @@
-// Effective pattern category normalization using Levenshtein distance.
+// Effective pattern category normalization.
 // Clusters similar free-form pattern categories to canonical ones during aggregation.
 // Mirrors friction-normalize.ts — same algorithm, same matching rules.
 
 import { CANONICAL_PATTERN_CATEGORIES } from './prompts.js';
+import { normalizeCategory, kebabToTitleCase } from './normalize-utils.js';
 
 // Human-readable labels for each canonical category.
 // Used in dashboard display (e.g., "structured-planning" → "Structured Planning").
@@ -73,29 +74,6 @@ const PATTERN_ALIASES: Record<string, string> = {
   'iterative-development': 'incremental-implementation',
 };
 
-/** Standard Levenshtein distance between two strings */
-function levenshtein(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[]);
-
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost
-      );
-    }
-  }
-
-  return dp[m][n];
-}
-
 /**
  * Normalize a pattern category to the closest canonical category.
  * Returns the original category if no close match is found.
@@ -108,40 +86,10 @@ function levenshtein(a: string, b: string): number {
  * 4. No match → return original (novel category)
  */
 export function normalizePatternCategory(category: string): string {
-  const lower = category.toLowerCase();
-
-  // 1. Exact match
-  for (const canonical of CANONICAL_PATTERN_CATEGORIES) {
-    if (lower === canonical) return canonical;
-  }
-
-  // 1.5. Explicit alias match — clusters emergent category variants deterministically.
-  if (PATTERN_ALIASES[lower]) return PATTERN_ALIASES[lower];
-
-  // 2. Levenshtein distance <= 2
-  let bestMatch: string | null = null;
-  let bestDistance = Infinity;
-  for (const canonical of CANONICAL_PATTERN_CATEGORIES) {
-    const dist = levenshtein(lower, canonical);
-    if (dist <= 2 && dist < bestDistance) {
-      bestDistance = dist;
-      bestMatch = canonical;
-    }
-  }
-  if (bestMatch) return bestMatch;
-
-  // 3. Substring match — only if the shorter string is a significant portion of the longer
-  // to avoid false positives like "plan" matching "structured-planning"
-  for (const canonical of CANONICAL_PATTERN_CATEGORIES) {
-    const shorter = lower.length < canonical.length ? lower : canonical;
-    const longer = lower.length < canonical.length ? canonical : lower;
-    if (shorter.length >= 5 && shorter.length / longer.length >= 0.5 && longer.includes(shorter)) {
-      return canonical;
-    }
-  }
-
-  // 4. No match — novel category
-  return category;
+  return normalizeCategory(category, {
+    canonicalCategories: CANONICAL_PATTERN_CATEGORIES,
+    aliases: PATTERN_ALIASES,
+  });
 }
 
 /**
@@ -149,10 +97,5 @@ export function normalizePatternCategory(category: string): string {
  * Falls back to Title Case conversion for novel categories.
  */
 export function getPatternCategoryLabel(category: string): string {
-  if (PATTERN_CATEGORY_LABELS[category]) return PATTERN_CATEGORY_LABELS[category];
-  // Convert kebab-case to Title Case for novel categories
-  return category
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return PATTERN_CATEGORY_LABELS[category] ?? kebabToTitleCase(category);
 }
