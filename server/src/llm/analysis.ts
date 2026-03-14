@@ -10,23 +10,16 @@ import { randomUUID } from 'crypto';
 import { jsonrepair } from 'jsonrepair';
 import { getDb } from '@code-insights/cli/db/client';
 import { createLLMClient, isLLMConfigured } from './client.js';
+import type { SQLiteMessageRow, AnalysisResponse, PromptQualityResponse, ParseError, SessionMetadata } from './prompt-types.js';
+import { formatMessagesForAnalysis, classifyStoredUserMessage } from './message-format.js';
+import { extractJsonPayload, parseAnalysisResponse, parsePromptQualityResponse } from './response-parsers.js';
 import {
   SESSION_ANALYSIS_SYSTEM_PROMPT,
   generateSessionAnalysisPrompt,
-  formatMessagesForAnalysis,
-  classifyStoredUserMessage,
-  parseAnalysisResponse,
   PROMPT_QUALITY_SYSTEM_PROMPT,
   generatePromptQualityPrompt,
-  parsePromptQualityResponse,
   FACET_ONLY_SYSTEM_PROMPT,
   generateFacetOnlyPrompt,
-  extractJsonPayload,
-  type SQLiteMessageRow,
-  type AnalysisResponse,
-  type PromptQualityResponse,
-  type ParseError,
-  type SessionMetadata,
 } from './prompts.js';
 import { normalizePatternCategory } from './pattern-normalize.js';
 import { normalizePromptQualityCategory } from './prompt-quality-normalize.js';

@@ -5,7 +5,7 @@ import { getDb } from '@code-insights/cli/db/client';
 import { normalizeFrictionCategory } from '../llm/friction-normalize.js';
 import { normalizePatternCategory, getPatternCategoryLabel } from '../llm/pattern-normalize.js';
 import { normalizePromptQualityCategory, PQ_CATEGORY_LABELS } from '../llm/prompt-quality-normalize.js';
-import { CANONICAL_PQ_STRENGTH_CATEGORIES } from '../llm/prompts.js';
+import { CANONICAL_PQ_STRENGTH_CATEGORIES } from '../llm/prompt-constants.js';
 
 // ISO week regex: matches YYYY-WNN format (e.g., 2026-W10)
 const ISO_WEEK_RE = /^(\d{4})-W(\d{2})$/;

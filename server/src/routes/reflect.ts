@@ -3,7 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import { getDb } from '@code-insights/cli/db/client';
 import { jsonrepair } from 'jsonrepair';
 import { createLLMClient, isLLMConfigured } from '../llm/client.js';
-import { extractJsonPayload } from '../llm/prompts.js';
+import { extractJsonPayload } from '../llm/response-parsers.js';
 import {
   FRICTION_WINS_SYSTEM_PROMPT,
   generateFrictionWinsPrompt,

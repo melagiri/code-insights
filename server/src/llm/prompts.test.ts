@@ -3,14 +3,18 @@ import {
   classifyStoredUserMessage,
   formatMessagesForAnalysis,
   formatSessionMetaLine,
-  generateSessionAnalysisPrompt,
-  generatePromptQualityPrompt,
+} from './message-format.js';
+import {
   parseAnalysisResponse,
   parsePromptQualityResponse,
+} from './response-parsers.js';
+import {
+  generateSessionAnalysisPrompt,
+  generatePromptQualityPrompt,
   SESSION_ANALYSIS_SYSTEM_PROMPT,
   PROMPT_QUALITY_SYSTEM_PROMPT,
-  type SQLiteMessageRow,
 } from './prompts.js';
+import type { SQLiteMessageRow } from './prompt-types.js';
 
 // ──────────────────────────────────────────────────────
 // Helpers
