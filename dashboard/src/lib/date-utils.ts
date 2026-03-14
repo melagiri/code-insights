@@ -1,5 +1,6 @@
-// ISO week date utilities — keep in sync with server/src/routes/shared-aggregation.ts
-// Duplicated here to avoid a server-side import in the dashboard bundle.
+// Date utilities for the dashboard.
+// ISO week helpers are duplicated from server/src/routes/shared-aggregation.ts
+// to avoid a server-side import in the dashboard bundle.
 
 // Compute the current ISO week identifier (YYYY-WNN) in UTC.
 export function getCurrentIsoWeek(): string {
@@ -40,4 +41,19 @@ export function parseIsoWeekBounds(weekStr: string): { start: Date; end: Date } 
   const end = new Date(start.getTime() + 6 * 86400000); // Sunday (inclusive for display)
 
   return { start, end };
+}
+
+/**
+ * Format an ISO timestamp as a human-readable relative time string.
+ * Used in session and snapshot metadata lines.
+ */
+export function formatRelativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.max(0, Math.floor(diff / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }

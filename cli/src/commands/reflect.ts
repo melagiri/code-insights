@@ -3,6 +3,7 @@ import { createInterface } from 'readline';
 import ora from 'ora';
 import chalk from 'chalk';
 import { loadConfig } from '../utils/config.js';
+import { getCurrentIsoWeek } from '../utils/date-utils.js';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -209,27 +210,6 @@ async function backfillBatchToEndpoint(
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
-
-// Mirrors formatIsoWeek/parseIsoWeek in server/src/routes/shared-aggregation.ts
-// -- kept here so the CLI doesn't import server code.
-// IMPORTANT: keep in sync with the canonical server implementation.
-function getCurrentIsoWeek(): string {
-  const now = new Date();
-  const nowDay = now.getUTCDay();
-  const daysToMonday = nowDay === 0 ? 6 : nowDay - 1;
-  const monday = new Date(now.getTime() - daysToMonday * 86400000);
-
-  const thursday = new Date(monday.getTime() + 3 * 86400000);
-  const year = thursday.getUTCFullYear();
-
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const jan4Day = jan4.getUTCDay();
-  const daysToW1Monday = jan4Day === 0 ? 6 : jan4Day - 1;
-  const week1Monday = new Date(jan4.getTime() - daysToW1Monday * 86400000);
-
-  const weekNum = Math.round((monday.getTime() - week1Monday.getTime()) / (7 * 86400000)) + 1;
-  return `${year}-W${String(weekNum).padStart(2, '0')}`;
-}
 
 const ISO_WEEK_RE = /^(\d{4})-W(\d{2})$/;
 

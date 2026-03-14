@@ -6,59 +6,49 @@
 //   - Writes insights directly to SQLite via analysis-db.ts (not Firestore)
 //   - Abort handling uses error.name === 'AbortError' (not DOMException)
 //   - Uses session's existing project_id from SQLite (not re-derived hash)
+//
+// analyzePromptQuality → prompt-quality-analysis.ts
+// findRecurringInsights → recurring-insights.ts
+// extractFacetsOnly → facet-extraction.ts
+// Shared types/helpers → analysis-internal.ts
 
 import { jsonrepair } from 'jsonrepair';
-import { getDb } from '@code-insights/cli/db/client';
 import { createLLMClient, isLLMConfigured } from './client.js';
-import type { SQLiteMessageRow, AnalysisResponse, ParseError, SessionMetadata } from './prompt-types.js';
-import { formatMessagesForAnalysis, classifyStoredUserMessage } from './message-format.js';
-import { extractJsonPayload, parseAnalysisResponse, parsePromptQualityResponse } from './response-parsers.js';
+import type { SQLiteMessageRow, AnalysisResponse } from './prompt-types.js';
+import { formatMessagesForAnalysis } from './message-format.js';
+import { extractJsonPayload, parseAnalysisResponse } from './response-parsers.js';
 import {
   SESSION_ANALYSIS_SYSTEM_PROMPT,
   generateSessionAnalysisPrompt,
-  PROMPT_QUALITY_SYSTEM_PROMPT,
-  generatePromptQualityPrompt,
   FACET_ONLY_SYSTEM_PROMPT,
   generateFacetOnlyPrompt,
 } from './prompts.js';
 import {
   ANALYSIS_VERSION,
   convertToInsightRows,
-  convertPromptQualityToInsightRow,
   saveInsightsToDb,
   deleteSessionInsights,
   saveFacetsToDb,
   type InsightRow,
   type SessionData,
 } from './analysis-db.js';
+import {
+  MAX_INPUT_TOKENS,
+  buildSessionMeta,
+  type AnalysisProgress,
+  type AnalysisOptions,
+  type AnalysisResult,
+} from './analysis-internal.js';
 
-// Maximum tokens to send to LLM (leaving room for response)
-const MAX_INPUT_TOKENS = 80000;
+// Re-export from sub-modules so existing imports of these from analysis.ts keep working.
+export { analyzePromptQuality } from './prompt-quality-analysis.js';
+export { findRecurringInsights } from './recurring-insights.js';
+export type { RecurringInsightGroup, RecurringInsightResult } from './recurring-insights.js';
+export { extractFacetsOnly } from './facet-extraction.js';
 
-export interface AnalysisProgress {
-  phase: 'loading_messages' | 'analyzing' | 'saving';
-  currentChunk?: number;
-  totalChunks?: number;
-}
-
-export interface AnalysisOptions {
-  onProgress?: (progress: AnalysisProgress) => void;
-  signal?: AbortSignal;
-}
-
-export interface AnalysisResult {
-  success: boolean;
-  insights: InsightRow[];
-  error?: string;
-  error_type?: string;
-  response_length?: number;
-  response_preview?: string;
-  usage?: {
-    inputTokens: number;
-    outputTokens: number;
-  };
-}
-
+// Re-export shared types (routes and route-helpers import these from analysis.ts)
+export type { AnalysisProgress, AnalysisOptions, AnalysisResult };
+export type { InsightRow, SessionData };
 
 /**
  * Analyze a session and generate insights, saving them to SQLite.
@@ -251,293 +241,7 @@ export async function analyzeSession(
   }
 }
 
-/**
- * Analyze prompt quality for a session.
- */
-export async function analyzePromptQuality(
-  session: SessionData,
-  messages: SQLiteMessageRow[],
-  options?: AnalysisOptions
-): Promise<AnalysisResult> {
-  if (!isLLMConfigured()) {
-    return {
-      success: false,
-      insights: [],
-      error: 'LLM not configured. Run `code-insights config llm` to configure a provider.',
-    };
-  }
-
-  if (messages.length === 0) {
-    return {
-      success: false,
-      insights: [],
-      error: 'No messages found for this session.',
-    };
-  }
-
-  // Change 2: Filter to genuine human messages only (not tool-results or system artifacts).
-  // Pre-change: a session with 1 human + 50 tool-result rows passed the gate incorrectly.
-  // This prevented wasted LLM calls on sessions where there is nothing to evaluate.
-  const humanMessages = messages.filter(m =>
-    m.type === 'user' && classifyStoredUserMessage(m.content) === 'human'
-  );
-  if (humanMessages.length < 2) {
-    return {
-      success: false,
-      insights: [],
-      error: 'Not enough user messages to analyze prompt quality (need at least 2).',
-    };
-  }
-
-  try {
-    const client = createLLMClient();
-    const formattedMessages = formatMessagesForAnalysis(messages);
-
-    let analysisInput = formattedMessages;
-    const estimatedTokens = client.estimateTokens(formattedMessages);
-    if (estimatedTokens > MAX_INPUT_TOKENS) {
-      const targetLength = Math.floor((MAX_INPUT_TOKENS / estimatedTokens) * formattedMessages.length * 0.8);
-      analysisInput = formattedMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
-    }
-
-    // Change 3: Pass structured session shape instead of raw message count.
-    // "Total messages: 51" misled the LLM when 43 of those were tool-result rows.
-    const assistantMessages = messages.filter(m => m.type === 'assistant');
-    const toolExchangeCount = messages.length - humanMessages.length - assistantMessages.length;
-
-    const sessionMeta = buildSessionMeta(session);
-    const prompt = generatePromptQualityPrompt(
-      session.project_name,
-      analysisInput,
-      {
-        humanMessageCount: humanMessages.length,
-        assistantMessageCount: assistantMessages.length,
-        toolExchangeCount,
-      },
-      sessionMeta  // V6 context signals (compact counts, slash commands)
-    );
-
-    options?.onProgress?.({ phase: 'analyzing' });
-    const response = await client.chat([
-      { role: 'system', content: PROMPT_QUALITY_SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
-    ], { signal: options?.signal });
-
-    const parsed = parsePromptQualityResponse(response.content);
-    if (!parsed.success) {
-      return {
-        success: false,
-        insights: [],
-        error: 'Failed to parse prompt quality analysis. Please try again.',
-        error_type: parsed.error.error_type,
-        response_length: parsed.error.response_length,
-        response_preview: parsed.error.response_preview,
-      };
-    }
-
-    options?.onProgress?.({ phase: 'saving' });
-    const insight = convertPromptQualityToInsightRow(parsed.data, session);
-
-    // Save new insight, then delete old prompt_quality insights
-    saveInsightsToDb([insight]);
-    deleteSessionInsights(session.id, {
-      includeOnlyTypes: ['prompt_quality'],
-      excludeIds: [insight.id],
-    });
-
-    return {
-      success: true,
-      insights: [insight],
-      usage: response.usage ? {
-        inputTokens: response.usage.inputTokens,
-        outputTokens: response.usage.outputTokens,
-      } : undefined,
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return { success: false, insights: [], error: 'Analysis cancelled', error_type: 'abort' };
-    }
-    return {
-      success: false,
-      insights: [],
-      error: error instanceof Error ? error.message : 'Prompt quality analysis failed',
-      error_type: 'api_error',
-    };
-  }
-}
-
-export interface RecurringInsightGroup {
-  insightIds: string[];
-  theme: string;
-}
-
-export interface RecurringInsightResult {
-  success: boolean;
-  groups: RecurringInsightGroup[];
-  updatedCount: number;
-  error?: string;
-  usage?: {
-    inputTokens: number;
-    outputTokens: number;
-  };
-}
-
-/**
- * Find recurring patterns across multiple insights and write bidirectional links to SQLite.
- */
-export async function findRecurringInsights(
-  insights: Array<{
-    id: string;
-    type: string;
-    title: string;
-    summary: string;
-    project_name: string;
-    session_id: string;
-  }>
-): Promise<RecurringInsightResult> {
-  if (!isLLMConfigured()) {
-    return { success: false, groups: [], updatedCount: 0, error: 'LLM not configured.' };
-  }
-
-  const candidates = insights
-    .filter(i => i.type !== 'summary' && i.type !== 'prompt_quality')
-    .slice(0, 200);
-
-  if (candidates.length < 2) {
-    return {
-      success: false,
-      groups: [],
-      updatedCount: 0,
-      error: 'Need at least 2 non-summary insights to find patterns.',
-    };
-  }
-
-  try {
-    const client = createLLMClient();
-
-    const insightData = candidates.map(i => ({
-      id: i.id,
-      type: i.type === 'technique' ? 'learning' : i.type,
-      title: i.title,
-      summary: i.summary.slice(0, 150),
-      projectName: i.project_name,
-      sessionId: i.session_id,
-    }));
-
-    const prompt = `Analyze these insights from coding sessions and find groups of semantically similar or duplicate insights — ones that express the same learning or decision even if worded differently.
-
-RULES:
-- Only group insights that are genuinely about the same concept/topic
-- Insights in a group should be from DIFFERENT sessions (same sessionId = not recurring)
-- A group must have at least 2 insights
-- An insight can only belong to one group
-- Provide a brief "theme" describing what the group shares
-- If no recurring patterns exist, return an empty groups array
-
-INSIGHTS:
-${JSON.stringify(insightData, null, 2)}
-
-Respond with valid JSON only:
-{
-  "groups": [
-    {
-      "insightIds": ["insight_abc", "insight_def"],
-      "theme": "Brief description of the shared concept"
-    }
-  ]
-}`;
-
-    const response = await client.chat([
-      {
-        role: 'system',
-        content: 'You are an expert at identifying recurring patterns and themes across software development insights. You find semantically similar insights even when they are worded differently. Respond with valid JSON only.',
-      },
-      { role: 'user', content: prompt },
-    ]);
-
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { success: false, groups: [], updatedCount: 0, error: 'Failed to parse recurring insights response.' };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as { groups: RecurringInsightGroup[] };
-    const groups = parsed.groups || [];
-
-    const validIds = new Set(candidates.map(i => i.id));
-    const validGroups = groups
-      .map(g => ({
-        ...g,
-        insightIds: g.insightIds.filter(id => validIds.has(id)),
-      }))
-      .filter(g => g.insightIds.length >= 2);
-
-    if (validGroups.length === 0) {
-      return {
-        success: true,
-        groups: [],
-        updatedCount: 0,
-        usage: response.usage
-          ? { inputTokens: response.usage.inputTokens, outputTokens: response.usage.outputTokens }
-          : undefined,
-      };
-    }
-
-    // Build bidirectional links
-    const linkMap = new Map<string, string[]>();
-    for (const group of validGroups) {
-      for (const id of group.insightIds) {
-        const others = group.insightIds.filter(otherId => otherId !== id);
-        const existing = linkMap.get(id) || [];
-        linkMap.set(id, [...new Set([...existing, ...others])]);
-      }
-    }
-
-    // Write links to SQLite
-    const db = getDb();
-    const updateLinks = db.prepare(
-      `UPDATE insights SET linked_insight_ids = ? WHERE id = ?`
-    );
-
-    for (const [insightId, linkedIds] of linkMap.entries()) {
-      updateLinks.run(JSON.stringify(linkedIds), insightId);
-    }
-
-    return {
-      success: true,
-      groups: validGroups,
-      updatedCount: linkMap.size,
-      usage: response.usage
-        ? { inputTokens: response.usage.inputTokens, outputTokens: response.usage.outputTokens }
-        : undefined,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      groups: [],
-      updatedCount: 0,
-      error: error instanceof Error ? error.message : 'Failed to find recurring insights',
-    };
-  }
-}
-
 // --- Internal helpers ---
-
-/**
- * Build a SessionMetadata object from V6 session columns.
- * Returns undefined when all V6 fields are absent (pre-V6 sessions with NULL columns).
- * When undefined, prompt generators omit the "Context signals" line entirely.
- */
-function buildSessionMeta(session: SessionData): SessionMetadata | undefined {
-  const hasCompacts = !!(session.compact_count || session.auto_compact_count);
-  const hasSlashCommands = !!(session.slash_commands);
-  if (!hasCompacts && !hasSlashCommands) return undefined;
-
-  return {
-    compactCount: session.compact_count ?? 0,
-    autoCompactCount: session.auto_compact_count ?? 0,
-    slashCommands: session.slash_commands ? JSON.parse(session.slash_commands) as string[] : [],
-  };
-}
 
 function chunkMessages(
   messages: SQLiteMessageRow[],
@@ -616,74 +320,4 @@ function deduplicateByTitle<T extends { title: string }>(items: T[]): T[] {
     seen.add(normalized);
     return true;
   });
-}
-
-/**
- * Extract facets only for a session that already has insights (backfill).
- * Uses the full conversation transcript for accurate friction attribution.
- * Falls back to truncation for sessions exceeding token limits.
- */
-export async function extractFacetsOnly(
-  session: SessionData,
-  messages: SQLiteMessageRow[],
-  options?: { signal?: AbortSignal }
-): Promise<{ success: boolean; error?: string }> {
-  if (!isLLMConfigured()) {
-    return { success: false, error: 'LLM not configured.' };
-  }
-
-  if (messages.length === 0) {
-    return { success: false, error: 'No messages found.' };
-  }
-
-  try {
-    const client = createLLMClient();
-    let formattedMessages = formatMessagesForAnalysis(messages);
-
-    // Truncate if conversation exceeds token limits (same pattern as PQ analysis)
-    const estimatedTokens = client.estimateTokens(formattedMessages);
-    if (estimatedTokens > MAX_INPUT_TOKENS) {
-      const targetLength = Math.floor((MAX_INPUT_TOKENS / estimatedTokens) * formattedMessages.length * 0.8);
-      formattedMessages = formattedMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
-    }
-
-    const sessionMeta = buildSessionMeta(session);
-    const prompt = generateFacetOnlyPrompt(
-      session.project_name,
-      session.summary,
-      formattedMessages,
-      sessionMeta
-    );
-
-    const response = await client.chat([
-      { role: 'system', content: FACET_ONLY_SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
-    ], { signal: options?.signal });
-
-    const jsonPayload = extractJsonPayload(response.content);
-    if (!jsonPayload) {
-      return { success: false, error: 'No JSON in facet response.' };
-    }
-
-    let facets: AnalysisResponse['facets'];
-    try {
-      facets = JSON.parse(jsonPayload);
-    } catch {
-      facets = JSON.parse(jsonrepair(jsonPayload));
-    }
-
-    if (facets) {
-      saveFacetsToDb(session.id, facets, ANALYSIS_VERSION);
-    }
-
-    return { success: true };
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return { success: false, error: 'Cancelled' };
-    }
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Facet extraction failed',
-    };
-  }
 }

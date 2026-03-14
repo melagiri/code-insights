@@ -7,7 +7,7 @@ import { WeekSelector } from '@/components/patterns/WeekSelector';
 import { WeekAtAGlanceStrip } from '@/components/patterns/WeekAtAGlanceStrip';
 import { CollapsibleCategoryList } from '@/components/patterns/CollapsibleCategoryList';
 import { WorkingStyleHighlights } from '@/components/patterns/WorkingStyleHighlights';
-import { getCurrentIsoWeek } from '@/lib/date-utils';
+import { getCurrentIsoWeek, formatRelativeDate } from '@/lib/date-utils';
 import { parseSSEStream } from '@/lib/sse';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,17 +20,6 @@ import { frictionBarColor, getDominantDriver } from '@/lib/constants/patterns';
 import {
   AlertTriangle, Sparkles, Shield, Brain, Copy, Check, Loader2,
 } from 'lucide-react';
-
-function formatRelativeDate(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.max(0, Math.floor(diff / 60000));
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
 
 export default function PatternsPage() {
   const [currentWeek, setCurrentWeek] = useState<string>(() => getCurrentIsoWeek());
@@ -84,6 +73,9 @@ export default function PatternsPage() {
       handleWeekChange(mostRecentWithSnapshot.week);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Intentional: handleWeekChange is stable (useCallback with no deps) and initialWeekRef
+  // is a ref — neither should trigger re-runs. Re-running on every render would break the
+  // "jump to most recent snapshot only on initial load" logic.
   }, [weeksData]);
 
   // Auto-load cached snapshot when it arrives and no local results exist yet

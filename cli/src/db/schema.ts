@@ -1,5 +1,5 @@
 // SQL schema for local SQLite database at ~/.code-insights/data.db
-// Mirrors Firestore collections but normalized into relational tables.
+// Local SQLite schema for Code Insights session data.
 // All timestamps are ISO 8601 strings (SQLite has no native datetime).
 // Arrays and nested objects are stored as JSON strings.
 
