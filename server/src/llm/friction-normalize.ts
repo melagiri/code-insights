@@ -1,7 +1,7 @@
 // Friction category normalization.
 // Clusters similar free-form friction categories to canonical ones during aggregation.
 
-import { CANONICAL_FRICTION_CATEGORIES } from './prompts.js';
+import { CANONICAL_FRICTION_CATEGORIES } from './prompt-constants.js';
 import { normalizeCategory } from './normalize-utils.js';
 
 // Explicit alias map for clustering emergent category variants.

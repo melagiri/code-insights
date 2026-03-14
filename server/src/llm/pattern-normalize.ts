@@ -2,7 +2,7 @@
 // Clusters similar free-form pattern categories to canonical ones during aggregation.
 // Delegates to normalize-utils.ts for the shared levenshtein/normalizeCategory algorithm.
 
-import { CANONICAL_PATTERN_CATEGORIES } from './prompts.js';
+import { CANONICAL_PATTERN_CATEGORIES } from './prompt-constants.js';
 import { normalizeCategory, kebabToTitleCase } from './normalize-utils.js';
 
 // Human-readable labels for each canonical category.

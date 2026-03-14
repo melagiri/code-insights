@@ -2,7 +2,7 @@
 // Clusters similar free-form categories to canonical ones during aggregation.
 // Delegates to normalize-utils.ts for the shared levenshtein/normalizeCategory algorithm.
 
-import { CANONICAL_PQ_CATEGORIES, CANONICAL_PQ_STRENGTH_CATEGORIES } from './prompts.js';
+import { CANONICAL_PQ_CATEGORIES, CANONICAL_PQ_STRENGTH_CATEGORIES } from './prompt-constants.js';
 import { normalizeCategory, kebabToTitleCase } from './normalize-utils.js';
 
 // Human-readable labels for each canonical category.
