@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
+  classifyStoredUserMessage,
   formatMessagesForAnalysis,
+  formatSessionMetaLine,
   generateSessionAnalysisPrompt,
+  generatePromptQualityPrompt,
   parseAnalysisResponse,
   parsePromptQualityResponse,
   SESSION_ANALYSIS_SYSTEM_PROMPT,
@@ -28,6 +31,134 @@ function makeMessage(overrides: Partial<SQLiteMessageRow> = {}): SQLiteMessageRo
     ...overrides,
   };
 }
+
+// ──────────────────────────────────────────────────────
+// classifyStoredUserMessage
+// ──────────────────────────────────────────────────────
+
+describe('classifyStoredUserMessage', () => {
+  it('classifies JSON array with tool_result as tool-result', () => {
+    const content = '[{"type":"tool_result","tool_use_id":"toolu_abc","content":"File written successfully"}]';
+    expect(classifyStoredUserMessage(content)).toBe('tool-result');
+  });
+
+  it('classifies JSON array with multiple items including tool_result as tool-result', () => {
+    const content = '[{"type":"tool_result","tool_use_id":"toolu_xyz","content":"ok"},{"type":"tool_result","tool_use_id":"toolu_123","content":"done"}]';
+    expect(classifyStoredUserMessage(content)).toBe('tool-result');
+  });
+
+  it('does NOT classify a JSON array without tool_result keyword as tool-result', () => {
+    // A human might paste a JSON array in a message
+    const content = '[{"name":"Alice"},{"name":"Bob"}]';
+    expect(classifyStoredUserMessage(content)).toBe('human');
+  });
+
+  it('classifies "Here is a summary of our conversation" prefix as system-artifact', () => {
+    const content = 'Here is a summary of our conversation so far:\n\nWe discussed auth middleware...';
+    expect(classifyStoredUserMessage(content)).toBe('system-artifact');
+  });
+
+  it('classifies "This session is being continued" prefix as system-artifact', () => {
+    const content = 'This session is being continued from a previous conversation that ran out of context...';
+    expect(classifyStoredUserMessage(content)).toBe('system-artifact');
+  });
+
+  it('classifies single-line slash command as system-artifact', () => {
+    expect(classifyStoredUserMessage('/compact')).toBe('system-artifact');
+    expect(classifyStoredUserMessage('/review')).toBe('system-artifact');
+    expect(classifyStoredUserMessage('/test --coverage')).toBe('system-artifact');
+  });
+
+  it('classifies two-line slash command as system-artifact', () => {
+    const content = '/compact\nsome brief instruction';
+    expect(classifyStoredUserMessage(content)).toBe('system-artifact');
+  });
+
+  it('does NOT classify long slash content (>2 lines) as system-artifact — avoids false positives', () => {
+    // A human message starting with /usr/bin/... path in a longer paragraph
+    const content = '/usr/bin/node is the runtime I am using.\nPlease update the shebang in the file.\nAlso fix the permissions.';
+    expect(classifyStoredUserMessage(content)).toBe('human');
+  });
+
+  it('does NOT classify /UPPERCASE as system-artifact — only /[a-z] pattern', () => {
+    const content = '/NotACommand';
+    expect(classifyStoredUserMessage(content)).toBe('human');
+  });
+
+  it('classifies normal human text as human', () => {
+    expect(classifyStoredUserMessage('Fix the auth middleware to use Hono patterns')).toBe('human');
+    expect(classifyStoredUserMessage('Can you help me debug this?')).toBe('human');
+    expect(classifyStoredUserMessage('')).toBe('human');
+  });
+
+  it('classifies human message starting with [ but no tool_result as human', () => {
+    const content = '[Step 1] First do X\n[Step 2] Then do Y';
+    expect(classifyStoredUserMessage(content)).toBe('human');
+  });
+});
+
+// ──────────────────────────────────────────────────────
+// formatSessionMetaLine
+// ──────────────────────────────────────────────────────
+
+describe('formatSessionMetaLine', () => {
+  it('returns empty string when meta is undefined', () => {
+    expect(formatSessionMetaLine(undefined)).toBe('');
+  });
+
+  it('returns empty string when all meta fields are zero/empty', () => {
+    expect(formatSessionMetaLine({ compactCount: 0, autoCompactCount: 0, slashCommands: [] })).toBe('');
+  });
+
+  it('formats auto-compact only', () => {
+    const result = formatSessionMetaLine({ autoCompactCount: 2 });
+    expect(result).toContain('2 context compaction');
+    expect(result).toContain('2 auto');
+    expect(result).toContain('session exceeded context window');
+    expect(result.endsWith('\n')).toBe(true);
+  });
+
+  it('formats manual compact only', () => {
+    const result = formatSessionMetaLine({ compactCount: 1 });
+    expect(result).toContain('1 context compaction');
+    expect(result).toContain('1 manual');
+    expect(result).not.toContain('auto');
+  });
+
+  it('formats both auto and manual compacts', () => {
+    const result = formatSessionMetaLine({ compactCount: 1, autoCompactCount: 2 });
+    expect(result).toContain('3 context compaction');
+    expect(result).toContain('2 auto');
+    expect(result).toContain('1 manual');
+  });
+
+  it('uses singular "compaction" for count of 1', () => {
+    const result = formatSessionMetaLine({ autoCompactCount: 1 });
+    expect(result).toContain('1 context compaction');
+    expect(result).not.toContain('compactions');
+  });
+
+  it('uses plural "compactions" for count > 1', () => {
+    const result = formatSessionMetaLine({ autoCompactCount: 3 });
+    expect(result).toContain('3 context compactions');
+  });
+
+  it('formats slash commands only', () => {
+    const result = formatSessionMetaLine({ slashCommands: ['/review', '/test'] });
+    expect(result).toContain('slash commands used: /review, /test');
+    expect(result).not.toContain('compaction');
+  });
+
+  it('formats compacts and slash commands together', () => {
+    const result = formatSessionMetaLine({
+      autoCompactCount: 1,
+      slashCommands: ['/compact', '/review'],
+    });
+    expect(result).toContain('Context signals:');
+    expect(result).toContain('context compaction');
+    expect(result).toContain('slash commands used:');
+  });
+});
 
 // ──────────────────────────────────────────────────────
 // formatMessagesForAnalysis
@@ -115,6 +246,89 @@ describe('formatMessagesForAnalysis', () => {
     // No [Tools used:] since parse failed
     expect(result).not.toContain('[Tools used:');
   });
+
+  it('labels tool-result user messages as [tool-result] and does NOT increment User#N', () => {
+    const toolResultContent = '[{"type":"tool_result","tool_use_id":"toolu_abc","content":"ok"}]';
+    const messages = [
+      makeMessage({ id: 'msg-1', type: 'user', content: 'First human message' }),
+      makeMessage({ id: 'msg-2', type: 'user', content: toolResultContent }),
+      makeMessage({ id: 'msg-3', type: 'user', content: 'Second human message' }),
+    ];
+    const result = formatMessagesForAnalysis(messages);
+    // First and second human messages get indices 0 and 1 (tool-result in between skipped)
+    expect(result).toContain('### User#0:');
+    expect(result).toContain('### User#1:');
+    // No User#2 should appear (only 2 human messages)
+    expect(result).not.toContain('User#2');
+    // Tool-result gets [tool-result] label
+    expect(result).toContain('### [tool-result]:');
+  });
+
+  it('labels auto-compact user messages as [auto-compact] and does NOT increment User#N', () => {
+    const autoCompactContent = 'Here is a summary of our conversation so far:\n\nWe implemented auth...';
+    const messages = [
+      makeMessage({ id: 'msg-1', type: 'user', content: 'Start work' }),
+      makeMessage({ id: 'msg-2', type: 'user', content: autoCompactContent }),
+      makeMessage({ id: 'msg-3', type: 'user', content: 'Continue work' }),
+    ];
+    const result = formatMessagesForAnalysis(messages);
+    expect(result).toContain('### User#0:');
+    expect(result).toContain('### [auto-compact]:');
+    expect(result).toContain('### User#1:');
+    expect(result).not.toContain('User#2');
+  });
+
+  it('labels slash command user messages as [system] (not [auto-compact]) and does NOT increment User#N', () => {
+    // Slash commands are system artifacts but NOT compaction events — they get [system] label.
+    const messages = [
+      makeMessage({ id: 'msg-1', type: 'user', content: 'Start work' }),
+      makeMessage({ id: 'msg-2', type: 'user', content: '/compact' }),
+      makeMessage({ id: 'msg-3', type: 'user', content: 'Continue work' }),
+    ];
+    const result = formatMessagesForAnalysis(messages);
+    expect(result).toContain('### User#0:');
+    expect(result).toContain('### [system]:');
+    expect(result).not.toContain('[auto-compact]');
+    expect(result).toContain('### User#1:');
+    expect(result).not.toContain('User#2');
+  });
+
+  it('distinguishes [auto-compact] from [system] when both appear in same session', () => {
+    const autoCompactContent = 'This session is being continued from a previous conversation...';
+    const messages = [
+      makeMessage({ id: '1', type: 'user', content: 'Do something' }),
+      makeMessage({ id: '2', type: 'user', content: '/review' }),
+      makeMessage({ id: '3', type: 'user', content: autoCompactContent }),
+      makeMessage({ id: '4', type: 'user', content: 'Continue' }),
+    ];
+    const result = formatMessagesForAnalysis(messages);
+    expect(result).toContain('### [system]:');
+    expect(result).toContain('### [auto-compact]:');
+    // User index should still count only genuine human messages (2 of them: 'Do something' + 'Continue')
+    expect(result).toContain('### User#0:');
+    expect(result).toContain('### User#1:');
+    expect(result).not.toContain('User#2');
+  });
+
+  it('preserves User#N counter continuity across mixed message types', () => {
+    const toolResult = '[{"type":"tool_result","tool_use_id":"toolu_1","content":"done"}]';
+    const messages = [
+      makeMessage({ id: '1', type: 'user', content: 'Human 0' }),
+      makeMessage({ id: '2', type: 'user', content: toolResult }),
+      makeMessage({ id: '3', type: 'user', content: toolResult }),
+      makeMessage({ id: '4', type: 'user', content: 'Human 1' }),
+      makeMessage({ id: '5', type: 'assistant', content: 'Reply' }),
+      makeMessage({ id: '6', type: 'user', content: 'Human 2' }),
+    ];
+    const result = formatMessagesForAnalysis(messages);
+    expect(result).toContain('User#0');
+    expect(result).toContain('User#1');
+    expect(result).toContain('User#2');
+    expect(result).not.toContain('User#3');
+    // Two [tool-result] blocks appear
+    const toolResultCount = (result.match(/\[tool-result\]/g) ?? []).length;
+    expect(toolResultCount).toBe(2);
+  });
 });
 
 // ──────────────────────────────────────────────────────
@@ -140,6 +354,68 @@ describe('generateSessionAnalysisPrompt', () => {
   it('includes the formatted messages', () => {
     const result = generateSessionAnalysisPrompt('my-app', null, '### User#0:\nHello');
     expect(result).toContain('### User#0:\nHello');
+  });
+});
+
+// ──────────────────────────────────────────────────────
+// generatePromptQualityPrompt
+// ──────────────────────────────────────────────────────
+
+describe('generatePromptQualityPrompt', () => {
+  const sessionMeta = {
+    humanMessageCount: 8,
+    assistantMessageCount: 12,
+    toolExchangeCount: 31,
+  };
+
+  it('includes project name in the prompt', () => {
+    const result = generatePromptQualityPrompt('my-app', 'conversation', sessionMeta);
+    expect(result).toContain('Project: my-app');
+  });
+
+  it('formats session shape header with structured counts', () => {
+    const result = generatePromptQualityPrompt('my-app', 'conversation', sessionMeta);
+    expect(result).toContain('Session shape: 8 user messages, 12 assistant messages, 31 tool exchanges');
+  });
+
+  it('does NOT include "Total messages:" in output', () => {
+    const result = generatePromptQualityPrompt('my-app', 'conversation', sessionMeta);
+    expect(result).not.toContain('Total messages:');
+  });
+
+  it('includes the formatted conversation', () => {
+    const result = generatePromptQualityPrompt('my-app', '### User#0:\nHello', sessionMeta);
+    expect(result).toContain('### User#0:\nHello');
+  });
+
+  it('handles zero tool exchanges', () => {
+    const result = generatePromptQualityPrompt('proj', 'conversation', {
+      humanMessageCount: 2,
+      assistantMessageCount: 2,
+      toolExchangeCount: 0,
+    });
+    expect(result).toContain('2 user messages, 2 assistant messages, 0 tool exchanges');
+  });
+
+  it('omits Context signals line when meta is not provided', () => {
+    const result = generatePromptQualityPrompt('proj', 'conversation', sessionMeta);
+    expect(result).not.toContain('Context signals:');
+  });
+
+  it('includes Context signals line when meta with compactions is provided', () => {
+    const result = generatePromptQualityPrompt('proj', 'conversation', sessionMeta, {
+      compactCount: 1,
+      autoCompactCount: 2,
+    });
+    expect(result).toContain('Context signals:');
+    expect(result).toContain('context compaction');
+  });
+
+  it('includes slash commands in Context signals when meta has slash commands', () => {
+    const result = generatePromptQualityPrompt('proj', 'conversation', sessionMeta, {
+      slashCommands: ['/review', '/test'],
+    });
+    expect(result).toContain('slash commands used: /review, /test');
   });
 });
 

@@ -37,7 +37,8 @@ app.post('/session', async (c) => {
   const db = getDb();
 
   const session = db.prepare(`
-    SELECT id, project_id, project_name, project_path, summary, ended_at
+    SELECT id, project_id, project_name, project_path, summary, ended_at,
+           compact_count, auto_compact_count, slash_commands
     FROM sessions WHERE id = ? AND deleted_at IS NULL
   `).get(body.sessionId) as SessionData | undefined;
 
@@ -100,7 +101,8 @@ app.get('/session/stream', async (c) => {
   const db = getDb();
 
   const session = db.prepare(`
-    SELECT id, project_id, project_name, project_path, summary, ended_at
+    SELECT id, project_id, project_name, project_path, summary, ended_at,
+           compact_count, auto_compact_count, slash_commands
     FROM sessions WHERE id = ? AND deleted_at IS NULL
   `).get(sessionId) as SessionData | undefined;
 
@@ -206,7 +208,8 @@ app.post('/prompt-quality', async (c) => {
   const db = getDb();
 
   const session = db.prepare(`
-    SELECT id, project_id, project_name, project_path, summary, ended_at
+    SELECT id, project_id, project_name, project_path, summary, ended_at,
+           compact_count, auto_compact_count, slash_commands
     FROM sessions WHERE id = ? AND deleted_at IS NULL
   `).get(body.sessionId) as SessionData | undefined;
 
@@ -268,7 +271,8 @@ app.get('/prompt-quality/stream', async (c) => {
   const db = getDb();
 
   const session = db.prepare(`
-    SELECT id, project_id, project_name, project_path, summary, ended_at
+    SELECT id, project_id, project_name, project_path, summary, ended_at,
+           compact_count, auto_compact_count, slash_commands
     FROM sessions WHERE id = ? AND deleted_at IS NULL
   `).get(sessionId) as SessionData | undefined;
 

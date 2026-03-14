@@ -306,6 +306,40 @@ describe('analyzePromptQuality', () => {
     expect(result.error).toContain('at least 2');
   });
 
+  it('guard: 1 human + many tool-result rows is rejected (V6 gate fix)', async () => {
+    // Pre-fix: this would pass because filter was m.type === 'user' (50 rows > 2).
+    // Post-fix: only genuine human messages count for the gate (1 < 2 → rejected).
+    const toolResultContent = '[{"type":"tool_result","tool_use_id":"toolu_abc","content":"ok"}]';
+    const messages = [
+      makeMessage({ id: 'msg-1', type: 'user', content: 'The one real human message.' }),
+      ...Array.from({ length: 50 }, (_, i) =>
+        makeMessage({ id: `tool-${i}`, type: 'user', content: toolResultContent })
+      ),
+      makeMessage({ id: 'asst-1', type: 'assistant', content: 'Response.' }),
+    ];
+    const result = await analyzePromptQuality(makeSession(), messages);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('at least 2');
+  });
+
+  it('guard: 2 human messages among tool-results passes the gate', async () => {
+    mockChat.mockResolvedValue({
+      content: JSON.stringify(VALID_PQ_RESPONSE),
+      usage: { inputTokens: 200, outputTokens: 80 },
+    });
+
+    const toolResultContent = '[{"type":"tool_result","tool_use_id":"toolu_abc","content":"ok"}]';
+    const messages = [
+      makeMessage({ id: 'msg-1', type: 'user', content: 'First real human message.' }),
+      makeMessage({ id: 'tool-1', type: 'user', content: toolResultContent }),
+      makeMessage({ id: 'tool-2', type: 'user', content: toolResultContent }),
+      makeMessage({ id: 'msg-2', type: 'assistant', content: 'Reply.' }),
+      makeMessage({ id: 'msg-3', type: 'user', content: 'Second real human message.' }),
+    ];
+    const result = await analyzePromptQuality(makeSession(), messages);
+    expect(result.success).toBe(true);
+  });
+
   it('happy path — valid PQ response creates prompt_quality insight', async () => {
     mockChat.mockResolvedValue({
       content: JSON.stringify(VALID_PQ_RESPONSE),

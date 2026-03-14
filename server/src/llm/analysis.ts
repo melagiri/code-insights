@@ -14,6 +14,7 @@ import {
   SESSION_ANALYSIS_SYSTEM_PROMPT,
   generateSessionAnalysisPrompt,
   formatMessagesForAnalysis,
+  classifyStoredUserMessage,
   parseAnalysisResponse,
   PROMPT_QUALITY_SYSTEM_PROMPT,
   generatePromptQualityPrompt,
@@ -25,6 +26,7 @@ import {
   type AnalysisResponse,
   type PromptQualityResponse,
   type ParseError,
+  type SessionMetadata,
 } from './prompts.js';
 import { normalizePatternCategory } from './pattern-normalize.js';
 import { normalizePromptQualityCategory } from './prompt-quality-normalize.js';
@@ -91,6 +93,11 @@ export interface SessionData {
   project_path: string;
   summary: string | null;
   ended_at: string;          // ISO 8601
+  // V6 metadata fields — NULL for pre-V6 sessions, present for sessions synced
+  // after V6 schema migration. Used to provide context signals to LLM prompts.
+  compact_count?: number;
+  auto_compact_count?: number;
+  slash_commands?: string;   // JSON-encoded string[] from SQLite
 }
 
 /**
@@ -121,6 +128,7 @@ export async function analyzeSession(
     const client = createLLMClient();
     const formattedMessages = formatMessagesForAnalysis(messages);
     const estimatedTokens = client.estimateTokens(formattedMessages);
+    const sessionMeta = buildSessionMeta(session);
 
     let analysisResponse: AnalysisResponse;
     let totalInputTokens = 0;
@@ -140,7 +148,8 @@ export async function analyzeSession(
         const prompt = generateSessionAnalysisPrompt(
           session.project_name,
           session.summary,
-          chunkFormatted
+          chunkFormatted,
+          sessionMeta
         );
 
         const response = await client.chat([
@@ -183,7 +192,8 @@ export async function analyzeSession(
           const facetPrompt = generateFacetOnlyPrompt(
             session.project_name,
             session.summary,
-            facetMessages
+            facetMessages,
+            sessionMeta
           );
 
           const facetResponse = await client.chat([
@@ -218,7 +228,8 @@ export async function analyzeSession(
       const prompt = generateSessionAnalysisPrompt(
         session.project_name,
         session.summary,
-        formattedMessages
+        formattedMessages,
+        sessionMeta
       );
 
       const response = await client.chat([
@@ -304,8 +315,13 @@ export async function analyzePromptQuality(
     };
   }
 
-  const userMessages = messages.filter(m => m.type === 'user');
-  if (userMessages.length < 2) {
+  // Change 2: Filter to genuine human messages only (not tool-results or system artifacts).
+  // Pre-change: a session with 1 human + 50 tool-result rows passed the gate incorrectly.
+  // This prevented wasted LLM calls on sessions where there is nothing to evaluate.
+  const humanMessages = messages.filter(m =>
+    m.type === 'user' && classifyStoredUserMessage(m.content) === 'human'
+  );
+  if (humanMessages.length < 2) {
     return {
       success: false,
       insights: [],
@@ -324,10 +340,21 @@ export async function analyzePromptQuality(
       analysisInput = formattedMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
     }
 
+    // Change 3: Pass structured session shape instead of raw message count.
+    // "Total messages: 51" misled the LLM when 43 of those were tool-result rows.
+    const assistantMessages = messages.filter(m => m.type === 'assistant');
+    const toolExchangeCount = messages.length - humanMessages.length - assistantMessages.length;
+
+    const sessionMeta = buildSessionMeta(session);
     const prompt = generatePromptQualityPrompt(
       session.project_name,
       analysisInput,
-      messages.length
+      {
+        humanMessageCount: humanMessages.length,
+        assistantMessageCount: assistantMessages.length,
+        toolExchangeCount,
+      },
+      sessionMeta  // V6 context signals (compact counts, slash commands)
     );
 
     options?.onProgress?.({ phase: 'analyzing' });
@@ -534,6 +561,23 @@ Respond with valid JSON only:
 }
 
 // --- Internal helpers ---
+
+/**
+ * Build a SessionMetadata object from V6 session columns.
+ * Returns undefined when all V6 fields are absent (pre-V6 sessions with NULL columns).
+ * When undefined, prompt generators omit the "Context signals" line entirely.
+ */
+function buildSessionMeta(session: SessionData): SessionMetadata | undefined {
+  const hasCompacts = !!(session.compact_count || session.auto_compact_count);
+  const hasSlashCommands = !!(session.slash_commands);
+  if (!hasCompacts && !hasSlashCommands) return undefined;
+
+  return {
+    compactCount: session.compact_count ?? 0,
+    autoCompactCount: session.auto_compact_count ?? 0,
+    slashCommands: session.slash_commands ? JSON.parse(session.slash_commands) as string[] : [],
+  };
+}
 
 function chunkMessages(
   messages: SQLiteMessageRow[],
@@ -900,10 +944,12 @@ export async function extractFacetsOnly(
       formattedMessages = formattedMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
     }
 
+    const sessionMeta = buildSessionMeta(session);
     const prompt = generateFacetOnlyPrompt(
       session.project_name,
       session.summary,
-      formattedMessages
+      formattedMessages,
+      sessionMeta
     );
 
     const response = await client.chat([

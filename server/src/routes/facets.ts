@@ -185,7 +185,8 @@ app.post('/backfill', async (c) => {
       if (abortSignal.aborted) break;
 
       const session = db.prepare(
-        `SELECT id, project_id, project_name, project_path, summary, ended_at
+        `SELECT id, project_id, project_name, project_path, summary, ended_at,
+                compact_count, auto_compact_count, slash_commands
          FROM sessions WHERE id = ? AND deleted_at IS NULL`
       ).get(sessionId) as SessionData | undefined;
 
@@ -341,7 +342,8 @@ app.post('/backfill-pq', async (c) => {
       if (abortSignal.aborted) break;
 
       const session = db.prepare(
-        `SELECT id, project_id, project_name, project_path, summary, ended_at
+        `SELECT id, project_id, project_name, project_path, summary, ended_at,
+                compact_count, auto_compact_count, slash_commands
          FROM sessions WHERE id = ? AND deleted_at IS NULL`
       ).get(sessionId) as SessionData | undefined;
 
