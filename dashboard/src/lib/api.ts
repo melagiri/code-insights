@@ -105,7 +105,7 @@ export function fetchDashboardStats(range: '7d' | '30d' | '90d' | 'all' = '7d') 
 
 // ── Analysis (Phase 4) ────────────────────────────────────────────────────────
 
-export interface AnalysisApiResult {
+interface AnalysisApiResult {
   success: boolean;
   insights?: Array<{ id: string; type: string; title: string }>;
   error?: string;
@@ -161,18 +161,6 @@ export function analyzePromptQuality(sessionId: string) {
   return request<AnalysisApiResult>('/analysis/prompt-quality', {
     method: 'POST',
     body: JSON.stringify({ sessionId }),
-  });
-}
-
-export function findRecurringInsights(body?: { projectId?: string; limit?: number }) {
-  return request<{
-    success: boolean;
-    groups?: Array<{ insightIds: string[]; theme: string }>;
-    updatedCount?: number;
-    error?: string;
-  }>('/analysis/recurring', {
-    method: 'POST',
-    body: JSON.stringify(body ?? {}),
   });
 }
 
@@ -418,19 +406,3 @@ export async function reflectGenerateStream(
   return res;
 }
 
-export async function backfillFacetsStream(
-  sessionIds: string[],
-  signal?: AbortSignal
-): Promise<Response> {
-  const res = await fetch(`${BASE}/facets/backfill`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionIds }),
-    signal,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`Backfill failed ${res.status}: ${text}`);
-  }
-  return res;
-}
