@@ -136,6 +136,15 @@ When invoked by a dev agent for clarification:
 - [ ] CLI binary name is `code-insights`
 - [ ] No breaking changes to existing SQLite data
 
+### Test Coverage (TDD Domain Verification)
+For each TDD domain touched by this PR, verify tests exist:
+- [ ] `cli/src/providers/` change → `__tests__/*.test.ts` present and covers new behavior
+- [ ] `server/src/llm/*-normalize.ts` change → normalizer test updated with new aliases/categories
+- [ ] `cli/src/db/` migration change → migration idempotency test updated
+- [ ] `cli/src/utils/` or `server/src/utils.ts` change → utility test updated
+
+For SKIP domains (dashboard, CLI command wiring): mark N/A.
+
 ### Pattern Consistency
 - [ ] Matches existing codebase patterns
 - [ ] SQLite queries use prepared statements

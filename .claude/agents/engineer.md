@@ -151,18 +151,50 @@ git checkout -b feature/description
 
 ### Step 8: Implementation & PR
 
+#### TDD Domains (Check Before Coding)
+
+Before writing any implementation code, check whether your change touches a TDD domain:
+
+| Level | Domain | Path | Coverage Target |
+|-------|--------|------|----------------|
+| **MUST TDD** | Parsers (source providers) | `cli/src/providers/` | 90%+ |
+| **MUST TDD** | Normalizers | `server/src/llm/*-normalize.ts` | 85%+ |
+| **MUST TDD** | Migrations | `cli/src/db/` | 90%+ |
+| **MUST TDD** | Shared utilities | `server/src/utils.ts`, `cli/src/utils/` | 85%+ |
+| **SHOULD TDD** | API routes | `server/src/routes/` | 70%+ |
+| **SKIP TDD** | Dashboard components | `dashboard/src/` | — |
+| **SKIP TDD** | CLI command wiring | `cli/src/commands/`, `cli/src/index.ts` | — |
+
+#### TDD Workflow for MUST Domains
+
+When changing a MUST TDD domain, follow this sequence:
+
+1. **Write the failing test first** — in `__tests__/` subdirectory of the module, or co-located if convention already exists
+2. **Verify it fails** — `pnpm test` should show the new test as failing
+3. **Implement until test passes** — minimal code to make the test green
+4. **Commit test + implementation together** in a single logical commit
+
+#### Test Patterns by Domain
+
+| Domain | Pattern | Example |
+|--------|---------|---------|
+| Normalizers | Table-driven: array of `[input, expected]` pairs | All 44 PQ aliases in one `it()` |
+| Parsers | Fixture-based: real JSONL files in `__fixtures__/` | `claude-code.test.ts` golden fixtures |
+| Migrations | In-memory SQLite: `new Database(':memory:')` + `runMigrations()` | Double-apply idempotency |
+| Utilities | Unit tests: pure function input/output | `parseIntParam` edge cases |
+
 **Commit Strategy (MANDATORY):**
 1. Config/dependency changes first
 2. Type definitions (if changed)
 3. SQLite schema changes (if applicable)
-4. Core implementation (library/hook changes)
+4. Core implementation (library/hook changes) — with tests committed together
 5. Command wiring (CLI) or page implementations (dashboard)
 
 ### Pre-PR Gate (MANDATORY)
 
 Before creating ANY pull request (`gh pr create` or MCP), you MUST:
 1. Run `pnpm build` from the repo root — must pass with zero errors
-2. If a test framework is added in the future, `pnpm test` must also pass with zero failures
+2. Run `pnpm test` from the repo root — must pass with zero failures
 3. If anything fails, fix it before creating the PR
 
 **This is non-negotiable. GitHub Actions costs money — failed CI runs are wasted spend.**
@@ -322,6 +354,8 @@ Before declaring any task complete:
 - [ ] Limitations documented in code comments
 - [ ] **PRE-PR GATE PASSED** (NON-NEGOTIABLE):
   - [ ] `pnpm build` passes (run from repo root, zero errors)
+  - [ ] `pnpm test` passes (run from repo root, zero failures)
+- [ ] TDD domains: tests written first, committed with implementation
 - [ ] No over-engineering introduced
 - [ ] Follows existing codebase patterns
 - [ ] Any deviations discussed and approved

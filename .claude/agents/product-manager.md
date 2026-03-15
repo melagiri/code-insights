@@ -186,6 +186,34 @@ After verification, add a completion comment:
 gh issue comment [NUMBER] --body "Completed in PR #[XX]. All checks passed. Ready for merge."
 ```
 
+## Testable Acceptance Criteria
+
+When writing GitHub Issues for features that touch TDD domains (parsers, normalizers, migrations, utilities), write acceptance criteria in a testable form. This helps the engineer know exactly what tests to write.
+
+### Testable vs. Non-testable Criteria
+
+| Non-testable (avoid) | Testable (prefer) |
+|---------------------|--------------------|
+| "Normalizer handles legacy aliases" | "All 11 legacy aliases in friction-normalize.ts resolve to their canonical categories" |
+| "Migration is backward compatible" | "Running migrations twice produces no duplicate rows in schema_version" |
+| "Parser handles edge cases" | "Parser returns null for empty JSONL file, and null for file with only malformed lines" |
+| "New utility function works" | "formatDuration(0) returns '0s', formatDuration(3600) returns '1h'" |
+
+### TDD Domain Checklist for Issue Authors
+
+When your issue touches a TDD domain, include in acceptance criteria:
+
+- [ ] **Happy path**: What should the function return for valid input?
+- [ ] **Boundary conditions**: What are the edge cases (empty, zero, null)?
+- [ ] **Error/rejection cases**: What invalid inputs should be handled gracefully?
+- [ ] **Regression coverage**: Which existing behaviors must not change?
+
+### Non-testable Domains (Skip AC for Tests)
+
+For dashboard components and CLI command wiring, acceptance criteria should describe user-visible behavior and include screenshots/screen recordings rather than test specifications. These domains are verified by manual testing.
+
+---
+
 ## MoSCoW Prioritization Framework
 
 When prioritizing features or deciding what to build next:
