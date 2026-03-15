@@ -103,7 +103,7 @@ IMPORTANT RULES:
 - If you need user clarification, message the orchestrator who will ask the user
 - You can message existing teammates directly via SendMessage for routine coordination
 - Task dependencies enforce ceremony order -- don't skip steps
-- CI gate for this project: pnpm build (no test framework yet)",
+- PRE-PR GATE (MANDATORY): Before any PR is created, `pnpm build` must pass from the repo root with zero errors. If it fails, dev fixes before creating the PR. GitHub Actions costs money — failed CI runs are wasted spend.",
   mode: "bypassPermissions"
 }
 ```
@@ -144,7 +144,7 @@ Task {
   name: "dev-agent",
   subagent_type: "engineer",
   team_name: "feat-<slugified-arguments>",
-  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: $ARGUMENTS. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed. CI gate: pnpm build must pass.",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: $ARGUMENTS. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed. PRE-PR GATE (MANDATORY): Before creating any PR, run `pnpm build` from the repo root and verify zero errors. If it fails, fix before creating the PR. This is non-negotiable — failed CI runs waste money.",
   mode: "bypassPermissions"
 }
 ```

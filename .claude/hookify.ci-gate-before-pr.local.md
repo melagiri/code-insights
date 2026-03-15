@@ -2,21 +2,23 @@
 name: ci-gate-before-pr
 enabled: true
 event: bash
-action: warn
+action: block
 pattern: gh\s+pr\s+create
 ---
 
-**CI Gate: Run Checks Before PR Creation**
+**CI Gate: Build + Tests MUST Pass Before PR Creation**
 
-You are about to create a pull request. Before proceeding, you MUST run and confirm all checks pass:
+BLOCKED. You must run BOTH build and tests before creating a PR:
 
 ```bash
-cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build && pnpm test
 ```
 
-**Why this matters:** GitHub Actions usage costs money after the free tier. Running checks locally first prevents wasted CI minutes on PRs that will fail.
+**Why this is a hard block:** GitHub Actions usage costs money. Every failed CI run is wasted spend. Running build + tests locally catches failures before they reach CI.
 
-**If checks fail:** Fix the issues first, then create the PR.
-**If checks pass:** Proceed with PR creation.
+**To proceed:**
+1. Run `pnpm build && pnpm test` and confirm ALL pass (zero failures)
+2. If anything fails, fix it first
+3. Only then retry `gh pr create`
 
-Do NOT skip this step. Do NOT create the PR if any check fails.
+This is a hard block — the command will not execute until you have verified both build and tests pass.

@@ -158,12 +158,19 @@ git checkout -b feature/description
 4. Core implementation (library/hook changes)
 5. Command wiring (CLI) or page implementations (dashboard)
 
-**CI Simulation Gate (BEFORE PR):**
-```bash
-pnpm build    # Must pass across the workspace
-```
+### Pre-PR Gate (MANDATORY)
 
-**Note:** No test framework is configured yet. Flag when tests should be added, but don't block on it.
+Before creating ANY pull request (`gh pr create` or MCP), you MUST:
+1. Run `pnpm build` from the repo root — must pass with zero errors
+2. If a test framework is added in the future, `pnpm test` must also pass with zero failures
+3. If anything fails, fix it before creating the PR
+
+**This is non-negotiable. GitHub Actions costs money — failed CI runs are wasted spend.**
+
+```bash
+# Run from repo root (not a subpackage)
+pnpm build
+```
 
 **If ANY check fails:** Fix before creating PR. Never rely on CI to catch errors you can catch locally.
 
@@ -268,7 +275,7 @@ gh pr comment [PR_NUMBER] --body "$(cat <<'EOF'
 1. [Issue] → Fixed: [what you did]
 2. [Issue] → Fixed: [what you did]
 
-**CI gate:** pnpm build passing
+**Pre-PR gate:** `pnpm build` passing (run from repo root)
 
 All review items addressed. Ready for re-review or merge.
 EOF
@@ -313,8 +320,8 @@ This self-review happens BEFORE creating a PR. It catches misalignment before th
 Before declaring any task complete:
 - [ ] Code implemented and working
 - [ ] Limitations documented in code comments
-- [ ] **CI SIMULATION GATE PASSED** (NON-NEGOTIABLE):
-  - [ ] `pnpm build` passes
+- [ ] **PRE-PR GATE PASSED** (NON-NEGOTIABLE):
+  - [ ] `pnpm build` passes (run from repo root, zero errors)
 - [ ] No over-engineering introduced
 - [ ] Follows existing codebase patterns
 - [ ] Any deviations discussed and approved

@@ -145,7 +145,7 @@ You coordinate all 10 steps of the development ceremony. You don't execute most 
 | Dev starts coding without context review (Step 3) | High | "Stop. Read the relevant files first. What does types.ts say about this?" |
 | Schema change without TA dialogue (Step 4) | Critical | "This touches the SQLite schema. TA must review before implementation." |
 | Commit to main branch | Critical | "STOP. You're on main. Create a feature branch immediately." |
-| PR created without CI gate (Step 8) | High | "Run `pnpm build` before creating the PR." |
+| PR created without CI gate (Step 8) | High | "Run `pnpm build` from the repo root before creating the PR. Zero failures required." |
 | Skip triple-layer review (Step 9) | High | "All PRs require insider + outsider review. No exceptions." |
 | Agent attempts to merge PR | Critical | "Agents NEVER merge PRs. Report readiness and stop." |
 | Dev proceeds without TA approval on schema change | Critical | "TA has not approved this approach. Wait for explicit approval." |
@@ -283,6 +283,22 @@ When asked for a status update, use this format:
 | "It would be easy to also..." | "Easy to build != easy to maintain. Focus on the current scope." |
 | "Users might also want..." | "Do we know that? Let's ship this and see what they actually ask for." |
 | "Let's future-proof by..." | "We'll cross that bridge when we come to it. YAGNI." |
+
+## Pre-PR Gate (MANDATORY)
+
+Before ANY pull request is created — whether by the engineer directly or by a sub-agent you've instructed to create one — the following gate MUST pass:
+
+1. Run `pnpm build` from the repo root — zero errors
+2. If a test framework is added in the future, `pnpm test` must also pass with zero failures
+3. If anything fails, the PR must NOT be created until it's fixed
+
+**This is non-negotiable. GitHub Actions costs money — failed CI runs are wasted spend.**
+
+When verifying dev completion (Step 8), always confirm:
+- "Did you run `pnpm build` from the repo root?"
+- "Were there zero build errors?"
+
+If the answer to either is no, send the engineer back to fix before creating the PR.
 
 ## Branch Discipline
 

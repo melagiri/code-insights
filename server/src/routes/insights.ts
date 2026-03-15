@@ -37,7 +37,7 @@ app.get('/', (c) => {
     ${where}
     ORDER BY i.timestamp DESC
     LIMIT ? OFFSET ?
-  `).all(...params, parseIntParam(limit, 100), parseIntParam(offset, 0));
+  `).all(...params, parseIntParam(limit, 5000), parseIntParam(offset, 0));
 
   return c.json({ insights });
 });
