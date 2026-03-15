@@ -61,7 +61,13 @@ LLM analysis uses your own API key, stored in `~/.code-insights/config.json` (mo
 | **Decision** | Architecture choices, trade-offs, reasoning, alternatives considered |
 | **Learning** | Technical discoveries, mistakes, transferable knowledge |
 | **Technique** | Problem-solving approaches and debugging strategies |
-| **Prompt Quality** | Categorized prompt analysis: 7 deficit + 3 strength categories, 5 dimension scores, two-layer output (user takeaways + Reflect findings) |
+| **Prompt Quality** | Prompt effectiveness analysis with deficit/strength categories, dimension scores, and actionable takeaways |
+
+**Prompt Quality details:**
+- **7 deficit categories:** `vague-request`, `missing-context`, `late-constraint`, `unclear-correction`, `scope-drift`, `missing-acceptance-criteria`, `assumption-not-surfaced`
+- **3 strength categories:** `precise-request`, `effective-context`, `productive-correction`
+- **5 dimension scores (0–100):** `context_provision`, `request_specificity`, `scope_management`, `information_timing`, `correction_quality`
+- **Two-layer output:** user-facing takeaways with before/after rewrites (shown on Insights page) + categorized findings for Reflect aggregation
 
 ### Export
 
