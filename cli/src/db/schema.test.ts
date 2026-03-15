@@ -298,12 +298,12 @@ describe('runMigrations', () => {
     db.close();
   });
 
-  it('V6 schema version is 6 after migration', () => {
+  it('V7 schema version is 7 after migration', () => {
     const db = new Database(':memory:');
     runMigrations(db);
 
     const row = db.prepare('SELECT MAX(version) AS v FROM schema_version').get() as { v: number };
-    expect(row.v).toBe(6);
+    expect(row.v).toBe(7);
 
     db.close();
   });
@@ -312,14 +312,16 @@ describe('runMigrations', () => {
     const db = new Database(':memory:');
     const result = runMigrations(db);
     expect(result.v6Applied).toBe(true);
+    expect(result.v7Applied).toBe(true);
     db.close();
   });
 
-  it('runMigrations returns v6Applied=false when already on V6', () => {
+  it('runMigrations returns v6Applied=false when already migrated', () => {
     const db = new Database(':memory:');
     runMigrations(db);           // first run — applies all migrations
     const result = runMigrations(db);  // second run — nothing to apply
     expect(result.v6Applied).toBe(false);
+    expect(result.v7Applied).toBe(false);
     db.close();
   });
 });
