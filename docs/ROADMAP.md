@@ -118,6 +118,55 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 
 ---
 
+## Phase 8.5: Taxonomy & Classification Refinement ✅
+
+**Goal:** Deepen the quality of facet classification with richer taxonomy, attribution model, and ISO week navigation
+
+### Milestones
+
+- [x] **8.5.1 Effective Pattern Taxonomy Revision** (PR #129) ✅
+  - `driver` field on `EffectivePattern`: `user-driven` / `ai-driven` / `collaborative`
+  - Contrastive classification guidance with in-session signal detection
+  - Outdated detection for sessions missing `driver` or `category`
+
+- [x] **8.5.2 Prompt Quality Taxonomy Revision** (PR #136) ✅
+  - 7 deficit categories + 3 strength categories (replacing efficiency scores)
+  - 5 dimension scores: `context_provision`, `request_specificity`, `scope_management`, `information_timing`, `correction_quality`
+  - Two-layer output: user takeaways (before/after) + categorized findings for Reflect aggregation
+
+- [x] **8.5.3 ISO Week Navigation for Reflect** (PR #132) ✅
+  - Replaced sliding windows (7d/30d/90d) with ISO week navigation (`2026-W10`)
+  - `GET /api/reflect/weeks` returns last 8 weeks with session counts and snapshot status
+  - `MIN_FACETS_FOR_REFLECT` lowered from 20 → 8 for weekly scope
+
+- [x] **8.5.4 Attribution Rewrite** (PR #138) ✅
+  - CoT `_reasoning` scratchpad field forces model to reason before classifying
+  - Actor-neutral friction category definitions
+  - User infrastructure recognition in pattern driver decision tree
+
+---
+
+## Phase 9: Infrastructure & Reliability ✅
+
+**Goal:** Strengthen the data pipeline with message classification, prompt caching, and cost tracking
+
+### Milestones
+
+- [x] **9.1 Message Classification V6 Schema** (PRs #151, #154) ✅
+  - `compact_count`, `auto_compact_count`, `slash_commands` columns on sessions
+  - Analysis prompt updated to use V6 context signals
+
+- [x] **9.2 Prompt Caching** (PR #180) ✅
+  - Provider-native shared prefix caching for Anthropic
+  - Cache creation/read token counts tracked in `analysis_usage`
+
+- [x] **9.3 LLM Cost Tracking V7 Schema** (PR #181) ✅
+  - `analysis_usage` table: per-session cost with provider, model, tokens, duration
+  - Pricing calculator for OpenAI, Anthropic, Gemini, Ollama
+  - Dashboard cost UI on session detail and `/api/analysis/usage` endpoint
+
+---
+
 ## Version Milestones
 
 | Version | Phase | Key Features | Status |
@@ -135,18 +184,14 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 | 3.4.0 | — | Multi-source parser fixes (Codex, Cursor, Copilot), agent message rendering | ✅ Done |
 | 3.5.1 | 7 | Session-level export templates (Knowledge Base, Agent Rules), prompt quality | ✅ Done |
 | 3.6.0 | 7 | LLM-powered Export Page (cross-session synthesis, 4 formats, SSE streaming) | ✅ Done |
-| 3.6.1 | 8 | Reflect & Patterns (facets, friction normalization, synthesis, Patterns page) | ✅ Done |
+| 3.6.1 | 8–9 | Reflect & Patterns, taxonomy revisions, ISO weeks, cost tracking (Schema V7) | ✅ Done |
 
 ---
 
 ## What's Next
 
-- ~~Effective patterns audit~~ ✅ Completed (LLM expert audit confirmed 8 categories, added `driver` field, upgraded classification guidance)
-- Effective pattern taxonomy revision: upgraded classification guidance (contrastive pairs, in-session signals), `driver` field (`user-driven`/`ai-driven`/`collaborative`), outdated detection
 - Progress tracking: weekly snapshots, friction-to-pattern affinity map (ships here, not in taxonomy PR), transformation detection, `driver`-based filtering for user growth signals
 - Test suite expansion (Vitest)
-- Slash commands for quick insights from the terminal
-- LLM cost tracking per call (app-wide)
 - Session merging across tools (linking related sessions from different AI tools)
 - Gamification and shareable badges (see `docs/plans/2026-03-08-gamification-shareable-badges.md`)
 

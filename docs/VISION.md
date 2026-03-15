@@ -78,26 +78,18 @@ Code Insights is a utility, not a product. It should:
 - Export Page uses the multi-provider LLM abstraction (same as session analysis) ✅
 
 ### Phase 8: Reflect & Patterns ✅
-- Session facets: per-session structured metadata (friction, patterns, workflow, outcome) extracted during analysis
-- Dedicated `session_facets` SQLite table (Schema V3) with indexed scalar columns
-- Friction category normalization via Levenshtein distance matching
-- `code-insights reflect` CLI command for cross-session LLM synthesis
-- `code-insights stats patterns` for terminal pattern viewing
-- Dashboard Patterns page with three sections: Friction & Wins, Rules & Skills, Working Style
-- Facet backfill CLI command and server endpoint for previously-analyzed sessions
-- Reflect snapshot caching with staleness tracking (Schema V4)
-- Effective pattern normalization with 8 canonical categories and confidence filtering
-- Friction taxonomy revision: 15 generic categories → 9 AI-session-focused categories answering "where did the AI-human collaboration break down?"
-- Friction attribution model: each friction point classified as user-actionable, ai-capability, or environmental — capturing both user and AI contributions to friction
-- Consistent category+description list presentation for both friction and effective patterns
+Session facets infrastructure (Schema V3, V4) shipped with per-session structured metadata: friction points, effective patterns, workflow pattern, and outcome satisfaction. Friction normalized to 9 AI-session-focused categories with attribution model (user-actionable / ai-capability / environmental). Effective patterns normalized to 8 canonical categories. Dashboard Patterns page with three sections: Friction & Wins, Rules & Skills, Working Style. `code-insights reflect` and `stats patterns` CLI commands.
+
+### Phase 8.5: Taxonomy & Classification Refinement ✅
+Effective pattern taxonomy upgraded with `driver` field (`user-driven`/`ai-driven`/`collaborative`), contrastive classification guidance, and in-session signal detection (PR #129). Prompt quality taxonomy revised to 7 deficit + 3 strength categories with 5 dimension scores and a two-layer output (user takeaways + Reflect findings) (PR #136). Reflect navigation switched from sliding windows to ISO week-based navigation with week history endpoint (PR #132). Attribution rewrite added CoT `_reasoning` scratchpad and actor-neutral friction definitions (PR #138). Backfill updated to find both missing and outdated sessions in one pass (PR #130).
+
+### Phase 9: Infrastructure & Reliability ✅
+Message classification V6 schema added `compact_count`, `auto_compact_count`, and `slash_commands` to sessions, with prompt alignment for V6 signals (PRs #151, #154). Prompt caching implemented using provider-native shared prefix caching for Anthropic (PR #180). LLM cost tracking V7 schema (`analysis_usage` table) captures per-session token counts, cache metrics, and estimated USD cost with a pricing calculator and dashboard cost UI (PR #181).
 
 ### What's Next
-- Effective patterns audit: review the 8 pattern categories with the same rigor applied to friction
 - Progress tracking: "Am I getting better?" — weekly snapshots comparing friction trends and pattern emergence, tracking user-actionable friction declining and new patterns solidifying
 - Friction-to-pattern affinity map (e.g., stale-assumptions friction → context-gathering pattern)
 - Test suite expansion (Vitest)
-- Slash commands for quick insights from the terminal
-- LLM cost tracking per call (app-wide)
 - Session merging across tools (linking related sessions from different AI tools)
 - Gamification and shareable badges
 

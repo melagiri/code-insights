@@ -36,7 +36,7 @@ code-insights/
 ├── server/                 # Hono API server
 │   └── src/
 │       ├── routes/         # REST API endpoints
-│       ├── llm/            # LLM providers, prompts, export/analysis/reflect
+│       ├── llm/            # LLM client: session analysis, reflect synthesis, export, normalization, cost tracking; analysis prompts use provider-native caching for the shared conversation prefix
 │       └── index.ts        # Server entry point
 ├── docs/                   # Product docs, plans, roadmap
 │   └── plans/              # Design plans (pending implementation only)
@@ -100,7 +100,7 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 - **Location:** `~/.code-insights/data.db`
 - **Mode:** WAL (concurrent reads during CLI sync)
 - **Driver:** better-sqlite3 (synchronous, fast, no async overhead)
-- **Schema:** Versioned migrations (V1–V5) applied on startup
+- **Schema:** Versioned migrations (V1–V7) applied on startup
 - **Timestamps:** ISO 8601 strings
 
 ### Tables
@@ -108,12 +108,13 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 | Table | Purpose | Schema Version |
 |-------|---------|---------------|
 | `projects` | Project metadata (id = hash of git remote URL or path) | V1 |
-| `sessions` | Session metadata, titles, character classification, `deleted_at` soft-delete | V1, V5 |
+| `sessions` | Session metadata, titles, character classification, `deleted_at` soft-delete; V6 adds `compact_count INTEGER`, `auto_compact_count INTEGER`, `slash_commands TEXT` | V1, V5, V6 |
 | `messages` | Full message content (stored during sync) | V1 |
 | `insights` | LLM-generated insights (5 types) | V1, V2 (index) |
 | `usage_stats` | Global usage aggregation | V1 |
 | `session_facets` | Cross-session facet data (friction, patterns, workflow) | V3 |
 | `reflect_snapshots` | Cached synthesis results, composite PK `(period, project_id)` | V4 |
+| `analysis_usage` | Per-session LLM analysis cost data, composite PK `(session_id, analysis_type)` | V7 |
 | `schema_version` | Migration tracking | V1 |
 
 ---
@@ -141,6 +142,7 @@ Dashboard (dashboard/src/)   -> Reads from Server API
 | `ParsedSession` | Aggregated session with metadata, title, character |
 | `Insight` | Types: summary, decision, learning, technique, prompt_quality; source: 'llm' |
 | `FrictionPoint` | Friction with category, severity, resolution, description; optional `attribution` field (`'user-actionable' \| 'ai-capability' \| 'environmental'`) |
+| `EffectivePattern` | Pattern with required `category`, `description`, `confidence`; optional `driver` field (`'user-driven' \| 'ai-driven' \| 'collaborative'`); CoT `_reasoning` scratchpad stored in JSON blob |
 | `SessionCharacter` | 7 classifications: deep_focus, bug_hunt, feature_build, exploration, refactor, learning, quick_task |
 | `ClaudeInsightConfig` | Config format |
 | `SyncState` | File modification tracking for incremental sync |
@@ -174,8 +176,17 @@ Both friction points and effective patterns use canonical category taxonomies wi
 | `/api/config` | Configuration endpoints (including LLM) |
 | `/api/export` | Export generation (SSE streaming) |
 | `/api/telemetry` | Telemetry identity & opt-out |
+| `/api/analysis/usage` | Analysis cost/usage data per session |
 | `/api/facets` | Session facets data; `/api/facets/outdated` detects sessions missing effective_patterns.category or friction_points.attribution |
+| `/api/facets/missing-pq` | Sessions missing prompt quality analysis |
+| `/api/facets/outdated-pq` | Sessions with outdated prompt quality insights |
+| `/api/facets/backfill-pq` | Backfill prompt quality for sessions |
 | `/api/reflect` | Cross-session synthesis endpoints |
+| `/api/reflect/weeks` | List last 8 ISO weeks with session counts and snapshot status |
+| `/api/reflect/snapshot` | Cached synthesis snapshot for a specific week/project |
+| `/api/sessions/deleted/count` | Count of soft-deleted sessions |
+| `PATCH /api/sessions/:id` | Update session (custom title, soft delete) |
+| `DELETE /api/sessions/:id` | Soft-delete a session |
 
 ---
 
