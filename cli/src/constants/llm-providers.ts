@@ -23,7 +23,7 @@ export const PROVIDERS: ProviderInfo[] = [
     apiKeyLink: 'https://console.anthropic.com/settings/keys',
     models: [
       { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Best balance', inputCostPer1M: 3, outputCostPer1M: 15 },
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fast & cheap', inputCostPer1M: 0.25, outputCostPer1M: 1.25 },
+      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fast & cheap', inputCostPer1M: 0.80, outputCostPer1M: 4 },
       { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Most capable', inputCostPer1M: 15, outputCostPer1M: 75 },
     ],
   },

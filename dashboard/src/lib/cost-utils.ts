@@ -13,9 +13,9 @@ export const MAX_ANALYSIS_INPUT_TOKENS = 80_000;
  * These are intentionally conservative — analysis outputs are typically shorter than the max.
  */
 export const ESTIMATED_OUTPUT_TOKENS = {
-  session: 2000,
+  session: 3000,
   prompt_quality: 2500,
-  facet: 500,
+  facet: 1200,
 } as const;
 
 // Inline pricing data — keep in sync with cli/src/constants/llm-providers.ts.
@@ -28,7 +28,7 @@ const PROVIDER_PRICING: Record<string, Record<string, { input: number; output: n
   },
   anthropic: {
     'claude-sonnet-4-20250514':   { input: 3,    output: 15 },
-    'claude-3-5-haiku-20241022':  { input: 0.25, output: 1.25 },
+    'claude-3-5-haiku-20241022':  { input: 0.80, output: 4 },
     'claude-opus-4-20250514':     { input: 15,   output: 75 },
   },
   gemini: {
@@ -57,9 +57,8 @@ function lookupPricing(provider: string, model: string): { input: number; output
     }
   }
 
-  // Fallback: use first model pricing for the provider (better than nothing for estimates)
-  const fallback = Object.values(providerPricing)[0];
-  return fallback ?? null;
+  // Unknown model — return null rather than guessing (caller treats null as $0)
+  return null;
 }
 
 /**
