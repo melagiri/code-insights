@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "98c30b5090c7",
+  "session_id": "ff8afa9b-ac8b-4633-9b59-6d8901d31b9c",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-15T12:03:20.442292Z",
+  "branch": "fix/insights-api-default-limit",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/agents/engineer.md",
+    ".claude/agents/product-manager.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "a26be4d8c78e",
+  "token_usage": {
+    "input_tokens": 37,
+    "cache_creation_tokens": 170247,
+    "cache_read_tokens": 1712198,
+    "output_tokens": 11390,
+    "api_call_count": 27
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-15T12:03:20.256472Z",
+    "agent_lines": 0,
+    "human_added": 16185,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 16185,
+    "agent_percentage": 0
+  }
+}

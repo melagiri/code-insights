@@ -3,7 +3,7 @@
   "checkpoint_id": "98c30b5090c7",
   "strategy": "manual-commit",
   "branch": "fix/insights-api-default-limit",
-  "checkpoints_count": 19,
+  "checkpoints_count": 20,
   "files_touched": [
     ".claude/agents/engineer.md",
     ".claude/agents/product-manager.md",
@@ -26,13 +26,20 @@
       "context": "/98/c30b5090c7/1/context.md",
       "content_hash": "/98/c30b5090c7/1/content_hash.txt",
       "prompt": "/98/c30b5090c7/1/prompt.txt"
+    },
+    {
+      "metadata": "/98/c30b5090c7/2/metadata.json",
+      "transcript": "/98/c30b5090c7/2/full.jsonl",
+      "context": "/98/c30b5090c7/2/context.md",
+      "content_hash": "/98/c30b5090c7/2/content_hash.txt",
+      "prompt": "/98/c30b5090c7/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 160,
-    "cache_creation_tokens": 347480,
-    "cache_read_tokens": 5525033,
-    "output_tokens": 19915,
-    "api_call_count": 90
+    "input_tokens": 197,
+    "cache_creation_tokens": 517727,
+    "cache_read_tokens": 7237231,
+    "output_tokens": 31305,
+    "api_call_count": 117
   }
 }
