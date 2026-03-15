@@ -251,55 +251,91 @@ app.get('/results', (c) => {
 });
 
 // GET /api/reflect/weeks
-// Returns the last 8 ISO weeks that have sessions, with snapshot status for each.
+// Returns all ISO weeks from the earliest session through the current week, with snapshot status.
 // Used by the WeekSelector component to show which weeks have reflections.
+// Week list is data-driven (not capped at 8) so users with long history can navigate all weeks.
 app.get('/weeks', (c) => {
   const db = getDb();
   const project = c.req.query('project');
 
-  // Compute the Monday of the current ISO week so we can generate the last 8 weeks
+  const projectCondition = project ? 'AND project_id = ?' : '';
+  const projectParams: string[] = project ? [project] : [];
+
+  // Find the earliest session to determine the full week range.
+  // If no sessions exist, return empty array.
+  const earliestRow = db.prepare(`
+    SELECT MIN(started_at) as earliest
+    FROM sessions
+    WHERE deleted_at IS NULL
+      ${projectCondition}
+  `).get(...projectParams) as { earliest: string | null } | undefined;
+
+  if (!earliestRow?.earliest) {
+    return c.json({ weeks: [] });
+  }
+
+  // Compute the Monday of the current ISO week
   const now = new Date();
   const nowDay = now.getUTCDay(); // 0=Sun
   const daysToMonday = nowDay === 0 ? 6 : nowDay - 1;
   const thisMondayMs = now.getTime() - daysToMonday * 86400000;
 
-  // Build list of last 8 ISO week strings (most recent first) with their boundaries
+  // Compute the Monday of the earliest session's ISO week
+  const earliestDate = new Date(earliestRow.earliest);
+  const earliestDay = earliestDate.getUTCDay();
+  const daysToEarliestMonday = earliestDay === 0 ? 6 : earliestDay - 1;
+  const earliestMondayMs = earliestDate.getTime() - daysToEarliestMonday * 86400000;
+
+  // Generate all weeks from earliest through current (most recent first).
+  // Each step is one week (7 days). We go from current backward to earliest.
   type WeekEntry = { week: string; start: string; end: string };
   const weekEntries: WeekEntry[] = [];
-  for (let i = 0; i < 8; i++) {
-    const weekMonday = new Date(thisMondayMs - i * 7 * 86400000);
+  let weekMondayMs = thisMondayMs;
+  while (weekMondayMs >= earliestMondayMs - 86400000) { // small buffer for float precision
+    const weekMonday = new Date(weekMondayMs);
     const week = formatIsoWeek(weekMonday);
     const bounds = parseIsoWeek(week)!;
     weekEntries.push({ week, start: bounds.start.toISOString(), end: bounds.end.toISOString() });
+    weekMondayMs -= 7 * 86400000;
   }
 
-  // Oldest week start and newest week end span the full 8-week range
-  const rangeStart = weekEntries[weekEntries.length - 1].start;
-  const rangeEnd = weekEntries[0].end;
   const projectKey = project || '__all__';
 
-  // Bulk query 1: session counts per week boundary using CASE bucketing.
-  // Each session is assigned to its week by checking which Monday-to-Monday
-  // range its started_at falls into. Avoids 8 separate COUNT queries.
-  const projectCondition = project ? 'AND s.project_id = ?' : '';
-  const projectParams: string[] = project ? [project] : [];
+  // Query 1: session counts per ISO week using GROUP BY.
+  // We GROUP BY the ISO Monday for each session. SQLite's 'weekday 1' is Monday;
+  // combining with '-7 days' gives the preceding Monday for any date including Monday itself.
+  // Selecting the GROUP BY expression directly avoids ambiguity of selecting an arbitrary
+  // started_at from each group. Returns one row per week that has sessions — O(sessions), not O(weeks).
+  const rangeStart = weekEntries[weekEntries.length - 1].start;
+  const rangeEnd = weekEntries[0].end;
 
-  const sessionCountRows = db.prepare(`
+  const sessionCountRaw = db.prepare(`
     SELECT
-      ${weekEntries.map((_, i) => `SUM(CASE WHEN s.started_at >= ? AND s.started_at < ? THEN 1 ELSE 0 END) as w${i}`).join(',\n      ')}
+      date(s.started_at, 'weekday 1', '-7 days') as week_monday,
+      COUNT(*) as cnt
     FROM sessions s
     WHERE s.deleted_at IS NULL
       AND s.started_at >= ?
       AND s.started_at < ?
       ${projectCondition}
-  `).get(
-    ...weekEntries.flatMap(e => [e.start, e.end]),
+    GROUP BY week_monday
+  `).all(
     rangeStart,
     rangeEnd,
     ...projectParams
-  ) as Record<string, number> | undefined;
+  ) as Array<{ week_monday: string; cnt: number }>;
 
-  // Bulk query 2: all snapshots for these weeks in one query
+  // Build a map from ISO week string -> session count.
+  // week_monday is a YYYY-MM-DD string (SQLite date()); parse it and derive the ISO week string.
+  const sessionCountMap = new Map<string, number>();
+  for (const row of sessionCountRaw) {
+    const monday = new Date(row.week_monday + 'T00:00:00Z');
+    const weekStr = formatIsoWeek(monday);
+    // Accumulate in case formatIsoWeek maps two slightly-different Mondays to the same week
+    sessionCountMap.set(weekStr, (sessionCountMap.get(weekStr) ?? 0) + row.cnt);
+  }
+
+  // Query 2: all snapshots for these weeks in one query
   const weekPlaceholders = weekEntries.map(() => '?').join(', ');
   const snapshotRows = db.prepare(`
     SELECT period, generated_at
@@ -309,9 +345,9 @@ app.get('/weeks', (c) => {
 
   const snapshotMap = new Map(snapshotRows.map(r => [r.period, r.generated_at]));
 
-  const weeks = weekEntries.map((entry, i) => ({
+  const weeks = weekEntries.map((entry) => ({
     week: entry.week,
-    sessionCount: (sessionCountRows?.[`w${i}`] ?? 0),
+    sessionCount: sessionCountMap.get(entry.week) ?? 0,
     hasSnapshot: snapshotMap.has(entry.week),
     generatedAt: snapshotMap.get(entry.week) ?? null,
   }));

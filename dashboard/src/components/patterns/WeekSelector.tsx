@@ -102,12 +102,17 @@ export function WeekSelector({ currentWeek, weeks, onWeekChange }: WeekSelectorP
         </Button>
       </div>
 
-      {/* Dot indicators -- show up to 8 recent weeks.
-          Dots are supplementary navigation; primary nav is via arrow buttons.
+      {/* Dot indicators -- show up to 8 recent weeks (cosmetic indicator only).
+          Arrow navigation works across all weeks; dots are supplementary.
+          When the current week is outside the 8-dot window (user is browsing old history),
+          include it in the visible slice so the active dot is always shown.
           tabIndex={-1} keeps dots out of the tab order while keeping them mouse-clickable. */}
       {weeks.length > 0 && (
         <div className="flex items-center gap-1">
-          {weeks.map((w) => {
+          {(weeks.slice(0, 8).some(w => w.week === currentWeek)
+            ? weeks.slice(0, 8)
+            : [...weeks.slice(0, 7), weeks.find(w => w.week === currentWeek)].filter(Boolean) as typeof weeks
+          ).map((w) => {
             const isCurrent = w.week === currentWeek;
             const dotBounds = parseIsoWeekBounds(w.week);
             const label = dotBounds
