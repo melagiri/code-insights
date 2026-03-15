@@ -23,6 +23,11 @@ export function createGeminiClient(apiKey: string, model: string): LLMClient {
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 8192,
+          // Force valid JSON output at the decoding level.
+          // Without this, Gemini Flash often wraps JSON in markdown fences,
+          // prefixes prose, or produces structurally broken JSON that even
+          // jsonrepair cannot fix.
+          responseMimeType: 'application/json',
         },
       };
 
