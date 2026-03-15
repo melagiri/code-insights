@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, X, ChevronDown, Target } from 'lucide-react';
+import { Sparkles, Loader2, X, ChevronDown, Target, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +20,8 @@ import {
 import { Link } from 'react-router';
 import { useAnalysis } from './AnalysisContext';
 import { useLlmConfig } from '@/hooks/useConfig';
+import { useAnalysisCost } from '@/hooks/useAnalysisCost';
+import { estimateAnalysisCost, formatCost, formatEstimatedInputTokens } from '@/lib/cost-utils';
 import type { Session } from '@/lib/types';
 
 interface AnalyzeDropdownProps {
@@ -39,8 +41,29 @@ export function AnalyzeDropdown({
   const [confirmPromptOpen, setConfirmPromptOpen] = useState(false);
   const { state: analysisState, startAnalysis, cancelAnalysis } = useAnalysis();
   const { data: llmConfig } = useLlmConfig();
+  const { data: costData } = useAnalysisCost(session.id);
 
   const configured = !!(llmConfig?.provider && llmConfig?.model);
+  const isOllama = llmConfig?.provider === 'ollama';
+
+  // Client-side cost estimates (shown in dropdown sublabels)
+  const sessionCostEstimate =
+    llmConfig?.provider && llmConfig?.model
+      ? estimateAnalysisCost(session, llmConfig.provider, llmConfig.model, 'session')
+      : null;
+
+  const pqCostEstimate =
+    llmConfig?.provider && llmConfig?.model
+      ? estimateAnalysisCost(session, llmConfig.provider, llmConfig.model, 'prompt_quality')
+      : null;
+
+  // Anthropic cache hint: shown when session analysis has run but PQ has not
+  const sessionAnalysisRan = costData?.usage.some(r => r.analysis_type === 'session') ?? false;
+  const pqAnalysisRan = costData?.usage.some(r => r.analysis_type === 'prompt_quality') ?? false;
+  const showCacheHint =
+    llmConfig?.provider === 'anthropic' && sessionAnalysisRan && !pqAnalysisRan;
+
+  const inputTokensLabel = formatEstimatedInputTokens(session);
 
   const isAnalyzingThisSession =
     analysisState.status === 'analyzing' && analysisState.sessionId === session.id;
@@ -144,11 +167,29 @@ export function AnalyzeDropdown({
           <DropdownMenuItem onClick={handleSessionClick}>
             <Sparkles className="h-4 w-4" />
             {hasExistingInsights ? 'Re-analyze Session' : 'Analyze Session'}
+            {sessionCostEstimate !== null && (
+              <div className="text-xs text-muted-foreground pl-7 pb-1 w-full">
+                {isOllama
+                  ? 'free (local)'
+                  : `~${formatCost(sessionCostEstimate)}${inputTokensLabel ? ` · ${inputTokensLabel}` : ''}`}
+              </div>
+            )}
           </DropdownMenuItem>
           {showPromptOption && (
             <DropdownMenuItem onClick={handlePromptClick}>
               <Target className="h-4 w-4" />
               {hasExistingPromptQuality ? 'Re-analyze Prompt Quality' : 'Analyze Prompt Quality'}
+              {pqCostEstimate !== null && (
+                <div className="text-xs text-muted-foreground pl-7 pb-0.5 w-full">
+                  {isOllama ? 'free (local)' : `~${formatCost(pqCostEstimate)} · same conversation`}
+                </div>
+              )}
+              {showCacheHint && (
+                <div className="text-[10px] text-muted-foreground/60 pl-7 italic flex items-center gap-1 pb-1 w-full">
+                  <Info className="h-3 w-3 shrink-0" />
+                  ~90% cheaper if run right after (Anthropic cache)
+                </div>
+              )}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -158,9 +199,18 @@ export function AnalyzeDropdown({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Re-analyze this session?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will replace {insightCount ?? 0} existing insight{(insightCount ?? 0) !== 1 ? 's' : ''} with new ones.
-              This uses LLM tokens and cannot be undone.
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  This will replace {insightCount ?? 0} existing insight{(insightCount ?? 0) !== 1 ? 's' : ''} with new ones.
+                  This uses LLM tokens and cannot be undone.
+                </p>
+                {sessionCostEstimate !== null && !isOllama && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Estimated cost: ~{formatCost(sessionCostEstimate)}
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -174,9 +224,18 @@ export function AnalyzeDropdown({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Re-analyze prompt quality?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will replace the current prompt quality score with a new one.
-              This uses LLM tokens and cannot be undone.
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  This will replace the current prompt quality score with a new one.
+                  This uses LLM tokens and cannot be undone.
+                </p>
+                {pqCostEstimate !== null && !isOllama && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Estimated cost: ~{formatCost(pqCostEstimate)}
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

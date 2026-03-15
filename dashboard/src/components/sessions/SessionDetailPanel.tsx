@@ -37,12 +37,14 @@ import {
 import { PromptQualityCard } from '@/components/insights/PromptQualityCard';
 import { AnalyzeDropdown } from '@/components/analysis/AnalyzeDropdown';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
+import { useAnalysis } from '@/components/analysis/AnalysisContext';
 import { useMissingFacets, useBackfillFacets } from '@/hooks/useFacets';
 import { exportSession } from '@/lib/export-session';
 import { CollapsibleInsightItem } from '@/components/sessions/CollapsibleInsightItem';
 import { PromptQualityAnalyzeButton } from '@/components/sessions/PromptQualityAnalyzeButton';
 import { RenameSessionDialog } from '@/components/sessions/RenameSessionDialog';
 import { VitalsStrip } from '@/components/sessions/VitalsStrip';
+import { AnalysisCostLine } from '@/components/sessions/AnalysisCostLine';
 import { ChatConversation } from '@/components/chat/conversation/ChatConversation';
 import { ConversationSearch } from '@/components/chat/conversation/ConversationSearch';
 import {
@@ -78,6 +80,9 @@ export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelPr
   const [searchHighlightId, setSearchHighlightId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingAllMessages, setLoadingAllMessages] = useState(false);
+  const { state: analysisState } = useAnalysis();
+  const isAnalyzingThisSession =
+    analysisState.status === 'analyzing' && analysisState.sessionId === sessionId;
   const { data: missingFacetsData } = useMissingFacets();
   const backfillMutation = useBackfillFacets();
   const missingFacetIds = useMemo(
@@ -400,6 +405,11 @@ export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelPr
         {/* Tab 1: Insights */}
         <TabsContent value="insights" className="flex-1 overflow-y-auto mt-0 p-5 space-y-4">
           <VitalsStrip session={session} />
+
+          {/* Analysis cost indicator — only shown when analysis has been run or is running */}
+          {(insights.length > 0 || isAnalyzingThisSession) && (
+            <AnalysisCostLine sessionId={sessionId} isAnalyzing={isAnalyzingThisSession} />
+          )}
 
           {/* Missing facets banner */}
           {isMissingFacets && (

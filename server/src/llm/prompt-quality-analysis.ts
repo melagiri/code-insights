@@ -1,7 +1,9 @@
 // Prompt quality analysis — isolated from the main session analysis pipeline.
 // Extracted from analysis.ts to keep each analysis type in its own focused module.
 
-import { createLLMClient, isLLMConfigured } from './client.js';
+import { createLLMClient, isLLMConfigured, loadLLMConfig } from './client.js';
+import { calculateAnalysisCost } from './analysis-pricing.js';
+import { saveAnalysisUsage } from './analysis-usage-db.js';
 import type { SQLiteMessageRow } from './prompt-types.js';
 import { formatMessagesForAnalysis, classifyStoredUserMessage } from './message-format.js';
 import { parsePromptQualityResponse } from './response-parsers.js';
@@ -53,6 +55,7 @@ export async function analyzePromptQuality(
   }
 
   try {
+    const startTime = Date.now();
     const client = createLLMClient();
     const formattedMessages = formatMessagesForAnalysis(messages);
 
@@ -105,6 +108,30 @@ export async function analyzePromptQuality(
       includeOnlyTypes: ['prompt_quality'],
       excludeIds: [insight.id],
     });
+
+    // Record analysis cost to analysis_usage table (V7).
+    const llmConfig = loadLLMConfig();
+    if (llmConfig && response.usage) {
+      const costUsd = calculateAnalysisCost(llmConfig.provider, llmConfig.model, {
+        inputTokens: response.usage.inputTokens,
+        outputTokens: response.usage.outputTokens,
+        cacheCreationTokens: response.usage.cacheCreationTokens,
+        cacheReadTokens: response.usage.cacheReadTokens,
+      });
+      saveAnalysisUsage({
+        session_id: session.id,
+        analysis_type: 'prompt_quality',
+        provider: llmConfig.provider,
+        model: llmConfig.model,
+        input_tokens: response.usage.inputTokens,
+        output_tokens: response.usage.outputTokens,
+        cache_creation_tokens: response.usage.cacheCreationTokens,
+        cache_read_tokens: response.usage.cacheReadTokens,
+        estimated_cost_usd: costUsd,
+        duration_ms: Date.now() - startTime,
+        chunk_count: 1,
+      });
+    }
 
     return {
       success: true,

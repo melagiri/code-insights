@@ -13,7 +13,7 @@
 // Shared types/helpers → analysis-internal.ts
 
 import { jsonrepair } from 'jsonrepair';
-import { createLLMClient, isLLMConfigured } from './client.js';
+import { createLLMClient, isLLMConfigured, loadLLMConfig } from './client.js';
 import type { SQLiteMessageRow, AnalysisResponse } from './prompt-types.js';
 import { formatMessagesForAnalysis } from './message-format.js';
 import { extractJsonPayload, parseAnalysisResponse } from './response-parsers.js';
@@ -39,6 +39,8 @@ import {
   type AnalysisOptions,
   type AnalysisResult,
 } from './analysis-internal.js';
+import { calculateAnalysisCost } from './analysis-pricing.js';
+import { saveAnalysisUsage } from './analysis-usage-db.js';
 
 // Re-export from sub-modules so existing imports of these from analysis.ts keep working.
 export { analyzePromptQuality } from './prompt-quality-analysis.js';
@@ -75,6 +77,7 @@ export async function analyzeSession(
   }
 
   try {
+    const startTime = Date.now();
     const client = createLLMClient();
     const formattedMessages = formatMessagesForAnalysis(messages);
     const estimatedTokens = client.estimateTokens(formattedMessages);
@@ -85,12 +88,14 @@ export async function analyzeSession(
     let totalOutputTokens = 0;
     let totalCacheCreationTokens = 0;
     let totalCacheReadTokens = 0;
+    let chunkCount = 1;
 
     if (estimatedTokens > MAX_INPUT_TOKENS) {
       // Chunk the messages and analyze separately
       const chunks = chunkMessages(messages, client.estimateTokens.bind(client));
       const chunkResponses: AnalysisResponse[] = [];
       const totalChunks = chunks.length;
+      chunkCount = totalChunks;
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
@@ -217,6 +222,32 @@ export async function analyzeSession(
     // Save facets if extracted
     if (analysisResponse.facets) {
       saveFacetsToDb(session.id, analysisResponse.facets, ANALYSIS_VERSION);
+    }
+
+    // Record analysis cost to analysis_usage table (V7).
+    // Chunk token counts are already summed into totalInputTokens/etc above,
+    // so a single INSERT OR REPLACE captures the full cost of all chunks.
+    const llmConfig = loadLLMConfig();
+    if (llmConfig && (totalInputTokens > 0 || totalOutputTokens > 0)) {
+      const costUsd = calculateAnalysisCost(llmConfig.provider, llmConfig.model, {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        cacheCreationTokens: totalCacheCreationTokens,
+        cacheReadTokens: totalCacheReadTokens,
+      });
+      saveAnalysisUsage({
+        session_id: session.id,
+        analysis_type: 'session',
+        provider: llmConfig.provider,
+        model: llmConfig.model,
+        input_tokens: totalInputTokens,
+        output_tokens: totalOutputTokens,
+        cache_creation_tokens: totalCacheCreationTokens,
+        cache_read_tokens: totalCacheReadTokens,
+        estimated_cost_usd: costUsd,
+        duration_ms: Date.now() - startTime,
+        chunk_count: chunkCount,
+      });
     }
 
     return {

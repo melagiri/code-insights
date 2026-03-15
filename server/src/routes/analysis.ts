@@ -4,6 +4,8 @@ import { trackEvent } from '@code-insights/cli/utils/telemetry';
 import { parseIntParam } from '../utils.js';
 import { loadLLMConfig } from '../llm/client.js';
 import { analyzeSession, analyzePromptQuality, findRecurringInsights } from '../llm/analysis.js';
+import { getSessionAnalysisUsage } from '../llm/analysis-usage-db.js';
+import { calculateAnalysisCost } from '../llm/analysis-pricing.js';
 import {
   loadSessionForAnalysis,
   loadSessionMessages,
@@ -13,6 +15,50 @@ import {
 } from './route-helpers.js';
 
 const app = new Hono();
+
+// GET /api/analysis/usage?sessionId=X
+// Returns recorded analysis token usage and cost for a session.
+// Returns an empty usage array (not 404) for sessions with no recorded usage —
+// this is expected for sessions analyzed before V7 or not yet analyzed.
+app.get('/usage', async (c) => {
+  const sessionId = c.req.query('sessionId');
+  if (!sessionId) {
+    return c.json({ error: 'Missing required query param: sessionId' }, 400);
+  }
+
+  const usage = getSessionAnalysisUsage(sessionId);
+
+  // Compute total cost and cache savings across all analysis types.
+  let totalCostUsd = 0;
+  let cacheSavingsUsd = 0;
+
+  for (const row of usage) {
+    totalCostUsd += row.estimated_cost_usd;
+
+    // Cache savings = what the user would have paid without cache minus what they paid.
+    // Applies only to Anthropic (cache read = 10% of input price; savings = 90%).
+    if (row.provider === 'anthropic' && row.cache_read_tokens > 0) {
+      // We need the input price to compute savings — use calculateAnalysisCost on the
+      // cached read tokens at full price vs discounted price.
+      const fullCacheCost = calculateAnalysisCost(row.provider, row.model, {
+        inputTokens: row.cache_read_tokens,
+        outputTokens: 0,
+      });
+      const actualCacheCost = calculateAnalysisCost(row.provider, row.model, {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: row.cache_read_tokens,
+      });
+      cacheSavingsUsd += fullCacheCost - actualCacheCost;
+    }
+  }
+
+  return c.json({
+    usage,
+    totalCostUsd: Math.round(totalCostUsd * 1_000_000) / 1_000_000,
+    cacheSavingsUsd: Math.round(cacheSavingsUsd * 1_000_000) / 1_000_000,
+  });
+});
 
 /** Auto-apply an LLM-generated summary title as the session's generated_title. */
 function applyGeneratedTitle(sessionId: string, insights: Array<{ type: string; title?: string }>) {

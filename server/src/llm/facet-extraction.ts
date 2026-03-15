@@ -2,7 +2,9 @@
 // Extracted from analysis.ts to keep each analysis responsibility in its own module.
 
 import { jsonrepair } from 'jsonrepair';
-import { createLLMClient, isLLMConfigured } from './client.js';
+import { createLLMClient, isLLMConfigured, loadLLMConfig } from './client.js';
+import { calculateAnalysisCost } from './analysis-pricing.js';
+import { saveAnalysisUsage } from './analysis-usage-db.js';
 import type { SQLiteMessageRow, AnalysisResponse } from './prompt-types.js';
 import { formatMessagesForAnalysis } from './message-format.js';
 import { extractJsonPayload } from './response-parsers.js';
@@ -33,6 +35,7 @@ export async function extractFacetsOnly(
   }
 
   try {
+    const startTime = Date.now();
     const client = createLLMClient();
     let formattedMessages = formatMessagesForAnalysis(messages);
 
@@ -66,6 +69,30 @@ export async function extractFacetsOnly(
 
     if (facets) {
       saveFacetsToDb(session.id, facets, ANALYSIS_VERSION);
+    }
+
+    // Record analysis cost to analysis_usage table (V7).
+    const llmConfig = loadLLMConfig();
+    if (llmConfig && response.usage) {
+      const costUsd = calculateAnalysisCost(llmConfig.provider, llmConfig.model, {
+        inputTokens: response.usage.inputTokens,
+        outputTokens: response.usage.outputTokens,
+        cacheCreationTokens: response.usage.cacheCreationTokens,
+        cacheReadTokens: response.usage.cacheReadTokens,
+      });
+      saveAnalysisUsage({
+        session_id: session.id,
+        analysis_type: 'facet',
+        provider: llmConfig.provider,
+        model: llmConfig.model,
+        input_tokens: response.usage.inputTokens,
+        output_tokens: response.usage.outputTokens,
+        cache_creation_tokens: response.usage.cacheCreationTokens,
+        cache_read_tokens: response.usage.cacheReadTokens,
+        estimated_cost_usd: costUsd,
+        duration_ms: Date.now() - startTime,
+        chunk_count: 1,
+      });
     }
 
     return { success: true };

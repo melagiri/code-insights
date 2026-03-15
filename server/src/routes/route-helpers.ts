@@ -8,6 +8,7 @@ import { streamSSE } from 'hono/streaming';
 import { getDb } from '@code-insights/cli/db/client';
 import { trackEvent, captureError } from '@code-insights/cli/utils/telemetry';
 import { isLLMConfigured, loadLLMConfig } from '../llm/client.js';
+import { calculateAnalysisCost } from '../llm/analysis-pricing.js';
 import type { AnalysisResult, AnalysisOptions } from '../llm/analysis.js';
 import type { SessionData } from '../llm/analysis-db.js';
 import type { SQLiteMessageRow } from '../llm/prompt-types.js';
@@ -207,12 +208,29 @@ export function streamSessionAnalysis(
       } else {
         trackEvent('analysis_run', baseProperties);
         opts.onSuccess?.(result);
+
+        // Compute cost from token usage for the SSE complete event.
+        // The actual cost was already persisted to analysis_usage by the analysis function.
+        // This includes it in the SSE payload so the dashboard can display it immediately
+        // without an extra round-trip to GET /api/analysis/usage.
+        const costUsd = result.usage && llmConfig
+          ? calculateAnalysisCost(llmConfig.provider, llmConfig.model, {
+              inputTokens: result.usage.inputTokens,
+              outputTokens: result.usage.outputTokens,
+              cacheCreationTokens: result.usage.cacheCreationTokens,
+              cacheReadTokens: result.usage.cacheReadTokens,
+            })
+          : 0;
+
         await stream.writeSSE({
           event: 'complete',
           data: JSON.stringify({
             success: true,
             insightCount: result.insights.length,
             tokenUsage: result.usage,
+            costUsd,
+            provider: llmConfig?.provider,
+            model: llmConfig?.model,
           }),
         });
       }

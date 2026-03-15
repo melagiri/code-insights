@@ -3,6 +3,7 @@ import { SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './schema.js';
 
 export interface MigrationResult {
   v6Applied: boolean;
+  v7Applied: boolean;
 }
 
 /**
@@ -15,6 +16,7 @@ export interface MigrationResult {
  * Version 4: Add reflect_snapshots table for caching LLM-generated synthesis results
  * Version 5: Add deleted_at column to sessions for soft-delete (user-initiated hide)
  * Version 6: Add compact_count, auto_compact_count, slash_commands columns to sessions
+ * Version 7: Add analysis_usage table for tracking LLM analysis costs per session
  */
 export function runMigrations(db: Database.Database): MigrationResult {
   // Create schema_version table first if it doesn't exist.
@@ -54,7 +56,13 @@ export function runMigrations(db: Database.Database): MigrationResult {
     v6Applied = true;
   }
 
-  return { v6Applied };
+  let v7Applied = false;
+  if (currentVersion < 7) {
+    applyV7(db);
+    v7Applied = true;
+  }
+
+  return { v6Applied, v7Applied };
 }
 
 function getCurrentVersion(db: Database.Database): number {
@@ -123,4 +131,29 @@ function applyV6(db: Database.Database): void {
   db.exec(`ALTER TABLE sessions ADD COLUMN auto_compact_count INTEGER NOT NULL DEFAULT 0`);
   db.exec(`ALTER TABLE sessions ADD COLUMN slash_commands TEXT NOT NULL DEFAULT '[]'`);
   db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(6);
+}
+
+function applyV7(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS analysis_usage (
+      session_id            TEXT NOT NULL REFERENCES sessions(id),
+      analysis_type         TEXT NOT NULL,
+      provider              TEXT NOT NULL,
+      model                 TEXT NOT NULL,
+      input_tokens          INTEGER NOT NULL DEFAULT 0,
+      output_tokens         INTEGER NOT NULL DEFAULT 0,
+      cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
+      cache_read_tokens     INTEGER NOT NULL DEFAULT 0,
+      estimated_cost_usd    REAL NOT NULL DEFAULT 0,
+      duration_ms           INTEGER,
+      chunk_count           INTEGER NOT NULL DEFAULT 1,
+      analyzed_at           TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (session_id, analysis_type)
+    )
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_analysis_usage_analyzed_at
+      ON analysis_usage(analyzed_at DESC)
+  `);
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(7);
 }
