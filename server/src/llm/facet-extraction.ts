@@ -6,7 +6,7 @@ import { createLLMClient, isLLMConfigured } from './client.js';
 import type { SQLiteMessageRow, AnalysisResponse } from './prompt-types.js';
 import { formatMessagesForAnalysis } from './message-format.js';
 import { extractJsonPayload } from './response-parsers.js';
-import { FACET_ONLY_SYSTEM_PROMPT, generateFacetOnlyPrompt } from './prompts.js';
+import { SHARED_ANALYST_SYSTEM_PROMPT, buildCacheableConversationBlock, buildFacetOnlyInstructions } from './prompts.js';
 import {
   ANALYSIS_VERSION,
   saveFacetsToDb,
@@ -44,16 +44,12 @@ export async function extractFacetsOnly(
     }
 
     const sessionMeta = buildSessionMeta(session);
-    const prompt = generateFacetOnlyPrompt(
-      session.project_name,
-      session.summary,
-      formattedMessages,
-      sessionMeta
-    );
-
     const response = await client.chat([
-      { role: 'system', content: FACET_ONLY_SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
+      { role: 'system', content: SHARED_ANALYST_SYSTEM_PROMPT },
+      { role: 'user', content: [
+        buildCacheableConversationBlock(formattedMessages),
+        { type: 'text' as const, text: buildFacetOnlyInstructions(session.project_name, session.summary, sessionMeta) },
+      ] },
     ], { signal: options?.signal });
 
     const jsonPayload = extractJsonPayload(response.content);

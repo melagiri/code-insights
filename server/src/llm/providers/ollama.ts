@@ -1,6 +1,7 @@
 // Ollama provider implementation (local models, no API key required)
 
 import type { LLMClient, LLMMessage, LLMResponse, ChatOptions } from '../types.js';
+import { flattenContent } from '../types.js';
 
 const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 
@@ -18,7 +19,8 @@ export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
         signal: options?.signal,
         body: JSON.stringify({
           model,
-          messages: messages.map(m => ({ role: m.role, content: m.content })),
+          // flattenContent converts ContentBlock[] to string; strings pass through unchanged.
+          messages: messages.map(m => ({ role: m.role, content: flattenContent(m.content) })),
           stream: false,
           options: { temperature: 0.7 },
         }),

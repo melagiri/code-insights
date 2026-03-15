@@ -1,6 +1,7 @@
 // Gemini provider implementation (server-side, no browser dependencies)
 
 import type { LLMClient, LLMMessage, LLMResponse, ChatOptions } from '../types.js';
+import { flattenContent } from '../types.js';
 
 export function createGeminiClient(apiKey: string, model: string): LLMClient {
   return {
@@ -13,7 +14,8 @@ export function createGeminiClient(apiKey: string, model: string): LLMClient {
 
       const contents = chatMessages.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
+        // flattenContent converts ContentBlock[] to string; strings pass through unchanged.
+        parts: [{ text: flattenContent(m.content) }],
       }));
 
       const body: Record<string, unknown> = {
@@ -26,7 +28,8 @@ export function createGeminiClient(apiKey: string, model: string): LLMClient {
 
       if (systemMessage) {
         body.systemInstruction = {
-          parts: [{ text: systemMessage.content }],
+          // flattenContent handles string | ContentBlock[] system messages.
+          parts: [{ text: flattenContent(systemMessage.content) }],
         };
       }
 

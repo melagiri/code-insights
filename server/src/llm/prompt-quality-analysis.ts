@@ -5,7 +5,7 @@ import { createLLMClient, isLLMConfigured } from './client.js';
 import type { SQLiteMessageRow } from './prompt-types.js';
 import { formatMessagesForAnalysis, classifyStoredUserMessage } from './message-format.js';
 import { parsePromptQualityResponse } from './response-parsers.js';
-import { PROMPT_QUALITY_SYSTEM_PROMPT, generatePromptQualityPrompt } from './prompts.js';
+import { SHARED_ANALYST_SYSTEM_PROMPT, buildCacheableConversationBlock, buildPromptQualityInstructions } from './prompts.js';
 import {
   convertPromptQualityToInsightRow,
   saveInsightsToDb,
@@ -69,21 +69,19 @@ export async function analyzePromptQuality(
     const toolExchangeCount = messages.length - humanMessages.length - assistantMessages.length;
 
     const sessionMeta = buildSessionMeta(session);
-    const prompt = generatePromptQualityPrompt(
-      session.project_name,
-      analysisInput,
-      {
-        humanMessageCount: humanMessages.length,
-        assistantMessageCount: assistantMessages.length,
-        toolExchangeCount,
-      },
-      sessionMeta  // V6 context signals (compact counts, slash commands)
-    );
+    const sessionShape = {
+      humanMessageCount: humanMessages.length,
+      assistantMessageCount: assistantMessages.length,
+      toolExchangeCount,
+    };
 
     options?.onProgress?.({ phase: 'analyzing' });
     const response = await client.chat([
-      { role: 'system', content: PROMPT_QUALITY_SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
+      { role: 'system', content: SHARED_ANALYST_SYSTEM_PROMPT },
+      { role: 'user', content: [
+        buildCacheableConversationBlock(analysisInput),
+        { type: 'text' as const, text: buildPromptQualityInstructions(session.project_name, sessionShape, sessionMeta) },
+      ] },
     ], { signal: options?.signal });
 
     const parsed = parsePromptQualityResponse(response.content);
@@ -114,6 +112,8 @@ export async function analyzePromptQuality(
       usage: response.usage ? {
         inputTokens: response.usage.inputTokens,
         outputTokens: response.usage.outputTokens,
+        ...(response.usage.cacheCreationTokens !== undefined && { cacheCreationTokens: response.usage.cacheCreationTokens }),
+        ...(response.usage.cacheReadTokens !== undefined && { cacheReadTokens: response.usage.cacheReadTokens }),
       } : undefined,
     };
   } catch (error) {
