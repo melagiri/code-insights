@@ -66,8 +66,60 @@ git push origin $(git branch --show-current)  # Push IMMEDIATELY
 | `review-before-pr` | warn | Remind: code review required before PR creation (bash path) |
 | `review-before-pr-mcp` | warn | Remind: code review required before PR creation (MCP path) |
 | `verify-before-checkout` | warn | Verify branch exists before `git checkout/switch` |
-| `ci-gate-before-pr` | warn | Run `pnpm build` before `gh pr create` — prevents wasted CI minutes |
-| `ci-gate-before-pr-mcp` | warn | Run `pnpm build` before GitHub MCP PR creation |
+| `ci-gate-before-pr` | **block** | Run `pnpm build && pnpm test` before `gh pr create` — prevents wasted CI minutes |
+| `ci-gate-before-pr-mcp` | **block** | Run `pnpm build && pnpm test` before GitHub MCP PR creation |
+| `tdd-domain-check` | warn | On `git commit`, remind to include tests when touching TDD domains |
+
+---
+
+## TDD Strategy
+
+Code Insights uses **strategic TDD** — test-first development applied surgically where it delivers the most value. Not everything needs tests; the domains that do are those where silent regressions cause the most damage.
+
+### Domain Classification
+
+| Level | Domain | Path | Coverage Target | Rationale |
+|-------|--------|------|----------------|-----------|
+| **MUST TDD** | Source providers (parsers) | `cli/src/providers/` | 90%+ | External file formats break silently — a provider regression corrupts sync |
+| **MUST TDD** | Normalizers | `server/src/llm/*-normalize.ts` | 85%+ | 40+ alias mappings; a regression silently corrupts every user's insights |
+| **MUST TDD** | Migrations | `cli/src/db/migrate.ts`, `schema.ts` | 90%+ | Schema changes are irreversible; bugs in migrations can corrupt the database |
+| **MUST TDD** | Shared utilities | `server/src/utils.ts`, `cli/src/utils/` | 85%+ | Pure functions — trivial to test, used across the codebase |
+| **SHOULD TDD** | API routes | `server/src/routes/` | 70%+ | High-value but SQLite coupling makes setup harder |
+| **SKIP TDD** | Dashboard components | `dashboard/src/` | — | Visual, React-rendered — unit tests deliver low value here |
+| **SKIP TDD** | CLI command wiring | `cli/src/commands/`, `cli/src/index.ts` | — | Integration-level; verify via manual sync runs |
+
+### Test-First Workflow (MUST Domains)
+
+When changing a MUST TDD domain:
+
+1. **Write the failing test first** — before any implementation
+2. **Run `pnpm test`** — new test should fail (proves it's testing the right thing)
+3. **Implement until the test passes**
+4. **Commit test + implementation together** — never split them across commits
+
+### Test Patterns
+
+| Domain | Pattern | Example file |
+|--------|---------|-------------|
+| Normalizers | Table-driven: iterate over `[input, expected]` pairs in one `it()` | `server/src/llm/friction-normalize.test.ts` |
+| Parsers | Fixture-based: real JSONL content written to temp files | `cli/src/providers/__tests__/claude-code.test.ts` |
+| Migrations | In-memory SQLite: `new Database(':memory:')` + `runMigrations(db)` | `cli/src/db/__tests__/migrate.test.ts` |
+| Utilities | Unit tests: pure function input/output, edge cases | `server/src/utils.test.ts` |
+
+### Running Tests
+
+```bash
+# From repo root — runs all packages
+pnpm test
+
+# Watch mode for active development
+pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+```
+
+Test runner: **vitest** (native ESM support, fast, shared with all packages via root `package.json`).
 
 ---
 
@@ -104,7 +156,7 @@ Files touched: `cli/package.json` + `cli/CHANGELOG.md` (minimum). Optionally upd
 
 - TypeScript strict mode enabled
 - ES Modules (`import`/`export`, not `require`)
-- No test framework configured yet
+- Test framework: **vitest** — run `pnpm test` from repo root
 - No ESLint config file in CLI directory (lint script exists but needs config)
 - pnpm is the package manager (workspace monorepo)
 - CLI binary is `code-insights`
