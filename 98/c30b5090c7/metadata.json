@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "98c30b5090c7",
+  "strategy": "manual-commit",
+  "branch": "fix/insights-api-default-limit",
+  "checkpoints_count": 12,
+  "files_touched": [
+    ".claude/agents/engineer.md",
+    ".claude/agents/product-manager.md",
+    ".claude/commands/start-feature.md",
+    ".claude/hookify.ci-gate-before-pr-mcp.local.md",
+    ".claude/hookify.ci-gate-before-pr.local.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/98/c30b5090c7/0/metadata.json",
+      "transcript": "/98/c30b5090c7/0/full.jsonl",
+      "context": "/98/c30b5090c7/0/context.md",
+      "content_hash": "/98/c30b5090c7/0/content_hash.txt",
+      "prompt": "/98/c30b5090c7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 78,
+    "cache_creation_tokens": 191320,
+    "cache_read_tokens": 1896190,
+    "output_tokens": 9363,
+    "api_call_count": 34
+  }
+}

@@ -1,0 +1,767 @@
+We have sessions synced for last year as well. but the Patterns page doesn't take the calendar/time interval to that old, and starts at Jan 19. why is that?
+
+---
+
+Option 2 seems to be the right one..
+
+---
+
+yes, run full ceremony for the development and complete multiple rounds of review until we zero down on review comments
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range"
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Create PR and run CI checks' (blockedBy: above)
+   - Task: 'Review: Triple-layer code review' (blockedBy: above)
+   - Task: 'Post review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically. When Dev creates a PR, message the orchestrator to trigger /start-review on the PR number.
+
+7. REPORT: When review is posted, message the orchestrator: 'PR #XX for Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- PRE-PR GATE (MANDATORY): Before any PR is created, `pnpm build` must pass from the repo root with zero errors. If it fails, dev fixes before creating the PR. GitHub Actions costs money — failed CI runs are wasted spend.",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: Data-driven week navigation for Patterns page — replace hardcoded 8-week window with full session history range. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed. PRE-PR GATE (MANDATORY): Before creating any PR, run `pnpm build` from the repo root and verify zero errors. If it fails, fix before creating the PR. This is non-negotiable — failed CI runs waste money.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM requests `/start-review` -> run the review command on the PR
+4. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 5: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-15T11:06:25.865Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for issue #183"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-15T11:13:03.893Z","idleReason":"available","summary":"[to pm-agent] PR #184 ready for review"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-15T11:13:08.124Z","idleReason":"available","summary":"[to orchestrator] PR #184 ready, requesting /start-review 184"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-15T11:13:12.780Z","idleReason":"available","summary":"[to dev-agent] Work already complete, PR #184 exists"}
+</teammate-message>
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 184
+
+You are setting up a triple-layer code review for PR `184`. This can be used standalone or as part of a `/start-feature` team workflow.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 184` to get PR title, description, and diff stats.
+Use `gh pr diff 184` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Decide if Wild Card reviewer is needed (see criteria below)
+
+---
+
+## Step 2: Determine Review Scope
+
+**Invoke Wild Card (3rd reviewer) if ANY of these apply:**
+- New feature with multiple files changed
+- Complex business logic
+- Schema impact (types.ts, SQLite migrations, server API changes)
+- Architectural changes
+- 200+ lines of changes
+
+**Skip Wild Card if ALL of these apply:**
+- Simple bug fix (< 50 lines)
+- Single file change
+- Straightforward UI/component change
+- Config/CI changes only
+
+**Invoke LLM Expert (4th reviewer) if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 3: Run Parallel Independent Reviews
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+**Launch TA Insider Review:**
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #184 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 184
+  Also fetch the PR details: gh pr view 184
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Outsider Review:**
+```
+Task {
+  name: "outsider-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent OUTSIDER review of PR #184 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 184
+
+  Review for:
+  - Security issues (XSS, injection, auth bypass)
+  - Best practices (React, TypeScript, Node.js)
+  - Logic bugs and edge cases
+  - Performance concerns
+  - Accessibility issues
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch LLM Expert Review (if applicable):**
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #184 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 184
+  Also fetch the PR details: gh pr view 184
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Wild Card Review (if applicable):**
+```
+Task {
+  name: "wildcard-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent WILD CARD review of PR #184 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 184
+
+  Your role is to provide a fresh perspective with NO constraints:
+  - Challenge assumptions in the implementation
+  - Look for edge cases others might miss
+  - Question whether the approach is the simplest that could work
+  - Check for hidden complexity or tech debt being introduced
+  - Look at error handling from a user's perspective
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #184.
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - FIX NOW items
+  - NOT APPLICABLE items with technical rationale
+  - ESCALATE TO FOUNDER items with reason
+  ### Final Verdict",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results
+
+After synthesis is complete:
+
+1. **If part of a /start-feature team**: Send the consolidated review to the dev-agent via SendMessage. Mark the review task as completed.
+
+2. **If standalone**: Present the consolidated review to the user. Ask if they want to:
+   - Have the review summary posted to the GitHub PR
+   - Have fixes implemented automatically
+
+3. **Post review summary to GitHub PR** using `gh pr comment`:
+
+```bash
+gh pr comment 184 --body "$(cat <<'EOF'
+## Triple-Layer Code Review Summary
+
+### Reviewers
+| Role | Focus |
+|------|-------|
+| TA (Insider) | Pattern compliance, schema impact, architecture |
+| Outsider | Security, best practices, logic bugs |
+| LLM Expert | Prompt quality, token efficiency, model selection (if applicable) |
+| Wild Card | Edge cases, fresh perspective |
+
+### Issues Found & Resolution
+#### FIX NOW
+[List from synthesis]
+
+#### NOT APPLICABLE
+[List with technical rationale]
+
+### Verification
+[Status of fixes if any were applied]
+
+**Review complete. [Ready for merge / Changes required].**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark outsider comments as "NOT APPLICABLE" with technical justification
+- **Always post summary to GitHub PR** — this creates the audit trail
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-15T11:13:15.409Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="outsider-reviewer" color="purple" summary="Outsider review of PR #184 with findings">
+## Outsider Review — PR #184: Data-Driven Week Navigation
+
+---
+
+### BLOCKING
+
+**1. Unbounded week generation can hang or OOM on corrupt data**
+`server/src/routes/reflect.ts` — the `while (weekMondayMs >= earliestMondayMs - 86400000)` loop
+
+If `earliestRow.earliest` contains a corrupt or very old timestamp (e.g., epoch `1970-01-01` from a bad session import), this loop generates ~2,900 weeks (56 years). Each iteration calls `formatIsoWeek` + `parseIsoWeek` + allocates objects. While unlikely to truly OOM, it will produce a multi-thousand-element response array and a snapshot query with thousands of `IN (?)` placeholders — SQLite has a default `SQLITE_MAX_VARIABLE_NUMBER` of 999.
+
+The snapshot query builds `weekPlaceholders` from `weekEntries.length`:
+```sql
+SELECT period, generated_at FROM reflect_snapshots
+WHERE period IN (?, ?, ?, ... /* N+1 placeholders */) AND project_id = ?
+```
+If N > 998, this query will **fail** with a SQLite error.
+
+**Fix:** Either cap `weekEntries` to a reasonable maximum (e.g., 200 weeks / ~4 years), or batch the snapshot query. The simpler fix is a safety cap on the loop.
+
+---
+
+### SUGGESTION
+
+**2. The `- 86400000` buffer in the while condition is fragile**
+```js
+while (weekMondayMs >= earliestMondayMs - 86400000)
+```
+The comment says "small buffer for float precision," but these are integer millisecond values — there is no floating-point imprecision risk. Both values come from `Date.getTime()` which returns integers. The 1-day buffer means you might generate one extra week beyond the earliest session. This is harmless but the comment is misleading. Remove the buffer or change the comment to clarify it's intentional (e.g., "include the earliest week even if rounding lands just past its Monday").
+
+**3. SQLite `date()` with `'weekday 1', '-7 days'` edge case**
+The GROUP BY expression `date(s.started_at, 'weekday 1', '-7 days')` computes the preceding Monday. However, SQLite's `'weekday N'` modifier finds the **next** occurrence of that weekday (or same day if already that weekday). So for a Monday session, `'weekday 1'` returns the same Monday, then `'-7 days'` subtracts a week — yielding the **previous** Monday, not the current one. This is a known SQLite gotcha.
+
+Verify: a session on Monday 2026-03-09 would get `date('2026-03-09', 'weekday 1')` = `2026-03-09` (already Monday), then `-7 days` = `2026-03-02`. That session would be counted in the week starting March 2, not March 9. This is a **logic bug** — sessions on Mondays are bucketed into the wrong week.
+
+**Recommended fix:** Use `date(s.started_at, 'weekday 0', '-6 days')` instead (find next Sunday, subtract 6 = same week's Monday), or use a simpler expression like:
+```sql
+date(s.started_at, '-' || ((CAST(strftime('%w', s.started_at) AS INTEGER) + 6) % 7) || ' days')
+```
+
+**4. Dot logic in WeekSelector could show a stale/wrong dot**
+```tsx
+[...weeks.slice(0, 7), weeks.find(w => w.week === currentWeek)].filter(Boolean)
+```
+If `currentWeek` happens to be one of the first 7 weeks, it appears twice (once from slice, once from find). The `filter(Boolean)` won't deduplicate — it only removes `undefined`. You'd render a duplicate dot with the same `key`, which React warns about.
+
+**Fix:** Check for deduplication:
+```tsx
+const tail = weeks.find(w => w.week === currentWeek);
+const visible = tail && !weeks.slice(0, 7).some(w => w.week === tail.week)
+  ? [...weeks.slice(0, 7), tail]
+  : weeks.slice(0, 8);
+```
+
+**5. Snapshot query performance at scale**
+With 200+ weeks of history, the `IN (?, ?, ..., ?)` placeholder list for `reflect_snapshots` becomes large. While SQLite handles this fine under ~999 params, it's worth noting that an index on `reflect_snapshots(period, project_id)` should exist. If it doesn't, this becomes a full table scan per request.
+
+---
+
+### NOTE
+
+**6. `projectCondition` is built before the earliest-session query but reused for the session-count query**
+In the new code, `projectCondition` uses `'AND project_id = ?'` for the earliest query but `'AND s.project_id = ?'` (with table alias `s`) for the session count query. This works because the earliest query doesn't use an alias, but it's a subtle inconsistency. If someone refactors the earliest query to add a join, the missing alias would cause an ambiguous column error.
+
+**7. The `weeks` response is no longer capped**
+Previously guaranteed to be exactly 8 entries, now unbounded. Dashboard consumers should be reviewed to ensure none assume a fixed array length. The `WeekSelector` dot capping handles it, but any other consumer of `GET /api/reflect/weeks` should be checked.
+
+**8. No-sessions edge case is clean**
+The early return for `!earliestRow?.earliest` returning `{ weeks: [] }` is well-handled.
+
+**9. The `weeks.slice(0, 8)` check uses the full `weeks` prop, not `navigableWeeks`**
+The dot indicator operates on `weeks` (all weeks including empty ones), while arrow navigation uses `navigableWeeks` (weeks with sessions). This is consistent with the prior behavior — empty-session dots are shown as muted/non-clickable. Just noting the dual-list design is intentional.
+
+---
+
+### Summary
+
+| Severity | Count | Key Issues |
+|----------|-------|------------|
+| BLOCKING | 1 | SQLite variable limit exceeded with long history (>998 weeks) |
+| SUGGESTION | 4 | Monday bucketing bug (#3) is the most impactful — sessions on Mondays go to wrong week |
+| NOTE | 4 | Minor consistency and design observations |
+
+The Monday bucketing bug (SUGGESTION #3) is borderline BLOCKING — it silently miscounts sessions for any session that starts on a Monday, which is ~1/7 of all sessions. I'd recommend verifying with a quick SQLite test before merging.
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange" summary="Wild card review of PR #184 with 1 blocking finding">
+## Wild Card Review — PR #184: Data-Driven Week Navigation
+
+### BLOCKING
+
+**1. SQLite `date(..., 'weekday 1', '-7 days')` does NOT compute ISO Monday correctly**
+
+The GROUP BY expression `date(s.started_at, 'weekday 1', '-7 days')` is wrong for sessions that start on a Monday. SQLite's `'weekday N'` modifier advances to the **next** occurrence of that weekday, or stays on the same day if it already matches. So for a Monday input:
+- `'weekday 1'` = same Monday (no change)
+- `'-7 days'` = previous Monday (one week too early!)
+
+For a Tuesday input: `'weekday 1'` advances to next Monday, then `-7 days` goes back = correct (the preceding Monday). But Monday itself is off by one week.
+
+This means **all sessions that start on a Monday will be bucketed into the previous week's count**. This is a data correctness bug.
+
+**Fix:** Use `date(s.started_at, 'weekday 4', '-3 days')` instead — the Thursday trick. `'weekday 4'` finds the Thursday of the ISO week (advances to next Thursday, or stays if already Thursday), then `-3 days` gives the Monday. This handles all days correctly because the Thursday-to-Monday offset is always -3 within the same ISO week. Alternatively, handle the Monday edge case explicitly.
+
+---
+
+### SUGGESTION
+
+**2. Unbounded week generation for users with very old sessions**
+
+A user who imported Claude Code sessions from 2023 would generate ~150+ `WeekEntry` objects. For each, `formatIsoWeek` and `parseIsoWeek` are called, and a snapshot query uses `IN (...)` with 150+ placeholders. This isn't catastrophic for SQLite, but it's wasteful:
+- Most of those weeks will have zero sessions
+- The snapshot `IN` clause scales linearly with week count
+- The `weekEntries` array is rebuilt on every request (no caching)
+
+Consider: instead of generating ALL weeks from earliest to current, query distinct weeks that actually have sessions and fill gaps only in the recent window (e.g., last 12 weeks). The arrow navigation only visits weeks with sessions anyway (`navigableWeeks` filters on `sessionCount > 0`), so empty weeks in the middle serve no purpose.
+
+**3. Float precision buffer is fragile**
+
+```js
+while (weekMondayMs >= earliestMondayMs - 86400000) { // small buffer for float precision
+```
+
+The comment says "float precision" but these are integer millisecond values — there's no float precision issue. The `- 86400000` (one full day) buffer is overly generous and could include an extra week before the earliest session. A buffer of `1` (one millisecond) would suffice if any buffer is needed at all. As-is, this is harmless but misleading.
+
+**4. Dot indicator UX when browsing old history is confusing**
+
+When the user navigates to, say, week 80 out of 100, the dots show weeks 1-7 (most recent) plus the current week (week 80) as the 8th dot. The gap between dot 7 and dot 8 represents ~73 weeks with no visual indication. The user has no way to know:
+- How many total weeks exist
+- Where they are in the timeline relative to the dots
+- That there are weeks between the visible dots
+
+Consider adding a small "..." or ellipsis indicator between the recent dots and the current-week dot when there's a gap. Or show a compact text label like "Week 80 of 100" near the dots.
+
+**5. Year boundary / W53 edge case not tested**
+
+The PR description doesn't mention testing around year boundaries (e.g., 2025-W52 to 2026-W01, or years with W53 like 2026). The `formatIsoWeek` function handles this correctly via the Thursday trick, but the `date()` SQLite expression from Finding #1 would be especially problematic here — a Monday that falls on Dec 29 (2025) could be ISO week 2026-W01, and the off-by-one bug would misclassify it as 2025-W52.
+
+---
+
+### NOTE
+
+**6. `projectCondition` moved above the early return — clean improvement**
+
+The old code defined `projectCondition` after the week generation loop. The new code hoists it above the `earliestRow` query so it can be reused. This is a nice cleanup.
+
+**7. GROUP BY approach is fundamentally better than CASE bucketing**
+
+The old CASE bucketing approach generated N SQL parameters per week (2N total). With 8 weeks that was 16 params — manageable. With 150 weeks it would be 300 params in a single query. The GROUP BY approach is O(sessions-with-data) not O(weeks), which is the right direction. The implementation just needs the Monday computation fixed (Finding #1).
+
+**8. The `filter(Boolean)` cast in the dot logic is safe but worth a comment**
+
+```ts
+[...weeks.slice(0, 7), weeks.find(w => w.week === currentWeek)].filter(Boolean) as typeof weeks
+```
+
+`weeks.find()` could return `undefined` if `currentWeek` isn't in the `weeks` array at all (e.g., during a race between navigation and data loading). The `filter(Boolean)` handles this, but the `as typeof weeks` cast hides the fact that the array could have fewer than 8 elements. This is fine in practice but a comment noting the defensive handling would help future readers.
+
+---
+
+### Summary
+
+One **blocking** finding: the SQLite weekday computation silently miscounts Monday sessions. This is a correctness bug that affects the session count displayed for any week where sessions started on a Monday. The remaining findings are UX polish and scalability suggestions.
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer" color="purple">
+{"type":"idle_notification","from":"outsider-reviewer","timestamp":"2026-03-15T11:15:16.489Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange">
+{"type":"idle_notification","from":"wildcard-reviewer","timestamp":"2026-03-15T11:15:19.830Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="Phase 1 review done, 1 BLOCKING bug found">
+Phase 1 Insider review for PR #184 is complete and posted as a PR comment.
+
+**Verdict: Changes Required — 1 BLOCKING issue found.**
+
+**BLOCKING: Monday sessions bucketed into the wrong week.** The SQL expression `date(s.started_at, 'weekday 1', '-7 days')` has an off-by-one for sessions starting on a Monday. SQLite's `weekday 1` modifier does NOT advance when the date is already Monday, so `-7 days` lands on the previous Monday instead of the current one. Verified with actual SQLite queries. Recommended fix: use arithmetic day-offset calculation instead of the ambiguous `weekday` modifier.
+
+One minor suggestion (inconsistent table alias) and two informational notes (scalability analysis, dot-capping edge case handling — both fine).
+
+Full review posted at: https://github.com/melagiri/code-insights/pull/184#issuecomment-4062792017
+
+Ready for Phase 2 synthesis once the outsider review is also complete.
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-03-15T11:16:40.639Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-synthesizer" color="pink" summary="Phase 2 synthesis complete, 1 blocking fix">
+## TA Synthesis (Phase 2) Complete: PR #184
+
+Posted consolidated review to PR: https://github.com/melagiri/code-insights/pull/184#issuecomment-4062794921
+
+### Summary
+
+**FIX NOW (1 item):**
+1. **Monday session bucketing bug** — All 3 reviewers found the same critical SQL bug. `date(s.started_at, 'weekday 1', '-7 days')` misclassifies Monday sessions into the previous week. Verified with actual SQLite queries. Fix: replace with `date(s.started_at, 'weekday 4', '-3 days')` (Thursday trick — standard ISO week computation).
+
+**SUGGESTIONS (3 items, non-blocking):**
+- Cap `weekEntries` at 520 weeks (~10 years) to stay under SQLite's 999 variable limit
+- Remove misleading "float precision" buffer comment (or remove the buffer entirely)
+- Dot gap UX for old history browsing (follow-up issue)
+
+**NOT APPLICABLE (3 items):**
+- Dot deduplication concern — branches are mutually exclusive, no bug
+- Table alias inconsistency — intentional, works correctly
+- Snapshot index — composite PK already covers the query
+
+**Verdict:** One blocking fix required (the SQL expression). Dev agent can proceed.
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"idle_notification","from":"ta-synthesizer","timestamp":"2026-03-15T11:18:54.132Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="All review fixes applied, PR #184 updated">
+All review items addressed. Commit 9e07ab2 pushed to feature/data-driven-week-nav.
+
+- FIX NOW: Monday bucketing bug fixed with Thursday trick (`weekday 4, -3 days`)
+- Suggestion 1: 520-week cap added (MAX_WEEKS constant)
+- Suggestion 2: Misleading buffer comment removed, loop condition is now exact
+
+`pnpm build` passes. Addressal comment posted on PR #184.
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-15T11:20:18.437Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-verifier" color="cyan" summary="PR #184 verification: all 3 fixes approved">
+## Verification Review: PR #184
+
+### Fix 1: Monday bucketing — VERIFIED
+
+Line 316: `date(s.started_at, 'weekday 4', '-3 days') as week_monday`
+
+This is the correct Thursday trick. The comment on lines 307-309 accurately explains *why* the old approach (`weekday 1, -7 days`) was broken and how the Thursday trick fixes it. The GROUP BY approach (`GROUP BY week_monday`) is also correct — it produces one row per week with sessions, which is then mapped back to ISO week strings via `formatIsoWeek()` on the resulting Monday dates (lines 333-338).
+
+### Fix 2: Week cap — VERIFIED
+
+Line 292: `const MAX_WEEKS = 520;`
+Line 296: `while (weekMondayMs >= earliestMondayMs && weekEntries.length < MAX_WEEKS)`
+
+520 weeks = ~10 years. The snapshot IN query uses `weekEntries.length` placeholders + 1 for `projectKey` = 521 max, well under SQLite's 999 bind-variable limit. The comment on lines 290-291 documents the rationale clearly.
+
+### Fix 3: Comment fix — VERIFIED
+
+The old misleading comment about "float precision" and the `- 86400000` buffer are completely gone. The new code doesn't use any buffer at all — it computes `earliestMondayMs` directly from the earliest session's day-of-week (lines 284-287), which is the correct approach. The range boundaries (`rangeStart`/`rangeEnd`) are derived from the generated `weekEntries` array (lines 311-312), so no manual buffer is needed.
+
+### Additional Observations
+
+1. **Minor style note (non-blocking):** The `projectCondition` on line 261 uses bare `project_id` (no table alias), but the session-count query aliases the table as `s`. This works because each query has a single table, so SQLite resolves it unambiguously. The old code used `s.project_id` — this is a cosmetic difference only.
+
+2. **WeekSelector dot fix (bonus):** The dashboard diff includes a nice fix for when the current week falls outside the 8-dot window (lines 108-112 of WeekSelector.tsx). When browsing old history, the active week dot is always visible by swapping it into the visible slice. Correct logic.
+
+3. **No new issues found.** The data flow is sound: earliest session → generate all Mondays → GROUP BY with Thursday trick → map back to ISO week strings → merge with snapshot status → return to client.
+
+### Verdict: APPROVED
+
+All three findings are correctly addressed. The code is clean, well-commented, and the architectural approach (data-driven weeks + GROUP BY instead of N-way CASE) is a better design than the original. Ready for merge by founder.
+</teammate-message>
+
+<teammate-message teammate_id="ta-verifier" color="cyan">
+{"type":"idle_notification","from":"ta-verifier","timestamp":"2026-03-15T11:21:26.135Z","idleReason":"available"}
+</teammate-message>
