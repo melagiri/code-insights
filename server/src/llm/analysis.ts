@@ -18,10 +18,10 @@ import type { SQLiteMessageRow, AnalysisResponse } from './prompt-types.js';
 import { formatMessagesForAnalysis } from './message-format.js';
 import { extractJsonPayload, parseAnalysisResponse } from './response-parsers.js';
 import {
-  SESSION_ANALYSIS_SYSTEM_PROMPT,
-  generateSessionAnalysisPrompt,
-  FACET_ONLY_SYSTEM_PROMPT,
-  generateFacetOnlyPrompt,
+  SHARED_ANALYST_SYSTEM_PROMPT,
+  buildCacheableConversationBlock,
+  buildSessionAnalysisInstructions,
+  buildFacetOnlyInstructions,
 } from './prompts.js';
 import {
   ANALYSIS_VERSION,
@@ -83,6 +83,8 @@ export async function analyzeSession(
     let analysisResponse: AnalysisResponse;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    let totalCacheCreationTokens = 0;
+    let totalCacheReadTokens = 0;
 
     if (estimatedTokens > MAX_INPUT_TOKENS) {
       // Chunk the messages and analyze separately
@@ -95,21 +97,19 @@ export async function analyzeSession(
         options?.onProgress?.({ phase: 'analyzing', currentChunk: i + 1, totalChunks });
 
         const chunkFormatted = formatMessagesForAnalysis(chunk);
-        const prompt = generateSessionAnalysisPrompt(
-          session.project_name,
-          session.summary,
-          chunkFormatted,
-          sessionMeta
-        );
-
         const response = await client.chat([
-          { role: 'system', content: SESSION_ANALYSIS_SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
+          { role: 'system', content: SHARED_ANALYST_SYSTEM_PROMPT },
+          { role: 'user', content: [
+            buildCacheableConversationBlock(chunkFormatted),
+            { type: 'text' as const, text: buildSessionAnalysisInstructions(session.project_name, session.summary, sessionMeta) },
+          ] },
         ], { signal: options?.signal });
 
         if (response.usage) {
           totalInputTokens += response.usage.inputTokens;
           totalOutputTokens += response.usage.outputTokens;
+          totalCacheCreationTokens += response.usage.cacheCreationTokens ?? 0;
+          totalCacheReadTokens += response.usage.cacheReadTokens ?? 0;
         }
 
         const parsed = parseAnalysisResponse(response.content);
@@ -139,21 +139,19 @@ export async function analyzeSession(
             const targetLength = Math.floor((MAX_INPUT_TOKENS / facetTokens) * facetMessages.length * 0.8);
             facetMessages = facetMessages.slice(0, targetLength) + '\n\n[... conversation truncated for analysis ...]';
           }
-          const facetPrompt = generateFacetOnlyPrompt(
-            session.project_name,
-            session.summary,
-            facetMessages,
-            sessionMeta
-          );
-
           const facetResponse = await client.chat([
-            { role: 'system', content: FACET_ONLY_SYSTEM_PROMPT },
-            { role: 'user', content: facetPrompt },
+            { role: 'system', content: SHARED_ANALYST_SYSTEM_PROMPT },
+            { role: 'user', content: [
+              buildCacheableConversationBlock(facetMessages),
+              { type: 'text' as const, text: buildFacetOnlyInstructions(session.project_name, session.summary, sessionMeta) },
+            ] },
           ], { signal: options?.signal });
 
           if (facetResponse.usage) {
             totalInputTokens += facetResponse.usage.inputTokens;
             totalOutputTokens += facetResponse.usage.outputTokens;
+            totalCacheCreationTokens += facetResponse.usage.cacheCreationTokens ?? 0;
+            totalCacheReadTokens += facetResponse.usage.cacheReadTokens ?? 0;
           }
 
           const facetJson = extractJsonPayload(facetResponse.content);
@@ -175,21 +173,19 @@ export async function analyzeSession(
       }
     } else {
       options?.onProgress?.({ phase: 'analyzing', currentChunk: 1, totalChunks: 1 });
-      const prompt = generateSessionAnalysisPrompt(
-        session.project_name,
-        session.summary,
-        formattedMessages,
-        sessionMeta
-      );
-
       const response = await client.chat([
-        { role: 'system', content: SESSION_ANALYSIS_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
+        { role: 'system', content: SHARED_ANALYST_SYSTEM_PROMPT },
+        { role: 'user', content: [
+          buildCacheableConversationBlock(formattedMessages),
+          { type: 'text' as const, text: buildSessionAnalysisInstructions(session.project_name, session.summary, sessionMeta) },
+        ] },
       ], { signal: options?.signal });
 
       if (response.usage) {
         totalInputTokens = response.usage.inputTokens;
         totalOutputTokens = response.usage.outputTokens;
+        totalCacheCreationTokens = response.usage.cacheCreationTokens ?? 0;
+        totalCacheReadTokens = response.usage.cacheReadTokens ?? 0;
       }
 
       const parsed = parseAnalysisResponse(response.content);
@@ -226,7 +222,12 @@ export async function analyzeSession(
     return {
       success: true,
       insights,
-      usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        ...(totalCacheCreationTokens > 0 && { cacheCreationTokens: totalCacheCreationTokens }),
+        ...(totalCacheReadTokens > 0 && { cacheReadTokens: totalCacheReadTokens }),
+      },
     };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {

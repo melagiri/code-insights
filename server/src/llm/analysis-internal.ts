@@ -27,6 +27,10 @@ export interface AnalysisResult {
   usage?: {
     inputTokens: number;
     outputTokens: number;
+    /** Anthropic: tokens written to the prompt cache (incurs 25% surcharge). */
+    cacheCreationTokens?: number;
+    /** Anthropic: tokens read from the prompt cache (90% discount vs normal input). */
+    cacheReadTokens?: number;
   };
 }
 
