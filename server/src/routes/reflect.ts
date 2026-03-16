@@ -213,7 +213,7 @@ app.post('/generate', requireLLM(), async (c) => {
           period,
           projectKey,
           JSON.stringify(results),
-          windowEnd,
+          new Date().toISOString(),
           windowStart,
           windowEnd,
           aggregated.totalSessions,
