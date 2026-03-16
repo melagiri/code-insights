@@ -1,0 +1,942 @@
+Review and audit the 8 canonical effective pattern categories with the same rigor we applied to friction categories in PR #127. The friction taxonomy revision is documented in memory
+   and across docs/ — use it as the reference for the approach.                                                                                                                       
+                                                                                                                                                                                        
+  Current 8 effective pattern categories:                                                                                                                                             
+  - structured-planning, incremental-implementation, verification-workflow, systematic-debugging, self-correction, context-gathering, domain-expertise, effective-tooling
+                                                                                                                                                                
+  Goals:
+  1. Ask the LLM expert agent to audit these 8 categories for:
+     - Are they AI-session-behavior focused (not generic software practices)?
+     - Any overlaps or near-duplicates?
+     - Any gaps (common effective AI collaboration patterns missing)?
+     - Do they complement the 9 friction categories well? (friction-to-pattern affinity map designed in prior session)
+     - Category naming: will LLMs classify consistently?
+
+  2. Consider whether effective patterns need an attribution-like field (e.g., "user-driven" vs "ai-driven" vs "collaborative") — the LLM expert flagged that `self-correction` measures
+   AI behavior, not user behavior, which is awkward for Progress tracking.
+
+  3. After finalizing categories, implement changes via /start-feature with full ceremony (same as PR #127 flow).
+
+  Key context:
+  - Friction-to-pattern affinity map exists in memory (e.g., stale-assumptions → context-gathering)
+  - Progress feature will track pattern emergence alongside friction decline
+  - Pattern normalizer already exists at server/src/llm/pattern-normalize.ts (mirrors friction-normalize.ts)
+  - Effective patterns have: { category, description, confidence } — confidence >= 50 filter at aggregation time
+  - See docs/ARCHITECTURE.md "Friction & Pattern Normalization" section for current state
+
+---
+
+1. driver is preferred for me. more clear, and yes avoids confusion with friction attributions.
+2. will the results be less accurate or effective without affinity map? Progress is a feature which is planned to be release only after 2-3 weeks. So, seek @"llm-expert (agent)" and @"technical-architect (agent)" opinion once.
+3. i agree with all, except address the second point mainly
+
+---
+
+Ok, ensure you capture this in vision or roadmap docs so we don't miss the context when building 'Progress' feature. And then initiate full ceremony for the current implementation plan
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md."
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Create PR and run CI checks' (blockedBy: above)
+   - Task: 'Review: Triple-layer code review' (blockedBy: above)
+   - Task: 'Post review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically. When Dev creates a PR, message the orchestrator to trigger /start-review on the PR number.
+
+7. REPORT: When review is posted, message the orchestrator: 'PR #XX for Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md. is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- CI gate for this project: pnpm build (no test framework yet)",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: Effective Pattern Taxonomy Revision: Upgrade classification guidance with contrastive pairs, in-session signals, and NOT-this-category exclusions. Add `driver` field (`user-driven`/`ai-driven`/`collaborative`) to effective patterns. Update outdated detection for missing `driver`. Update dashboard pattern display with driver indicator. Mirrors friction taxonomy revision (PR #127) approach. See LLM expert audit results in this conversation and updated plan at docs/plans/2026-03-09-effective-pattern-normalization.md.. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed. CI gate: pnpm build must pass.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM requests `/start-review` -> run the review command on the PR
+4. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 5: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:18:49.145Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for Issue #128 effective pattern taxonomy"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:18:57.953Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:19:01.653Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-10T02:25:56.034Z","idleReason":"available","summary":"[to pm-agent] PR #129 ready — driver field implementation complete"}
+</teammate-message>
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 129
+
+You are setting up a triple-layer code review for PR `129`. This can be used standalone or as part of a `/start-feature` team workflow.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 129` to get PR title, description, and diff stats.
+Use `gh pr diff 129` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Decide if Wild Card reviewer is needed (see criteria below)
+
+---
+
+## Step 2: Determine Review Scope
+
+**Invoke Wild Card (3rd reviewer) if ANY of these apply:**
+- New feature with multiple files changed
+- Complex business logic
+- Schema impact (types.ts, SQLite migrations, server API changes)
+- Architectural changes
+- 200+ lines of changes
+
+**Skip Wild Card if ALL of these apply:**
+- Simple bug fix (< 50 lines)
+- Single file change
+- Straightforward UI/component change
+- Config/CI changes only
+
+**Invoke LLM Expert (4th reviewer) if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 3: Run Parallel Independent Reviews
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+**Launch TA Insider Review:**
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #129 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 129
+  Also fetch the PR details: gh pr view 129
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Outsider Review:**
+```
+Task {
+  name: "outsider-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent OUTSIDER review of PR #129 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 129
+
+  Review for:
+  - Security issues (XSS, injection, auth bypass)
+  - Best practices (React, TypeScript, Node.js)
+  - Logic bugs and edge cases
+  - Performance concerns
+  - Accessibility issues
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch LLM Expert Review (if applicable):**
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #129 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 129
+  Also fetch the PR details: gh pr view 129
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Wild Card Review (if applicable):**
+```
+Task {
+  name: "wildcard-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent WILD CARD review of PR #129 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 129
+
+  Your role is to provide a fresh perspective with NO constraints:
+  - Challenge assumptions in the implementation
+  - Look for edge cases others might miss
+  - Question whether the approach is the simplest that could work
+  - Check for hidden complexity or tech debt being introduced
+  - Look at error handling from a user's perspective
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #129.
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - FIX NOW items
+  - NOT APPLICABLE items with technical rationale
+  - ESCALATE TO FOUNDER items with reason
+  ### Final Verdict",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results
+
+After synthesis is complete:
+
+1. **If part of a /start-feature team**: Send the consolidated review to the dev-agent via SendMessage. Mark the review task as completed.
+
+2. **If standalone**: Present the consolidated review to the user. Ask if they want to:
+   - Have the review summary posted to the GitHub PR
+   - Have fixes implemented automatically
+
+3. **Post review summary to GitHub PR** using `gh pr comment`:
+
+```bash
+gh pr comment 129 --body "$(cat <<'EOF'
+## Triple-Layer Code Review Summary
+
+### Reviewers
+| Role | Focus |
+|------|-------|
+| TA (Insider) | Pattern compliance, schema impact, architecture |
+| Outsider | Security, best practices, logic bugs |
+| LLM Expert | Prompt quality, token efficiency, model selection (if applicable) |
+| Wild Card | Edge cases, fresh perspective |
+
+### Issues Found & Resolution
+#### FIX NOW
+[List from synthesis]
+
+#### NOT APPLICABLE
+[List with technical rationale]
+
+### Verification
+[Status of fixes if any were applied]
+
+**Review complete. [Ready for merge / Changes required].**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark outsider comments as "NOT APPLICABLE" with technical justification
+- **Always post summary to GitHub PR** — this creates the audit trail
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:26:04.600Z","idleReason":"available","summary":"[to orchestrator] PR #129 ready — requesting /start-review 129"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:26:08.026Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-10T02:26:08.426Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-10T02:26:17.281Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-10T02:26:22.167Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="outsider-reviewer" color="purple" summary="Outsider review of PR #129 complete">
+## Outsider Review — PR #129: feat(reflect): add driver field to effective pattern classification
+
+**Overall Assessment:** Clean, well-structured PR. The `driver` field follows the same optional-during-transition pattern used for `attribution` on friction points. No blocking issues found.
+
+---
+
+### Findings
+
+#### 🟡 Suggestion: Stale comment in `facets.ts` (on-disk, not in diff)
+
+The comment block at lines 120-121 of `server/src/routes/facets.ts` describes the outdated query as checking two conditions:
+```
+// Returns count of session_facets rows where:
+//   - effective_patterns entries lack a category field, OR
+//   - friction_points entries lack an attribution field
+```
+
+The PR diff adds a third line to the comment (`effective_patterns entries lack a driver field`), but looking at the diff hunk, the comment update is applied to the NEW file correctly. However, the hunk header shows the old comment at line 118-121 is being replaced — confirmed this is fine. No issue here after closer inspection.
+
+#### 🟡 Suggestion: `getDominantDriver` mutation of input via `.sort()`
+
+In `PatternsPage.tsx`, `getDominantDriver` calls `entries.sort(...)` which mutates the array returned by `Object.entries()`. While `Object.entries()` creates a new array (so the original object is safe), it would be slightly cleaner to use `reduce` or `toSorted()` to find the max without sorting. This is minor — no actual bug since the entries array is local to the function.
+
+#### 🟡 Suggestion: Driver value validation is absent
+
+In `shared-aggregation.ts`, the driver value from JSON is accumulated into the `drivers` record without validating it's one of the three expected values (`user-driven`, `ai-driven`, `collaborative`). If the LLM returns an unexpected driver string (e.g., a typo like `"user_driven"` or a novel value), it would be stored and aggregated as-is, and the dashboard would render it with the fallback style (`bg-muted text-muted-foreground`) and raw string label.
+
+This matches how `category` is handled (normalize at write time, belt-and-suspenders at read time), so it's consistent. But unlike categories, there's no driver normalizer. Consider whether a simple validation/normalization (e.g., mapping `"user_driven"` → `"user-driven"`) would be worthwhile, or if the observability warning in `parseAnalysisResponse` is sufficient.
+
+#### 🟢 Note: SQL parameter spreading is correct
+
+The outdated query now has three UNION arms, each using `${where}` which consumes `...params`. The `.get(...params, ...params, ...params)` correctly spreads params three times. This pattern is consistent with how the two-arm version worked before.
+
+#### 🟢 Note: Type consistency is good
+
+- `EffectivePattern.driver?` in `cli/src/types.ts` — optional, matching transition period
+- `AnalysisResponse` in `prompts.ts` — optional `driver?` field
+- `AggregatedEffectivePattern.drivers` in `shared-aggregation.ts` — non-optional `Record<string, number>` (always present, possibly empty) 
+- `FacetAggregation.effectivePatterns[].drivers?` in dashboard `api.ts` — optional, which is slightly inconsistent with the server type being non-optional. This is safe (the server always sends it), but the optionality difference is worth noting.
+
+#### 🟢 Note: LLM prompt quality is excellent
+
+The contrastive pairs (planning vs incremental, context-gathering vs domain-expertise, verification vs debugging, self-correction vs user-directed) are well-designed disambiguation guides. The in-session signal descriptions give concrete, observable criteria rather than abstract definitions. The driver classification instructions are clear and the three-way split (user/AI/collaborative) covers the space well.
+
+#### 🟢 Note: Dashboard graceful degradation
+
+The `{dominantDriver && (...)}` conditional rendering correctly handles pre-driver sessions (returns `null` from `getDominantDriver`). The fallback styles in `DRIVER_STYLES` and `DRIVER_LABELS` handle unexpected values via `??` operators. Good defensive rendering.
+
+#### 🟢 Note: ROADMAP.md update
+
+The roadmap correctly marks the effective patterns audit as complete and adds the driver field to the taxonomy revision line item. The Progress tracking bullet now references `driver`-based filtering, which documents the dependency for the next feature.
+
+---
+
+### Summary
+
+| Category | Count |
+|----------|-------|
+| 🔴 Blocking | 0 |
+| 🟡 Suggestion | 2 (getDominantDriver sort mutation, driver value validation) |
+| 🟢 Note | 5 |
+
+**Verdict:** No blocking issues. The PR is well-implemented with good backward compatibility, correct SQL, clean types, and thoughtful LLM prompt design. The two suggestions are minor quality improvements that could be addressed in this PR or deferred.
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="outsider-reviewer" color="purple">
+{"type":"idle_notification","from":"outsider-reviewer","timestamp":"2026-03-10T02:27:41.242Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="wildcard-reviewer" color="pink" summary="Wild card review of PR #129 complete">
+## Wild Card Review — PR #129: Driver Field for Effective Patterns
+
+Independent review with fresh eyes. No prior review context consulted.
+
+---
+
+### RED — Blocking: Must fix before merge
+
+**None found.** The PR is clean, focused, and backward-compatible.
+
+---
+
+### YELLOW — Suggestions: Should consider
+
+**1. Outdated query performance with 3 UNION arms and repeated params**
+
+The `/api/facets/outdated` query now has 3 UNION subqueries, each doing a CROSS JOIN with `json_each()`. The params are spread 3 times (`...params, ...params, ...params`). This works correctly, but:
+
+- Each arm does a full CROSS JOIN + json_extract scan. For a user with 500+ sessions, this is 3 separate table scans with JSON parsing.
+- The comment says "UNION deduplicates" but each arm already does `SELECT DISTINCT` — the DISTINCT inside each arm is redundant when UNION (not UNION ALL) already deduplicates across arms.
+
+**Suggestion:** Remove `DISTINCT` from individual arms (UNION handles it), or consider combining the effective_patterns checks into a single arm with `OR` since they share the same table join:
+
+```sql
+-- Instead of two separate effective_patterns arms:
+SELECT sf.session_id
+FROM session_facets sf
+JOIN sessions s ON sf.session_id = s.id
+CROSS JOIN json_each(sf.effective_patterns) je
+WHERE ...
+AND json_array_length(sf.effective_patterns) > 0
+AND (json_extract(je.value, '$.category') IS NULL
+     OR json_extract(je.value, '$.driver') IS NULL)
+```
+
+This halves the effective_patterns scanning work and reduces param spreading from 3x to 2x.
+
+**2. `getDominantDriver` tie-breaking is arbitrary**
+
+When two drivers are tied (e.g., `{ "user-driven": 3, "ai-driven": 3 }`), `Array.sort` is not stable across all engines, so the displayed pill is non-deterministic. With small sample sizes (e.g., a pattern seen 4 times), ties are common.
+
+**Suggestion:** Add a deterministic tiebreaker. Options:
+- Alphabetical fallback (simple)
+- Priority order: user-driven > collaborative > ai-driven (semantically meaningful — when in doubt, credit the user)
+- Show "Mixed" when no driver exceeds 50% (more honest)
+
+**3. The "dominant driver" reduces a distribution to a single label — is this the right UX?**
+
+Consider a pattern with `{ "user-driven": 5, "ai-driven": 4, "collaborative": 3 }`. The pill shows "User" and hides the fact that AI drove it almost equally often. This could mislead users into thinking they always drive this pattern.
+
+For Progress tracking this is fine (you'll use the raw counts). But in the Patterns page, a user might form incorrect self-assessments from the dominant pill alone.
+
+**Suggestion:** Consider a tooltip showing the full breakdown on hover (e.g., "User: 5, AI: 4, Collab: 3"). This keeps the UI clean while providing transparency. Not blocking — the pill is useful as-is, but the tooltip would be a low-effort improvement.
+
+**4. The JSON example in the prompt uses literal pipe syntax**
+
+In `prompts.ts`, the FACET_ONLY prompt's JSON example shows:
+```json
+"driver": "user-driven | ai-driven | collaborative"
+```
+
+This is a format hint, not a valid value. Smaller/weaker LLMs (especially Ollama models) might emit the literal string `"user-driven | ai-driven | collaborative"` as the driver value. The SESSION_ANALYSIS prompt has the same issue.
+
+**Suggestion:** Pick one concrete value for the example (e.g., `"driver": "collaborative"`) and add a comment like `// one of: user-driven, ai-driven, collaborative`. The enum constraint is already clearly documented in the classification guidance above — the example should show a valid value.
+
+**5. No driver normalization/validation at write or read time**
+
+`category` has `normalizePatternCategory()` at both write and read time. `driver` has no equivalent. If an LLM returns `"user_driven"` (underscore), `"User-Driven"` (capped), or `"user"` (shorthand), it gets stored as-is and the aggregation counts it as a separate bucket.
+
+**Suggestion:** Add a simple normalizer — even just `.toLowerCase().trim()` and an alias map of 3-4 common variants. This mirrors the defensive pattern already established for `category` and `attribution`.
+
+---
+
+### GREEN — Informational Notes
+
+**1. Good backward compatibility design.** The `driver` field is optional everywhere — types, aggregation, UI. Pre-driver sessions silently skip driver accumulation. The outdated detection correctly flags them. This is well-thought-out.
+
+**2. The contrastive pairs in the classification guidance are excellent.** The "structured-planning vs incremental-implementation" and "context-gathering vs domain-expertise" disambiguations address the most common LLM classification confusions. This will meaningfully improve classification quality.
+
+**3. The affinity map update in the design doc is clean.** Moving from 15 to 9 friction categories and the `self-correction` exclusion rationale ("reactive recovery, not preventive") is well-reasoned. The note about deferring the affinity map to the Progress PR (avoiding dead code) is a good decision.
+
+**4. The `AggregatedEffectivePattern.drivers` field is non-optional in the server type but optional in the dashboard type.** This is actually correct — the server always populates it (even if empty `{}`), while the dashboard type is defensive against API evolution. Just noting for awareness.
+
+**5. The prompt grew by ~50 lines.** The classification guidance is now substantial. Worth monitoring token usage on smaller context models (Ollama). Not a problem now, but if more fields are added to the classification spec, the prompt may need restructuring (e.g., separate system message for classification rules).
+
+---
+
+### Summary
+
+The PR is solid. No blocking issues. The architecture mirrors the friction attribution pattern correctly. The main risks are around LLM output reliability (suggestion #4 and #5) — the same class of issues that `friction-normalize.ts` and `pattern-normalize.ts` were built to solve. Adding a lightweight driver normalizer would complete the defensive trilogy.
+
+Highest-value suggestions by effort-to-impact ratio:
+1. **#4 (fix JSON example)** — 30-second fix, prevents a real LLM parsing issue
+2. **#5 (driver normalizer)** — 15-minute fix, matches existing defensive patterns
+3. **#1 (merge UNION arms)** — 5-minute fix, reduces query work by 33%
+
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer" color="pink">
+{"type":"idle_notification","from":"wildcard-reviewer","timestamp":"2026-03-10T02:28:06.168Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="PR #129 Phase 1 insider review: Approved, no blockers">
+Phase 1 insider review for PR #129 is complete and posted as a PR comment.
+
+**Verdict: Approved** — no blocking issues found.
+
+Key findings:
+- Full type alignment across all four layers (CLI types → server prompts → aggregation → dashboard)
+- Mirrors the friction attribution pattern from PR #127 exactly (optional field, prompt guidance, observability monitor, outdated detection, dashboard badge)
+- SQLite schema unchanged — driver lives in the JSON column, no migration needed
+- Classification guidance upgrade is well-structured with contrastive pairs
+- All layers handle the optional/transition period correctly
+
+Three informational notes included (non-blocking):
+1. Intentional asymmetry between server (required `drivers: Record`) and dashboard (optional `drivers?`) — both safe
+2. No write-time validation of driver values (consistent with friction attribution pattern)
+3. getDominantDriver() sort is safe (operates on new array from Object.entries)
+
+Ready for Phase 2 synthesis once outsider + LLM expert reviews are in.
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-03-10T02:28:45.234Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="llm-expert-reviewer" color="orange" summary="LLM Expert review of PR #129 complete">
+## LLM Expert Review: feat(reflect): add driver field to effective pattern classification
+
+PR #129 | 8 files changed | +122 / -36
+
+---
+
+### Prompt Quality Assessment
+
+The `EFFECTIVE_PATTERN_CLASSIFICATION_GUIDANCE` block was upgraded from a terse 8-line bullet list (~124 words, ~170 tokens) to a structured guidance block (~599 words, ~800 tokens). This is injected into **two** prompts (SESSION_ANALYSIS and FACET_ONLY), so the total per-call increase is ~630 additional input tokens.
+
+**SESSION_ANALYSIS prompt** (the longer prompt):
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Clarity | 5/5 | Each category has definition + in-session signal + negative boundary. Excellent. |
+| Token Efficiency | 3/5 | 4.8x expansion is significant. Some redundancy between category definitions and contrastive pairs. See recommendations. |
+| Output Consistency | 4/5 | Good for Sonnet/GPT-4o/Gemini Pro. Driver classification will be inconsistent on smaller Ollama models (see below). |
+| Resilience | 4/5 | Graceful degradation via optional `driver` field. Observability monitor catches missing fields. |
+
+**FACET_ONLY prompt** (the compact prompt):
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Clarity | 4/5 | The inline field spec `driver ("user-driven"|"ai-driven"|"collaborative")` is clear but terse — contrast with the verbose guidance block injected below it. |
+| Token Efficiency | 3/5 | Same guidance block injected here. FACET_ONLY is meant to be the budget prompt for backfill. Adding ~630 tokens matters more here. |
+| Output Consistency | 4/5 | Same as SESSION_ANALYSIS. |
+| Resilience | 4/5 | Same graceful degradation. |
+
+---
+
+### Token Efficiency
+
+**Before:** `EFFECTIVE_PATTERN_CLASSIFICATION_GUIDANCE` ≈ 170 tokens × 2 prompts = 340 tokens/call
+**After:** ≈ 800 tokens × 2 prompts = 1,600 tokens/call
+**Delta:** +1,260 input tokens per session analysis
+
+At typical rates (GPT-4o: $2.50/M input, Claude Sonnet: $3/M input), this adds ~$0.003-0.004 per session. Negligible in absolute terms for a local-first tool, but the percentage increase matters — this guidance block is now a significant fraction of the system prompt.
+
+Specific redundancy observations:
+
+1. The contrastive pair "self-correction vs user-directed correction" repeats almost verbatim what's already stated in the self-correction category definition ("NOT this category if the user corrected the AI"). This is ~40 tokens of pure repetition.
+
+2. The "collaborative" driver definition includes two parenthetical examples that mirror what the category definitions already convey. One example would suffice.
+
+3. The preamble "Each effective pattern captures a technique or approach that contributed to a productive session outcome." adds 15 tokens of context the model already has from the surrounding prompt structure.
+
+---
+
+### Driver Classification Design
+
+The driver field introduces a **second classification axis** on top of category. This is architecturally sound — it decouples the "what" (category) from the "who" (driver), enabling Progress tracking to filter without hardcoded category exclusions.
+
+**Decision tree clarity:**
+
+The three-way classification is clear for the poles:
+- `user-driven`: user explicitly asked → easy to detect in conversation
+- `ai-driven`: AI acted without prompting → detectable from turn structure
+
+The middle ground — `collaborative` — is the consistency risk. The definition "Both contributed, or the pattern emerged naturally from the interaction" is a catch-all that models will over-select. In my experience with classification prompts, a three-way split where one option is "both/neither" leads to 40-60% of responses choosing the middle option, especially from smaller models that default to hedging.
+
+**Cross-model consistency prediction:**
+
+| Model | Category accuracy | Driver accuracy | Risk |
+|-------|------------------|----------------|------|
+| Claude Sonnet 4 | High | High | Low |
+| GPT-4o | High | High | Low |
+| Gemini 2 Flash | High | Medium | `collaborative` over-selection |
+| Llama 3 8B (Ollama) | Medium | Low | Both axes unreliable |
+| Llama 3 70B (Ollama) | High | Medium | `collaborative` over-selection |
+
+---
+
+### Issues Found
+
+**[NOTE] JSON format example has pipe-separated values instead of a single value**
+
+In the SESSION_ANALYSIS prompt JSON example (line ~304 in the diff):
+```json
+"driver": "user-driven | ai-driven | collaborative"
+```
+This is fine as a documentation pattern showing the enum options, and it matches the existing style used for `outcome`, `session_character`, etc. elsewhere in the prompt. Consistent with the codebase convention — no action needed.
+
+**[SUGGESTION] `collaborative` will become a classification sink for ambiguous cases**
+
+The definition "Both contributed, or the pattern emerged naturally from the interaction" has two distinct clauses joined by "or" — one is a genuine collaborative case, the other is a fallback for "I can't tell." Smaller models will read "emerged naturally" as permission to default to collaborative whenever the signal is weak.
+
+Recommendation: Add a tiebreaker instruction. For example:
+```
+When uncertain between user-driven and ai-driven, prefer the more specific label. 
+Use "collaborative" only when BOTH the user AND the AI made distinct, identifiable 
+contributions to this pattern. Default to the party that initiated the behavior.
+```
+This is ~40 tokens and would significantly reduce collaborative over-selection. Not blocking — the observability monitor will catch the distribution, and this can be tuned after seeing real data.
+
+**[SUGGESTION] FACET_ONLY prompt JSON example was not updated with `driver` field**
+
+The diff shows the FACET_ONLY prompt's inline JSON example was updated:
+```json
+{ "category": "kebab-case-category", "description": "technique", "confidence": 85, "driver": "user-driven | ai-driven | collaborative" }
+```
+Good — this is consistent. But unlike the SESSION_ANALYSIS prompt where the `driver` field has its own bullet-point instruction (line ~207 in diff: `- driver: Who drove this pattern...`), the FACET_ONLY prompt only mentions driver in the inline field spec on line ~508. This is fine for larger models but smaller models may miss it. The full guidance block is injected below, so it's covered — but this is a minor clarity gap.
+
+**[NOTE] Outdated detection SQL — three-arm UNION is correct but grows linearly**
+
+The facets.ts outdated detection now has 3 UNION arms, each with `CROSS JOIN json_each()`. Each arm scans all session_facets rows. For a user with 500+ sessions, this query runs 3 full scans. This is fine for SQLite on local machines but worth noting — if a fourth arm is ever needed, consider refactoring to a single scan with OR conditions inside json_each.
+
+**[NOTE] `parseAnalysisResponse` does not validate driver values**
+
+The observability monitor warns when `driver` is missing but does not check whether the value is one of the three valid options. A model could return `"driver": "human"` or `"driver": "both"` and it would pass silently. The normalization layer handles categories — should there be a similar normalizer or at least a warning for unexpected driver values?
+
+This is low-priority since driver values don't go through display labels (the dashboard uses a lookup map with a fallback), but it's a gap in the observability story. A one-line warn would catch model hallucinations early:
+
+```typescript
+const VALID_DRIVERS = new Set(['user-driven', 'ai-driven', 'collaborative']);
+if (parsed.facets?.effective_patterns?.some(ep => ep.driver && !VALID_DRIVERS.has(ep.driver))) {
+  console.warn('[pattern-monitor] LLM returned unexpected driver value — check classification quality');
+}
+```
+
+**[NOTE] `AnalysisResponse` interface has `driver?` optional — correct for transition**
+
+The optional typing is correct. Older stored data won't have it, and the aggregation code in shared-aggregation.ts silently skips null drivers. This is clean backward compatibility.
+
+---
+
+### Recommendations
+
+1. **Add a tiebreaker instruction for `collaborative`** to prevent it becoming a classification sink. ~40 tokens, high impact on output consistency. (SUGGESTION — can be done in a follow-up)
+
+2. **Consider adding driver value validation** to `parseAnalysisResponse`. One `console.warn` line, catches hallucinated driver values early. (SUGGESTION — low priority)
+
+3. **Monitor collaborative distribution** in the first ~20 sessions after deployment. If collaborative exceeds 50% of driver assignments, the tiebreaker instruction is needed. The existing `[pattern-monitor]` observability hooks make this easy to observe.
+
+4. **Token optimization opportunity** (future, not this PR): The contrastive pair for self-correction repeats the category definition. Could save ~40 tokens by removing the contrastive pair and relying on the "NOT this category if..." clause already in the definition. Not worth changing now — wait for classification data.
+
+5. **The affinity map deferral is correct.** Shipping dead code with no runtime consumer would be premature. The plan document update clearly marks it as deferred to the Progress PR.
+
+---
+
+### Summary
+
+This is a well-structured prompt upgrade. The category definitions with in-session signals are a significant improvement for classification accuracy — they give the model concrete, observable criteria rather than abstract definitions. The contrastive pairs are well-chosen and target the actual confusion cases identified in the taxonomy audit.
+
+The `driver` field design is sound. The main risk is `collaborative` over-selection by smaller models, but the optional typing and observability monitors provide a safe transition path. The token cost increase (~630 tokens per prompt injection) is justified by the classification accuracy improvement.
+
+**Verdict: No blocking issues. Approve with suggestions noted above.**
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="llm-expert-reviewer" color="orange">
+{"type":"idle_notification","from":"llm-expert-reviewer","timestamp":"2026-03-10T02:29:30.727Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-synthesizer" color="cyan" summary="Phase 2 synthesis complete — 3 small fixes, PR nearly ready">
+## TA Synthesis (Phase 2) Complete for PR #129
+
+Posted consolidated review to PR: https://github.com/melagiri/code-insights/pull/129#issuecomment-4028172656
+
+### Summary
+
+**3 FIX NOW items** (all small):
+
+1. **Merge two UNION arms** in `facets.ts` outdated query — both iterate `effective_patterns`, can be combined with OR. Reduces param spreading from 3x to 2x.
+
+2. **Add driver value validation warn** in `parseAnalysisResponse` — one `console.warn` for unrecognized driver values (matches existing pattern for missing category/driver).
+
+3. **Add collaborative tiebreaker instruction** in prompt — ~30 tokens to prevent `collaborative` becoming a classification sink. "When uncertain, prefer the specific driver."
+
+**4 NOT APPLICABLE** (with evidence):
+- Sort mutation (no bug — throwaway array)
+- Tie-breaking non-determinism (rare, low impact)
+- Tooltip for driver breakdown (UX polish, data contract supports it)
+- JSON pipe syntax (codebase convention across 8+ fields)
+
+**No deferrals, no escalations.** After the 3 fixes, PR is approved from architecture perspective.
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="cyan">
+{"type":"idle_notification","from":"ta-synthesizer","timestamp":"2026-03-10T02:31:54.154Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-10T02:34:35.033Z","idleReason":"available","summary":"[to pm-agent] PR #129 review fixes complete, addressal posted"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:35:04.097Z","idleReason":"available","summary":"[to orchestrator] PR #129 ready for founder merge — ceremony complete"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-10T02:35:08.017Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+merged
