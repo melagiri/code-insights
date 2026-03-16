@@ -1,0 +1,269 @@
+We have recently added a lot of features. Audit the changes done till now from the release 3.6.1 and list down the plan here for packing it as v4.
+
+---
+
+Apart from this, we should also update the @README.md and @cli/README.md files.. include those changes and share your plan again
+
+---
+
+i wanted to use the release slash command.. verify if that command has this update of readme files included and if we run that, all the above stpes you mentioned will be taken care? If not, perform the changes that we need to explicitly make and then trigger the release command to do things that we already defined in the automated skill
+
+---
+
+why was it deleted?
+
+---
+
+yes
+
+---
+
+# /release — Automated Release Workflow
+
+**Arguments**: major
+
+You are executing the release workflow for `@code-insights/cli`. Parse `major` to extract:
+- **type** (required): `patch`, `minor`, or `major`
+- **description** (optional): A one-liner for the release title
+
+If type is missing or not one of `patch`/`minor`/`major`, ask the user to provide it.
+
+---
+
+## Step 1: Pre-flight Checks
+
+Run ALL of these checks. If any fail, STOP and tell the user what to fix.
+
+```bash
+# Must be on master
+git branch --show-current  # Must output "master"
+
+# Must have clean working tree
+git status --porcelain     # Must be empty
+
+# Pull latest
+git pull origin master
+```
+
+Read the current version from `cli/package.json` (the `"version"` field).
+
+Compute the new version:
+- `patch`: increment the third number (3.6.1 → 3.6.2)
+- `minor`: increment the second number, reset third to 0 (3.6.1 → 3.7.0)
+- `major`: increment the first number, reset second and third to 0 (3.6.1 → 4.0.0)
+
+**Resume detection**: Run `npm view @code-insights/cli version` to get the currently published version. If the version in `package.json` is ALREADY GREATER than the npm version, this is a **resumed release** — skip to Step 6.
+
+---
+
+## Step 2: Analyze Changes
+
+Find the last git tag and analyze what changed:
+
+```bash
+# Find latest tag
+git describe --tags --abbrev=0
+
+# Commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Full diff since last tag
+git diff $(git describe --tags --abbrev=0)..HEAD --stat
+```
+
+Read the full diff and commit messages. Then:
+
+1. **Generate a CHANGELOG entry** in the existing format (see `cli/CHANGELOG.md` for style). Group changes under `### Added`, `### Changed`, `### Fixed`, `### Improved` as appropriate. Match the existing tone — concise but descriptive, with bold lead-ins.
+
+2. **Generate a release title** — a short phrase summarizing the release (e.g., "LLM-Powered Export Page", "PostHog custom domain"). Use the user's description if provided, otherwise derive from the changes.
+
+3. **For minor/major releases**: Assess which docs need updating:
+   - `docs/ROADMAP.md` — if new milestones were completed
+   - `docs/PRODUCT.md` — if product capabilities changed
+   - `docs/VISION.md` — for major releases, if the vision expanded
+   - `README.md` — if user-facing features or setup changed
+
+---
+
+## GATE 1: Review Changelog
+
+**STOP and present to the user:**
+
+```
+Release: vX.Y.Z — {title}
+Type: {patch|minor|major}
+
+Proposed CHANGELOG entry:
+─────────────────────────
+{the generated changelog entry}
+─────────────────────────
+
+Files to modify:
+  - cli/package.json (version bump)
+  - cli/CHANGELOG.md (new entry)
+  {- docs/ROADMAP.md (if applicable)}
+  {- docs/PRODUCT.md (if applicable)}
+  {- docs/VISION.md (if applicable)}
+
+Approve, or tell me what to change?
+```
+
+Wait for user approval. If they provide edits, incorporate them.
+
+---
+
+## Step 3: Apply Version Bump
+
+After approval, make the changes:
+
+1. **`cli/package.json`** — Update the `"version"` field to the new version
+2. **`cli/CHANGELOG.md`** — Prepend the new entry at the top (after the header, before the previous version entry). Format: `## [X.Y.Z] - YYYY-MM-DD`
+3. **Docs** (if approved at Gate 1) — Make the specific updates discussed
+
+---
+
+## Step 4: Build & Test
+
+Run the full build and test suite:
+
+```bash
+# Full workspace build (this is what prepublishOnly does)
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+
+# Run tests
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && pnpm test
+```
+
+**If build fails → STOP.** Show the error. Do not continue.
+**If tests fail → STOP.** Show the error. Do not continue.
+
+---
+
+## GATE 2: Confirm Publish
+
+**STOP and present to the user:**
+
+Show the full `git diff` of all changes made, then:
+
+```
+Build: PASSED
+Tests: PASSED
+
+Ready to:
+  1. Commit changes to master
+  2. Push to origin
+  3. Publish v{X.Y.Z} to npm
+  4. Create GitHub release
+
+Proceed?
+```
+
+Wait for explicit user approval before continuing.
+
+---
+
+## Step 5: Commit & Push
+
+Commit with specific files only (never `git add .`):
+
+```bash
+# Add only the files we changed
+git add cli/package.json cli/CHANGELOG.md
+# Add any docs files that were modified (if applicable)
+# git add docs/ROADMAP.md docs/PRODUCT.md docs/VISION.md README.md
+
+git commit -m "$(cat <<'EOF'
+chore: bump version to vX.Y.Z
+
+{one-line summary of what changed}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+git push origin master
+```
+
+---
+
+## Step 6: Publish to npm
+
+```bash
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && npm publish
+```
+
+The `prepublishOnly` script in `package.json` handles building all packages and copying dashboard/server dist files automatically.
+
+Verify the publish succeeded:
+
+```bash
+npm view @code-insights/cli version
+```
+
+If publish fails, show the error and STOP. The commit is already pushed — tell the user to fix the issue and re-run `/release` (resume detection will skip to this step).
+
+---
+
+## Step 7: GitHub Release
+
+Create the GitHub release using the changelog entry as the body:
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — {release title}" \
+  --notes "$(cat <<'EOF'
+{changelog entry content, formatted for GitHub}
+
+**Full Changelog**: https://github.com/melagiri/code-insights/compare/{previous_tag}...vX.Y.Z
+EOF
+)"
+```
+
+---
+
+## GATE 3: Verify
+
+**STOP and present to the user:**
+
+```
+Release vX.Y.Z complete!
+
+  npm: @code-insights/cli@X.Y.Z ✓
+  GitHub: {release URL}
+  Commit: {commit hash}
+
+Everything look correct?
+```
+
+---
+
+## Step 8: Done
+
+Summarize the release:
+
+```
+Released @code-insights/cli vX.Y.Z
+
+  Changes: {brief summary}
+  npm: https://www.npmjs.com/package/@code-insights/cli
+  GitHub: {release URL}
+  Files modified: {list}
+```
+
+---
+
+## Important Rules
+
+- **NEVER skip the gates** — always pause for user confirmation
+- **NEVER use `git add .` or `git add -A`** — add specific files only
+- **If build or tests fail, STOP** — do not try to fix and continue
+- **Commit message format**: `chore: bump version to vX.Y.Z` (matches existing pattern)
+- **Resume is safe** — if re-run after a partial release, it picks up where it left off
+
+---
+
+Approved
+
+---
+
+proceed
