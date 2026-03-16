@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4cae3be25c02",
+  "strategy": "manual-commit",
+  "branch": "fix/reflect-generated-at-timestamp",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/routes/reflect.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4c/ae3be25c02/0/metadata.json",
+      "transcript": "/4c/ae3be25c02/0/full.jsonl",
+      "context": "/4c/ae3be25c02/0/context.md",
+      "content_hash": "/4c/ae3be25c02/0/content_hash.txt",
+      "prompt": "/4c/ae3be25c02/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 19,
+    "cache_creation_tokens": 34112,
+    "cache_read_tokens": 579188,
+    "output_tokens": 3282,
+    "api_call_count": 15
+  }
+}

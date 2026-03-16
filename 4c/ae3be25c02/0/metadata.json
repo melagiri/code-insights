@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4cae3be25c02",
+  "session_id": "0938bb96-68be-47f8-830e-580b5edd55ca",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-16T14:08:58.9843Z",
+  "branch": "fix/reflect-generated-at-timestamp",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/routes/reflect.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "716d73334239",
+  "token_usage": {
+    "input_tokens": 19,
+    "cache_creation_tokens": 34112,
+    "cache_read_tokens": 579188,
+    "output_tokens": 3282,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-16T14:08:58.923489Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}
