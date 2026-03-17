@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "7442bc3acde1",
+  "session_id": "4576eb7c-1172-45d9-a16e-403ca10c2691",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-17T01:49:05.478094Z",
+  "branch": "docs/audit-fix-v4-release",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "CLAUDE.md",
+    "docs/PRODUCT.md",
+    "docs/ARCHITECTURE.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "586631f4e7e8",
+  "token_usage": {
+    "input_tokens": 24,
+    "cache_creation_tokens": 66940,
+    "cache_read_tokens": 783461,
+    "output_tokens": 8306,
+    "api_call_count": 14
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-17T01:49:05.328828Z",
+    "agent_lines": 167,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 167,
+    "agent_percentage": 100
+  }
+}

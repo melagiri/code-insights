@@ -1,0 +1,21 @@
+we release v4 - Reflect feature recently. I want to verify if the documentation, @docs/PRODUCT.md @docs/VISION.md @docs/ROADMAP.md and other files are up to date. Run an audit to verify gaps between docs and code..
+
+---
+
+Is it good to track the missing sub commands you mentioned - in CLaude.md file? Isn't it too much and should be in separate small docs and loaded to context when required?
+
+---
+
+good. yes, this is right way
+
+---
+
+go ahead
+
+---
+
+[Request interrupted by user]
+
+---
+
+do it in feature branch and then create PR
