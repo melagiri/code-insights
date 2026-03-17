@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d0e6032360e9",
+  "strategy": "manual-commit",
+  "branch": "chore/ci-gate-hook-enforcement",
+  "checkpoints_count": 4,
+  "files_touched": [
+    ".claude/hookify.ci-gate-before-pr-mcp.local.md",
+    ".claude/hookify.ci-gate-before-pr.local.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d0/e6032360e9/0/metadata.json",
+      "transcript": "/d0/e6032360e9/0/full.jsonl",
+      "context": "/d0/e6032360e9/0/context.md",
+      "content_hash": "/d0/e6032360e9/0/content_hash.txt",
+      "prompt": "/d0/e6032360e9/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1080,
+    "cache_creation_tokens": 87401,
+    "cache_read_tokens": 3540255,
+    "output_tokens": 16202,
+    "api_call_count": 49
+  }
+}
