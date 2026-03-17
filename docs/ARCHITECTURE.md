@@ -165,28 +165,80 @@ Both friction points and effective patterns use canonical category taxonomies wi
 
 ## Server API Routes
 
-| Route | Purpose |
-|-------|---------|
-| `/api/projects` | Project queries |
-| `/api/sessions` | Session list, detail |
-| `/api/messages` | Message content |
-| `/api/insights` | Generated insights |
-| `/api/analysis` | Session analysis (SSE streaming) |
-| `/api/analytics` | Analytics aggregation |
-| `/api/config` | Configuration endpoints (including LLM) |
-| `/api/export` | Export generation (SSE streaming) |
-| `/api/telemetry` | Telemetry identity & opt-out |
-| `/api/analysis/usage` | Analysis cost/usage data per session |
-| `/api/facets` | Session facets data; `/api/facets/outdated` detects sessions missing effective_patterns.category or friction_points.attribution |
-| `/api/facets/missing-pq` | Sessions missing prompt quality analysis |
-| `/api/facets/outdated-pq` | Sessions with outdated prompt quality insights |
-| `/api/facets/backfill-pq` | Backfill prompt quality for sessions |
-| `/api/reflect` | Cross-session synthesis endpoints |
-| `/api/reflect/weeks` | List last 8 ISO weeks with session counts and snapshot status |
-| `/api/reflect/snapshot` | Cached synthesis snapshot for a specific week/project |
-| `/api/sessions/deleted/count` | Count of soft-deleted sessions |
-| `PATCH /api/sessions/:id` | Update session (custom title, soft delete) |
-| `DELETE /api/sessions/:id` | Soft-delete a session |
+### Core Resources
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/health` | GET | Server health check |
+| `/api/projects` | GET | List all projects |
+| `/api/projects/:id` | GET | Project detail |
+| `/api/sessions` | GET | Session list with filters |
+| `/api/sessions/:id` | GET | Session detail |
+| `/api/sessions/:id` | PATCH | Update session (custom title, soft delete) |
+| `/api/sessions/:id` | DELETE | Soft-delete a session |
+| `/api/sessions/deleted/count` | GET | Count of soft-deleted sessions |
+| `/api/messages/:sessionId` | GET | Message content for a session |
+| `/api/insights` | GET | Browse generated insights |
+| `/api/insights` | POST | Create an insight |
+| `/api/insights/:id` | DELETE | Delete an insight |
+
+### Analytics & Stats
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/analytics/dashboard` | GET | Analytics overview aggregation |
+| `/api/analytics/usage` | GET | Global usage stats |
+
+### Analysis (LLM-Powered)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/analysis/usage` | GET | Analysis cost/usage data per session |
+| `/api/analysis/session` | POST | Trigger session analysis with LLM |
+| `/api/analysis/session/stream` | GET | SSE streaming for session analysis |
+| `/api/analysis/prompt-quality` | POST | Trigger prompt quality analysis |
+| `/api/analysis/prompt-quality/stream` | GET | SSE streaming for PQ analysis |
+| `/api/analysis/recurring` | POST | Find recurring insight patterns |
+
+### Export
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/export/markdown` | POST | Session-level markdown export (Knowledge Base / Agent Rules templates) |
+| `/api/export/generate` | POST | LLM-powered cross-session export synthesis |
+| `/api/export/generate/stream` | GET | SSE streaming for export generation |
+
+### Facets
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/facets` | GET | Session facets data |
+| `/api/facets/aggregated` | GET | Pre-aggregated friction/patterns |
+| `/api/facets/missing` | GET | Sessions with insights but no facets |
+| `/api/facets/outdated` | GET | Sessions missing `effective_patterns.category`/`driver` or `friction_points.attribution` |
+| `/api/facets/backfill` | POST | Backfill facets for legacy sessions (`force` option) |
+| `/api/facets/missing-pq` | GET | Sessions missing prompt quality analysis |
+| `/api/facets/outdated-pq` | GET | Sessions with outdated prompt quality insights |
+| `/api/facets/backfill-pq` | POST | Backfill prompt quality for sessions |
+
+### Reflect (Cross-Session Synthesis)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/reflect/generate` | POST | Cross-session LLM synthesis (SSE streaming) |
+| `/api/reflect/results` | GET | Aggregated facet data without LLM synthesis |
+| `/api/reflect/weeks` | GET | Last 8 ISO weeks with session counts and snapshot status |
+| `/api/reflect/snapshot` | GET | Cached synthesis snapshot for a specific week/project |
+
+### Configuration & Telemetry
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/config/llm` | GET | Current LLM configuration |
+| `/api/config/llm` | PUT | Update LLM configuration |
+| `/api/config/llm/test` | POST | Test LLM credentials |
+| `/api/config/llm/ollama-models` | GET | Discover available Ollama models |
+| `/api/telemetry/identity` | GET | Telemetry identity and opt-out status |
 
 ---
 
@@ -194,7 +246,7 @@ Both friction points and effective patterns use canonical category taxonomies wi
 
 | Page | Route | Purpose |
 |------|-------|---------|
-| Dashboard | `/` | Overview with charts |
+| Dashboard | `/dashboard` | Overview with charts (`/` redirects here) |
 | Sessions | `/sessions` | Session list with filters |
 | Session Detail | `/sessions/:id` | Full session with analyze button |
 | Insights | `/insights` | Browse generated insights |

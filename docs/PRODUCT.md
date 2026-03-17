@@ -126,22 +126,94 @@ Cross-session pattern detection and synthesis, powered by session facets:
 - **Journal** — Session journal/notes
 - **Settings** — Configuration UI
 
-### CLI Stats Commands
+### CLI Command Reference
+
+#### Setup & Sync
 
 ```bash
-code-insights stats              # Overview (last 7 days)
-code-insights stats cost         # Cost breakdown by project and model
-code-insights stats projects     # Per-project detail cards
-code-insights stats today        # Today's sessions with details
-code-insights stats models       # Model usage distribution
-code-insights stats patterns     # Cross-session pattern summary
+code-insights init                         # Interactive setup (provider, API key)
+code-insights sync                         # Sync sessions to SQLite
+code-insights sync --force                 # Re-sync all sessions
+code-insights sync --dry-run               # Preview without changes
+code-insights sync -q                      # Quiet mode (for hook usage)
+code-insights sync --source cursor         # Sync only from a specific tool
+code-insights sync --verbose               # Verbose output
+code-insights sync --regenerate-titles     # Regenerate session titles
+code-insights sync prune                   # Soft-delete trivial sessions (≤2 messages, restorable with sync --force)
+code-insights status                       # Show sync statistics
+code-insights install-hook                 # Auto-sync on session end
+code-insights uninstall-hook               # Remove auto-sync hook
 ```
 
-### Other CLI Commands
+#### Dashboard & Browser
 
 ```bash
-code-insights open               # Open the local dashboard in browser (without starting server)
-code-insights sync prune         # Soft-delete trivial sessions with ≤2 messages (restorable with sync --force)
+code-insights dashboard                    # Start local server + open dashboard
+code-insights dashboard --port 8080        # Custom port (default: 7890)
+code-insights dashboard --no-open          # Start server without opening browser
+code-insights open                         # Open dashboard in browser (without starting server)
+code-insights open --project               # Open filtered to the current project
+```
+
+#### Stats (Terminal Analytics)
+
+```bash
+code-insights stats                        # Overview (last 7 days)
+code-insights stats cost                   # Cost breakdown by project and model
+code-insights stats projects               # Per-project detail cards
+code-insights stats today                  # Today's sessions with details
+code-insights stats models                 # Model usage distribution
+code-insights stats patterns               # Cross-session pattern summary
+```
+
+Stats shared flags:
+- `--period 7d|30d|90d|all` — Time range (default: 7d)
+- `--project <name>` — Scope to a specific project
+- `--source <tool>` — Filter by source tool
+- `--no-sync` — Skip auto-sync before showing stats
+
+#### Reflect (Cross-Session Synthesis)
+
+```bash
+code-insights reflect                      # Cross-session LLM synthesis (current ISO week)
+code-insights reflect --week 2026-W11      # Synthesis for a specific ISO week
+code-insights reflect --section friction-wins   # Only generate one section
+code-insights reflect --project myproject  # Scope to a specific project
+code-insights reflect backfill             # Backfill facets for legacy sessions
+code-insights reflect backfill --period 30d     # Backfill within time range (7d|30d|90d|all)
+code-insights reflect backfill --project <name> # Backfill for specific project
+code-insights reflect backfill --dry-run        # Show count without backfilling
+code-insights reflect backfill --prompt-quality # Run prompt quality analysis instead of facets
+```
+
+Reflect `--section` values: `friction-wins`, `rules-skills`, `working-style`
+
+#### Configuration
+
+```bash
+code-insights config                       # Show current configuration
+code-insights config set <key> <value>     # Set config value (e.g., telemetry)
+code-insights config llm                   # Configure LLM provider interactively
+code-insights config llm --provider openai # Set provider directly
+code-insights config llm --model gpt-4o   # Set model
+code-insights config llm --api-key <key>  # Set API key
+code-insights config llm --base-url <url> # Set custom base URL (Ollama, proxies)
+code-insights config llm --show           # Show current LLM configuration
+```
+
+#### Telemetry
+
+```bash
+code-insights telemetry                    # Show telemetry status
+code-insights telemetry status             # Show state and what data is collected
+code-insights telemetry disable            # Disable anonymous telemetry
+code-insights telemetry enable             # Enable anonymous telemetry
+```
+
+#### Other
+
+```bash
+code-insights reset --confirm              # Delete all local data
 ```
 
 ### LLM Cost Tracking
