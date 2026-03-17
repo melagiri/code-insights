@@ -59,16 +59,23 @@ git push origin $(git branch --show-current)  # Push IMMEDIATELY
 | Rule | Type | Purpose |
 |------|------|---------|
 | `block-pr-merge` | **block** | Agents never merge PRs — founder only |
+| `block-local-merge-to-main` | **block** | Prevent `git merge` — all merges via GitHub PRs |
 | `branch-discipline` | warn | Dev agents verify feature branch before coding |
-| `cli-binary-name` | warn | Prevent using `claudeinsight` instead of `code-insights` |
 | `agent-parallel-warning` | warn | Verify no dependencies before parallelizing agents |
 | `no-jira` | **block** | Prevent Jira/Atlassian API calls — use GitHub Issues instead |
+| `use-git-rm-for-tracked-files` | **block** | Enforce `git rm` over `rm` for source files |
 | `review-before-pr` | warn | Remind: code review required before PR creation (bash path) |
 | `review-before-pr-mcp` | warn | Remind: code review required before PR creation (MCP path) |
 | `verify-before-checkout` | warn | Verify branch exists before `git checkout/switch` |
-| `ci-gate-before-pr` | **block** | Run `pnpm build && pnpm test` before `gh pr create` — prevents wasted CI minutes |
-| `ci-gate-before-pr-mcp` | **block** | Run `pnpm build && pnpm test` before GitHub MCP PR creation |
+| `default-subagent-execution` | warn | Auto-answer: default to subagent-driven execution |
 | `tdd-domain-check` | warn | On `git commit`, remind to include tests when touching TDD domains |
+
+**Native PreToolUse hooks** (in `settings.json`, not hookify):
+
+| Trigger | Purpose |
+|---------|---------|
+| `gh pr create` (Bash) | Run `pnpm build && pnpm test` — blocks PR creation on failure |
+| `create_pull_request` (MCP) | Same CI gate for GitHub MCP tool path |
 
 ---
 
