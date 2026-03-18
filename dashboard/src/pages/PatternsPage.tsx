@@ -291,7 +291,8 @@ export default function PatternsPage() {
               <>
                 <p className="text-sm font-medium">No sessions in this week</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Navigate to a week with sessions using the arrows above.
+                  Navigate to a week with sessions using the arrows above, or run{' '}
+                  <code className="font-mono">code-insights sync</code> to pull in new sessions.
                 </p>
               </>
             ) : (

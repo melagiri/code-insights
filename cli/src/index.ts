@@ -107,6 +107,7 @@ program
   .description('Start the Code Insights dashboard server and open in browser')
   .option('-p, --port <number>', 'Port number', String(7890))
   .option('--no-open', 'Do not open browser automatically')
+  .option('--no-sync', 'Skip automatic session sync before starting')
   .action(dashboardCommand);
 
 program.addCommand(resetCommand);
@@ -114,6 +115,12 @@ program.addCommand(statsCommand);
 program.addCommand(configCommand);
 program.addCommand(telemetryCommand);
 program.addCommand(reflectCommand);
+
+// Default action: running `code-insights` with no arguments opens the dashboard.
+// Dashboard auto-syncs sessions first, giving "1 command to value" on first run.
+program.action(async () => {
+  await dashboardCommand({ port: '7890', open: true, sync: true });
+});
 
 // Show one-time telemetry disclosure before any command runs
 showTelemetryNoticeIfNeeded();

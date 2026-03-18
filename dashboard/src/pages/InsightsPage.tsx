@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { useSearchParams } from 'react-router';
+import { useSearchParams, Link } from 'react-router';
 import { useInsights } from '@/hooks/useInsights';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { useProjects } from '@/hooks/useProjects';
@@ -274,10 +274,13 @@ export default function InsightsPage() {
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
             <Sparkles className="h-8 w-8 text-muted-foreground" />
-            <p className="font-medium">No insights yet</p>
-            <p className="text-sm text-muted-foreground">
-              Analyze your sessions to generate AI insights like learnings, decisions, and summaries.
+            <p className="font-medium">Your sessions are synced</p>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Configure an LLM provider to unlock AI-powered insights — decisions, learnings, and patterns extracted from your sessions.
             </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/settings">Configure LLM provider</Link>
+            </Button>
           </div>
         )
       ) : (
