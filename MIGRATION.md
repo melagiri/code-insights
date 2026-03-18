@@ -42,7 +42,7 @@ code-insights init
 
 This creates `~/.code-insights/config.json` and initializes the SQLite database at `~/.code-insights/data.db`. No Firebase credentials are required.
 
-> **Note:** `init` is optional for new installations (v4+), but required when upgrading from v2 because the config format changed.
+> **Note:** `init` is optional for new installations, but required when upgrading from v2 because the config format changed.
 
 ### Step 3: Re-sync All Sessions
 

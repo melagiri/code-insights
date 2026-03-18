@@ -71,7 +71,8 @@ code-insights init                     # customize settings (optional)
 ## CLI Reference
 
 ```bash
-code-insights init                     # Interactive setup
+code-insights                          # sync + open dashboard (zero-config)
+code-insights init                     # customize settings (optional)
 code-insights sync                     # Sync sessions to local database
 code-insights sync --force             # Re-sync all sessions
 code-insights sync --source cursor     # Sync only from a specific tool
@@ -79,6 +80,7 @@ code-insights sync --dry-run           # Preview without making changes
 code-insights sync prune               # Soft-delete sessions with preview
 code-insights status                   # Show sync statistics
 code-insights dashboard                # Start dashboard server and open browser
+code-insights dashboard --no-sync      # Start dashboard without syncing
 code-insights dashboard --port 8080    # Custom port (default: 7890)
 code-insights stats                    # Terminal overview (last 7 days)
 code-insights stats cost               # Cost breakdown by project and model

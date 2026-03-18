@@ -99,7 +99,10 @@ code-insights dashboard --no-open      # Start server without opening browser
 ### Setup & Configuration
 
 ```bash
-# Interactive setup — prompts for Claude dir, excluded projects, etc.
+# Sync sessions and open dashboard — no setup required
+code-insights
+
+# Customize settings (optional) — prompts for Claude dir, excluded projects, etc.
 code-insights init
 
 # Show current configuration
