@@ -4,12 +4,15 @@ import { existsSync } from 'fs';
 import chalk from 'chalk';
 import ora from 'ora';
 import net from 'net';
-import { trackEvent, captureError, classifyError } from '../utils/telemetry.js';
+import { trackEvent, identifyUser, captureError, classifyError } from '../utils/telemetry.js';
 import { printBanner } from '../utils/banner.js';
+import { runSync } from './sync.js';
 
 interface DashboardOptions {
   port: string;
   open: boolean;
+  // Commander's --no-sync flag sets sync=false; default (no flag) is true
+  sync?: boolean;
 }
 
 /**
@@ -43,6 +46,19 @@ function isPortInUse(port: number): Promise<boolean> {
  * ESM import specifiers.
  */
 export async function dashboardCommand(options: DashboardOptions): Promise<void> {
+  // Auto-sync sessions before starting the dashboard so users see fresh data.
+  // Skipped with --no-sync. Uses quiet:false so sync progress is visible on first run.
+  if (options.sync !== false) {
+    try {
+      await runSync({ quiet: false });
+      void identifyUser();
+    } catch (err) {
+      // Sync failure is non-fatal — dashboard still opens with whatever data exists
+      console.warn(chalk.yellow(`  Sync warning: ${err instanceof Error ? err.message : String(err)}`));
+      console.warn(chalk.dim('  Use --no-sync to skip sync, or run `code-insights sync` separately.'));
+    }
+  }
+
   const port = parseInt(options.port, 10);
 
   if (isNaN(port) || port < 1 || port > 65535) {
