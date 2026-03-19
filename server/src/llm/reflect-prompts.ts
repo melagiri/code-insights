@@ -146,6 +146,7 @@ RULES:
 - The tagline must be empowering and descriptive, never critical or negative
 - Base the tagline on the dominant session types, workflow patterns, and outcome distribution
 - Think of it like a developer personality type — specific and earned, not generic
+- Generate a tagline_subtitle: a single sentence behavioral description, maximum 80 characters, that complements the tagline archetype with specifics grounded in the session statistics (e.g. "Plans thoroughly, debugs systematically, ships with high success"). It must be a complete, meaningful sentence fragment — not a restatement of the tagline.
 
 Respond with valid JSON only, wrapped in <json>...</json> tags.`;
 
@@ -173,6 +174,7 @@ FRICTION FREQUENCY: ${data.frictionFrequency} total friction points across all s
 Respond with this JSON format:
 {
   "tagline": "2-4 word archetype label (e.g. The Methodical Builder)",
+  "tagline_subtitle": "1-sentence behavioral description max 80 chars (e.g. Plans thoroughly, debugs systematically, ships with high success)",
   "narrative": "3-5 sentence working style description"
 }
 

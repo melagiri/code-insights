@@ -318,6 +318,7 @@ export interface RulesSkillsResult {
 export interface WorkingStyleResult {
   section: 'working-style';
   tagline?: string;             // 2-4 word archetype label (e.g. "The Methodical Builder")
+  tagline_subtitle?: string;    // 1-line behavioral description (max 80 chars) complementing the tagline
   narrative: string;
   workflowDistribution: Record<string, number>;
   outcomeDistribution: Record<string, number>;
