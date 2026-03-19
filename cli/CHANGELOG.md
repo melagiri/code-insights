@@ -2,6 +2,12 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.2.1] - 2026-03-19
+
+### Fixed
+
+- **Blank share card image** — The exported PNG was a blank white image in both Chrome and Safari. Root cause: `html-to-image` serializes DOM to SVG internally, which silently drops 8-digit hex alpha colors (`#ffffff06`) and `background-clip: text` gradient fills. Fixed by converting all alpha colors to `rgba()` format, replacing gradient tagline text with solid `#a78bfa` (violet-400), and adding a `backgroundColor` fallback to the `toPng` call.
+
 ## [4.2.0] - 2026-03-19
 
 ### Added
