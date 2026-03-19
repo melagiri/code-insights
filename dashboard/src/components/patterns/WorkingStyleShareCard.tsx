@@ -1,5 +1,5 @@
 /**
- * WorkingStyleShareCard — 552×290px shareable JPEG export card.
+ * WorkingStyleShareCard — 480x280px shareable JPEG export card.
  *
  * CRITICAL RULES:
  * - ALL colors as hex or rgba() — NO CSS variables, NO Tailwind classes
@@ -12,15 +12,14 @@
  */
 
 import { forwardRef } from 'react';
-import { ShareCardDonut } from './ShareCardDonut';
 import {
   SOURCE_TOOL_DISPLAY_NAMES,
   SOURCE_TOOL_PILL_COLORS,
   computeMilestones,
 } from '@/lib/share-card-utils';
 
-// Donut segment colors — hex literals matching SESSION_CHARACTER_COLORS hues
-const CHARACTER_DONUT_COLORS: Record<string, string> = {
+// Character pill colors — hex literals matching SESSION_CHARACTER_COLORS hues
+const CHARACTER_COLORS: Record<string, string> = {
   deep_focus:    '#6366f1',
   bug_hunt:      '#ef4444',
   feature_build: '#10b981',
@@ -50,38 +49,39 @@ function abbreviateCount(n: number): string {
 }
 
 /**
- * Derive month + year label from an ISO week string (e.g. "2026-W11" → "Mar 2026").
- * Uses the Monday of that week — avoids showing the wrong month when viewing historical weeks.
+ * Derive a placeholder subtitle from character distribution.
+ * Will be replaced by LLM-generated subtitle in a future iteration.
  */
-function getMonthYearFromWeek(isoWeek: string): string {
-  const match = /^(\d{4})-W(\d{2})$/.exec(isoWeek);
-  if (!match) {
-    return new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  }
-  const year = parseInt(match[1], 10);
-  const week = parseInt(match[2], 10);
-  // Find Monday of ISO week 1: Jan 4 is always in week 1
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const jan4Day = jan4.getUTCDay();
-  const daysToMonday = jan4Day === 0 ? 6 : jan4Day - 1;
-  const week1Monday = new Date(jan4.getTime() - daysToMonday * 86400000);
-  const weekMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
-  return weekMonday.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+function deriveSubtitle(characterDistribution: Record<string, number>): string {
+  const sorted = Object.entries(characterDistribution)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (sorted.length === 0) return 'Exploring AI-assisted development workflows';
+
+  const top2 = sorted.slice(0, 2).map(([key]) => {
+    const name = (CHARACTER_DISPLAY_NAMES[key] ?? key).toLowerCase();
+    return name;
+  });
+
+  if (top2.length === 1) return `Primarily ${top2[0]} sessions`;
+  return `Primarily ${top2[0]} and ${top2[1]} sessions`;
 }
 
 export interface WorkingStyleShareCardProps {
   tagline: string;
+  taglineSubtitle?: string;
   totalSessions: number;
   streak: number;
   sourceTools: string[];
   characterDistribution: Record<string, number>;
   outcomeDistribution: Record<string, number>;
-  currentWeek: string;  // ISO week string — determines footer month label (avoids showing wrong month for historical weeks)
+  currentWeek: string;  // ISO week string — kept for API compat
 }
 
 export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShareCardProps>(
   function WorkingStyleShareCard(
-    { tagline, totalSessions, streak, sourceTools, characterDistribution, outcomeDistribution, currentWeek },
+    { tagline, taglineSubtitle, totalSessions, streak, sourceTools, characterDistribution, outcomeDistribution },
     ref
   ) {
     // Compute success rate (high outcomes / total faceted sessions)
@@ -89,27 +89,20 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
     const successCount = outcomeDistribution['high'] ?? 0;
     const successRate = outcomeTotal > 0 ? Math.round((successCount / outcomeTotal) * 100) : 0;
 
-    // Build donut data: top 3 character types + "Other"
+    // Build character pill data: top 3 types
     const sortedChars = Object.entries(characterDistribution)
       .filter(([, v]) => v > 0)
       .sort((a, b) => b[1] - a[1]);
-
-    const top3 = sortedChars.slice(0, 3);
-    const otherSum = sortedChars.slice(3).reduce((s, [, v]) => s + v, 0);
-    const donutData = [
-      ...top3.map(([key, value]) => ({
-        label: CHARACTER_DISPLAY_NAMES[key] ?? key,
-        value,
-        color: CHARACTER_DONUT_COLORS[key] ?? '#64748b',
-      })),
-      ...(otherSum > 0 ? [{ label: 'Other', value: otherSum, color: '#334155' }] : []),
-    ];
+    const charTotal = sortedChars.reduce((s, [, v]) => s + v, 0);
+    const top3Chars = sortedChars.slice(0, 3);
 
     const milestones = computeMilestones(totalSessions, streak, sourceTools.length, successRate);
 
     const hasTools = sourceTools.length > 0;
     const hasMilestones = milestones.length > 0;
-    const hasDonut = donutData.length > 0;
+    const hasChars = top3Chars.length > 0;
+
+    const subtitle = taglineSubtitle || deriveSubtitle(characterDistribution);
 
     return (
       <div
@@ -118,8 +111,8 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           position: 'absolute',
           left: '-9999px',
           top: 0,
-          width: '552px',
-          height: '290px',
+          width: '480px',
+          height: '280px',
           fontFamily: FONT_STACK,
           overflow: 'hidden',
           // Solid background — html-to-image toJpeg backgroundColor handles base color,
@@ -145,10 +138,10 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
         <div
           style={{
             position: 'absolute',
-            top: '-37px',
-            left: '-37px',
-            width: '184px',
-            height: '184px',
+            top: '-40px',
+            left: '-40px',
+            width: '200px',
+            height: '200px',
             borderRadius: '50%',
             zIndex: 0,
             background: 'radial-gradient(circle, rgba(59,130,246,0.13) 0%, transparent 70%)',
@@ -158,10 +151,10 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
         <div
           style={{
             position: 'absolute',
-            bottom: '-46px',
-            right: '-37px',
-            width: '230px',
-            height: '230px',
+            bottom: '-50px',
+            right: '-40px',
+            width: '250px',
+            height: '250px',
             borderRadius: '50%',
             zIndex: 0,
             background: 'radial-gradient(circle, rgba(168,85,247,0.09) 0%, transparent 70%)',
@@ -174,80 +167,121 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           style={{
             position: 'relative',
             zIndex: 1,
-            padding: '18px',
+            padding: '24px',
             height: '100%',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
           }}
         >
-          {/* ── Top: Logo + app name ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '8px' }}>
-            {/* App logo SVG */}
-            <svg width="13" height="13" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="7" fill="#3b82f6" />
-              <path d="M8 10h12M8 14h8M8 18h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <span
-              style={{
-                fontSize: '6px',
-                color: '#a0a0b8',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-              }}
-            >
-              Code Insights
-            </span>
+          {/* ── Header: Logo + app name (left) + tool pills (right) ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* App logo SVG */}
+              <svg width="14" height="14" viewBox="0 0 28 28" fill="none">
+                <rect width="28" height="28" rx="7" fill="#3b82f6" />
+                <path d="M8 10h12M8 14h8M8 18h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span
+                style={{
+                  fontSize: '9px',
+                  color: '#a0a0b8',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                }}
+              >
+                Code Insights
+              </span>
+            </div>
+            {hasTools && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {sourceTools.map((tool) => {
+                  const colors = SOURCE_TOOL_PILL_COLORS[tool] ?? {
+                    bg: '#1e293b', text: '#94a3b8', border: 'rgba(148,163,184,0.3)',
+                  };
+                  return (
+                    <span
+                      key={tool}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '3px 8px',
+                        borderRadius: '999px',
+                        fontSize: '9px',
+                        fontWeight: 500,
+                        backgroundColor: colors.bg,
+                        color: colors.text,
+                        border: `1px solid ${colors.border}`,
+                      }}
+                    >
+                      {SOURCE_TOOL_DISPLAY_NAMES[tool] ?? tool}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* ── Tagline ── */}
-          {/* Solid color — html-to-image cannot render background-clip:text gradient */}
-          <p
-            style={{
-              fontSize: '19px',
-              fontWeight: 700,
-              lineHeight: 1.15,
-              margin: '0 0 11px 0',
-              color: '#a78bfa',
-              maxWidth: '414px',
-            }}
-          >
-            {tagline}
-          </p>
+          {/* ── Tagline block: title + subtitle ── */}
+          <div style={{ marginBottom: '14px', maxWidth: '400px' }}>
+            {/* Solid color — html-to-image cannot render background-clip:text gradient */}
+            <p
+              style={{
+                fontSize: '22px',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                margin: '0 0 4px 0',
+                color: '#a78bfa',
+              }}
+            >
+              {tagline}
+            </p>
+            <p
+              style={{
+                fontSize: '11px',
+                fontWeight: 400,
+                lineHeight: 1.3,
+                margin: 0,
+                color: '#8b8ba0',
+              }}
+            >
+              {subtitle}
+            </p>
+          </div>
 
-          {/* ── Stat boxes ── */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '11px' }}>
+          {/* ── Stat cards ── */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
             {[
               { value: abbreviateCount(totalSessions), label: 'Sessions' },
-              { value: streak > 0 ? `${streak}d` : '—', label: 'Streak' },
-              { value: outcomeTotal > 0 ? `${successRate}%` : '—', label: 'Success' },
+              { value: streak > 0 ? `${streak}d` : '\u2014', label: 'Streak' },
+              { value: outcomeTotal > 0 ? `${successRate}%` : '\u2014', label: 'Success' },
             ].map(({ value, label }) => (
               <div
                 key={label}
                 style={{
-                  width: '65px',
-                  height: '30px',
-                  borderRadius: '4px',
-                  backgroundColor: 'rgba(255,255,255,0.024)',
-                  border: '1px solid rgba(255,255,255,0.063)',
-                  padding: '4px 7px',
+                  width: '100px',
+                  height: '52px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  padding: '8px 12px',
                   boxSizing: 'border-box',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
+                <span style={{ fontSize: '22px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
                   {value}
                 </span>
                 <span
                   style={{
-                    fontSize: '5px',
+                    fontSize: '8px',
                     color: '#64748b',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
-                    marginTop: '1px',
+                    marginTop: '2px',
                   }}
                 >
                   {label}
@@ -256,89 +290,73 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
             ))}
           </div>
 
-          {/* ── Middle zone: tools + milestones LEFT, donut RIGHT (side-by-side at 552px) ── */}
-          <div style={{ display: 'flex', flex: 1, gap: '12px', alignItems: 'flex-start', minHeight: 0 }}>
-            {/* LEFT — tools + milestones */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
-              {/* Tool pills */}
-              {hasTools && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {sourceTools.map((tool) => {
-                    const colors = SOURCE_TOOL_PILL_COLORS[tool] ?? {
-                      bg: '#1e293b', text: '#94a3b8', border: 'rgba(148,163,184,0.3)',
-                    };
-                    return (
-                      <span
-                        key={tool}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '2px 5px',
-                          borderRadius: '999px',
-                          fontSize: '6px',
-                          fontWeight: 500,
-                          backgroundColor: colors.bg,
-                          color: colors.text,
-                          border: `1px solid ${colors.border}`,
-                        }}
-                      >
-                        {SOURCE_TOOL_DISPLAY_NAMES[tool] ?? tool}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Milestone pills */}
-              {hasMilestones && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {milestones.map((m, i) => (
-                    <span
-                      key={i}
+          {/* ── Character distribution pills (replaces donut) ── */}
+          {hasChars && (
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
+              {top3Chars.map(([key, count]) => {
+                const pct = charTotal > 0 ? Math.round((count / charTotal) * 100) : 0;
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        padding: '2px 5px',
-                        borderRadius: '999px',
-                        fontSize: '6px',
-                        fontWeight: 500,
-                        backgroundColor: 'rgba(255,255,255,0.04)',
-                        color: '#94a3b8',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        backgroundColor: CHARACTER_COLORS[key] ?? '#64748b',
+                        flexShrink: 0,
                       }}
-                    >
-                      <span style={{ color: m.iconColor }}>{m.icon}</span>
-                      {m.label}
+                    />
+                    <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      {CHARACTER_DISPLAY_NAMES[key] ?? key}
                     </span>
-                  ))}
-                </div>
-              )}
+                    <span style={{ fontSize: '10px', color: '#64748b' }}>
+                      {pct}%
+                    </span>
+                  </div>
+                );
+              })}
             </div>
+          )}
 
-            {/* RIGHT — donut */}
-            {hasDonut && (
-              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                <ShareCardDonut data={donutData} size={85} strokeWidth={12} />
-              </div>
-            )}
-          </div>
+          {/* ── Milestone pills ── */}
+          {hasMilestones && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {milestones.map((m, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    padding: '3px 8px',
+                    borderRadius: '999px',
+                    fontSize: '9px',
+                    fontWeight: 500,
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    color: '#94a3b8',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                  }}
+                >
+                  <span style={{ color: m.iconColor }}>{m.icon}</span>
+                  {m.label}
+                </span>
+              ))}
+            </div>
+          )}
 
-          {/* ── Footer ── */}
+          {/* ── Footer: stacked brand + CTA ── */}
           <div style={{ marginTop: 'auto', paddingTop: '7px' }}>
-            <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.07)', marginBottom: '6px' }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg width="8" height="8" viewBox="0 0 28 28" fill="none">
-                  <rect width="28" height="28" rx="7" fill="#3b82f6" />
-                  <path d="M8 10h12M8 14h8M8 18h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <span style={{ fontSize: '6px', color: '#64748b' }}>code-insights.app</span>
-              </div>
-              <span style={{ fontSize: '6px', color: '#475569' }}>
-                Patterns · {getMonthYearFromWeek(currentWeek)}
-              </span>
+            <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.07)', marginBottom: '8px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="10" height="10" viewBox="0 0 28 28" fill="none">
+                <rect width="28" height="28" rx="7" fill="#3b82f6" />
+                <path d="M8 10h12M8 14h8M8 18h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontSize: '9px', fontWeight: 500, color: '#94a3b8' }}>code-insights.app</span>
             </div>
+            <p style={{ fontSize: '8px', fontWeight: 400, color: '#475569', margin: '2px 0 0 0' }}>
+              Analyze your AI coding sessions
+            </p>
           </div>
         </div>
       </div>

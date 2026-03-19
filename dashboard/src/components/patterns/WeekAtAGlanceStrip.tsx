@@ -247,6 +247,8 @@ export function WeekAtAGlanceStrip({
           characterDistribution={characterDistribution ?? {}}
           outcomeDistribution={outcomeDistribution}
           currentWeek={currentWeek}
+          // taglineSubtitle omitted — WorkingStyleShareCard derives a placeholder from characterDistribution.
+          // Will be replaced by LLM-generated subtitle in a future iteration.
         />
       )}
     </>
