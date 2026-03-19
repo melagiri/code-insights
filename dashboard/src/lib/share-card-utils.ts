@@ -1,6 +1,11 @@
 // Utilities for the shareable AI Fluency Score card.
 // Canvas 2D implementation — no external dependencies, pixel-perfect text rendering.
 // V3: Score card + fingerprint — single hero score, 5 rainbow bars, evidence lines.
+//
+// Resolution: drawn at 2× physical pixels (2400×1260) for HiDPI sharpness,
+// exported as a 1200×630 logical PNG via canvas.toBlob. The CSS display size
+// doesn't matter for off-screen rendering; the extra resolution prevents blurriness
+// when shared on social platforms that render at higher pixel densities.
 
 import type { PQDimensionScores } from '@/lib/api';
 import {
@@ -8,8 +13,13 @@ import {
   ICON_BOOK_OPEN, ICON_TARGET, ICON_EYE, ICON_CLOCK, ICON_GIT_BRANCH,
   ICON_BAR_CHART_3, ICON_ZAP,
 } from '@/lib/share-card-icons';
+import { SOURCE_TOOL_DISPLAY_NAMES } from '@/lib/share-card-icons';
 
 const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const MONO_STACK = '"SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace';
+
+// Physical resolution multiplier — draw at 2× for HiDPI PNG export
+const DPR = 2;
 
 export interface ShareCardProps {
   tagline: string;
@@ -19,6 +29,7 @@ export interface ShareCardProps {
   lifetimeSessions: number;    // all-time session count
   sourceTools: string[];
   currentWeek: string;         // for month/year in header
+  effectivePatterns?: Array<{ label: string; frequency: number }>; // top 3 by frequency
 }
 
 /** Truncate text to fit within maxWidth, appending ellipsis if needed. */
@@ -31,33 +42,65 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
   return truncated + '\u2026';
 }
 
-/** Draw the app logo (blue rounded rect + white lines) at (x, y) with given size. */
+/**
+ * Draw the favicon logo — indigo/purple gradient rounded rect with white magnifying
+ * glass and amber crosshair. Matches dashboard/public/favicon.svg exactly.
+ * (x, y) is top-left of the square; size is the side length in canvas pixels.
+ */
 function drawLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
-  const rx = size * 0.25;
-  ctx.fillStyle = '#3b82f6';
+  const scale = size / 32; // favicon viewBox is 32×32
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+
+  // Background: indigo→purple gradient rounded rect (rx=7)
+  const bgGrad = ctx.createLinearGradient(0, 0, 32, 32);
+  bgGrad.addColorStop(0, '#6366f1');
+  bgGrad.addColorStop(1, '#8b5cf6');
+  ctx.fillStyle = bgGrad;
   ctx.beginPath();
-  ctx.roundRect(x, y, size, size, rx);
+  ctx.roundRect(0, 0, 32, 32, 7);
   ctx.fill();
 
+  // Magnifying glass: white circle at (18,14) r=6
   ctx.strokeStyle = 'white';
-  ctx.lineWidth = size * 0.13;
+  ctx.lineWidth = 1.5;
   ctx.lineCap = 'round';
-  const pad = size * 0.28;
-
   ctx.beginPath();
-  ctx.moveTo(x + pad, y + size * 0.36);
-  ctx.lineTo(x + size - pad, y + size * 0.36);
+  ctx.arc(18, 14, 6, 0, Math.PI * 2);
   ctx.stroke();
 
+  // Handle: white line from (22.2,18.2) to (25.5,21.5)
   ctx.beginPath();
-  ctx.moveTo(x + pad, y + size * 0.50);
-  ctx.lineTo(x + size - pad * 1.5, y + size * 0.50);
+  ctx.moveTo(22.2, 18.2);
+  ctx.lineTo(25.5, 21.5);
   ctx.stroke();
 
+  // Amber crosshair center dot at (18,13) r=0.7
+  const accentGrad = ctx.createLinearGradient(0, 0, 32, 32);
+  accentGrad.addColorStop(0, '#fbbf24');
+  accentGrad.addColorStop(1, '#f59e0b');
+  ctx.fillStyle = accentGrad;
   ctx.beginPath();
-  ctx.moveTo(x + pad, y + size * 0.64);
-  ctx.lineTo(x + size - pad * 0.8, y + size * 0.64);
+  ctx.arc(18, 13, 0.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Amber crosshair vertical line (18,11)→(18,15)
+  ctx.strokeStyle = accentGrad;
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(18, 11);
+  ctx.lineTo(18, 15);
   ctx.stroke();
+
+  // Amber crosshair horizontal line (16,13)→(20,13)
+  ctx.beginPath();
+  ctx.moveTo(16, 13);
+  ctx.lineTo(20, 13);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /**
@@ -78,7 +121,7 @@ function getMonthYearFromWeek(isoWeek: string): string {
   return weekMonday.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
-/** Format token count: 1,200,000 → "1.2M tokens", 850,000 → "850K tokens", 12,000 → "12K tokens". */
+/** Format token count: 1,200,000 → "1.2M tokens", 850,000 → "850K tokens". */
 function abbreviateTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M tokens`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K tokens`;
@@ -103,9 +146,17 @@ const FINGERPRINT_BARS = [
   { label: 'ORCHESTRATION', field: 'correction_quality',  color: '#f472b6', icon: ICON_GIT_BRANCH,  yCentre: 380 },
 ] as const;
 
+// Effective pattern pill colors — cycle through these for top 3 patterns
+const PATTERN_PILL_COLORS = [
+  { bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)', text: '#c4b5fd' },
+  { bg: 'rgba(52,211,153,0.10)',  border: 'rgba(52,211,153,0.3)',  text: '#6ee7b7' },
+  { bg: 'rgba(251,191,36,0.10)',  border: 'rgba(251,191,36,0.3)',  text: '#fcd34d' },
+];
+
 /**
- * Draw the full share card onto the given canvas at 1200×630px.
- * The canvas must already have width=1200 and height=630 set.
+ * Draw the full share card onto the given canvas.
+ * The canvas must be set to LOGICAL_W * DPR × LOGICAL_H * DPR before calling.
+ * ctx.scale(DPR, DPR) is applied internally — all coordinates use logical pixels.
  * V3: Score card + fingerprint layout.
  * toolIcons pre-loaded via loadToolIcons() for async image rendering.
  */
@@ -117,10 +168,14 @@ export function drawShareCard(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
+  // Logical dimensions — all drawing coordinates use these
   const W = 1200;
   const H = 630;
   const PAD = 48;
   const CONTENT_W = W - PAD * 2; // 1104
+
+  // Scale up for HiDPI: draw at DPR× physical resolution
+  ctx.scale(DPR, DPR);
 
   // ── Background ──────────────────────────────────────────────────────────────
 
@@ -181,7 +236,7 @@ export function drawShareCard(
   const score = props.dimensionScores?.overall ?? null;
   const colors = scoreColors(score);
 
-  // Hero watermark — app logo drawn large at very low opacity, centered behind score
+  // Hero watermark — favicon logo drawn large at very low opacity, centered behind score
   ctx.globalAlpha = 0.04;
   const WATERMARK_SIZE = 160;
   drawLogo(ctx, SCORE_CX - WATERMARK_SIZE / 2, SCORE_CY - WATERMARK_SIZE / 2, WATERMARK_SIZE);
@@ -242,9 +297,12 @@ export function drawShareCard(
 
   ctx.textAlign = 'left';
 
-  // ── Section 4: Fingerprint Bars (right zone, x=420 to x=1152) ────────────────
+  // ── Section 4: Fingerprint Bars (right zone) ──────────────────────────────────
+  //
+  // Label zone: LABEL_LEFT_X → BAR_START_X - GAP
+  // Labels (icon + text) are right-aligned to LABEL_RIGHT_X so all bars start
+  // at exactly BAR_START_X regardless of label width.
 
-  const LABEL_LEFT_X = 420;
   const BAR_START_X = 560;
   const BAR_END_X = W - PAD; // 1152
   const BAR_MAX_W = BAR_END_X - BAR_START_X; // 592
@@ -252,6 +310,7 @@ export function drawShareCard(
   const BAR_RADIUS = 10;
   const ICON_SIZE = 16;
   const ICON_GAP = 8;
+  const LABEL_RIGHT_X = BAR_START_X - 14; // all labels right-align here
   const MIN_FILL_W = 20;
 
   for (const bar of FINGERPRINT_BARS) {
@@ -282,12 +341,12 @@ export function drawShareCard(
       ctx.fill();
     }
 
-    // Draw label: icon + text unit, right-aligned to end at BAR_START_X - 10
+    // Draw label: icon + text, right-aligned at LABEL_RIGHT_X
+    // Measure first, then position so the right edge lands exactly at LABEL_RIGHT_X
     ctx.font = `500 12px ${FONT_STACK}`;
     const labelTextW = ctx.measureText(bar.label).width;
     const totalLabelW = ICON_SIZE + ICON_GAP + labelTextW;
-    const rightEdge = BAR_START_X - 10;
-    const iconX = rightEdge - totalLabelW;
+    const iconX = LABEL_RIGHT_X - totalLabelW;
     const iconY = bar.yCentre - ICON_SIZE / 2;
 
     drawIcon(ctx, bar.icon, iconX, iconY, ICON_SIZE, bar.color);
@@ -296,94 +355,161 @@ export function drawShareCard(
     ctx.fillText(bar.label, iconX + ICON_SIZE + ICON_GAP, bar.yCentre + 4);
   }
 
-  // ── Section 5: Evidence Lines (y=440, y=464) ──────────────────────────────────
+  // ── Section 5: Evidence Lines (y=420, y=452) ──────────────────────────────────
+  // Expanded — larger text, tool logos with text labels, more vertical space.
 
   const EVIDENCE_CENTER_X = 600;
+  const EVIDENCE_Y1 = 422;
+  const EVIDENCE_Y2 = 458;
 
   // Line 1: [BarChart3 icon] {N} sessions · [Zap icon] {tokens}
   if (props.totalSessions > 0 || props.dimensionScores) {
-    const ICON_SMALL = 14;
+    const ICON_SMALL = 16;
     const sessionLabel = `${props.totalSessions} session${props.totalSessions !== 1 ? 's' : ''}`;
     const tokenLabel = abbreviateTokens(props.totalTokens);
-    const separatorLabel = ' · ';
+    const separatorLabel = '  ·  ';
 
-    ctx.font = `500 15px ${FONT_STACK}`;
+    ctx.font = `500 17px ${FONT_STACK}`;
     const sessionW = ctx.measureText(sessionLabel).width;
     const tokenW = ctx.measureText(tokenLabel).width;
     const sepW = ctx.measureText(separatorLabel).width;
 
-    // Total width: icon + gap + sessionLabel + separator + icon + gap + tokenLabel
     const line1TotalW = ICON_SMALL + 6 + sessionW + sepW + ICON_SMALL + 6 + tokenW;
     let x1 = EVIDENCE_CENTER_X - line1TotalW / 2;
 
-    drawIcon(ctx, ICON_BAR_CHART_3, x1, 440 - ICON_SMALL / 2 - 1, ICON_SMALL, '#64748b');
+    drawIcon(ctx, ICON_BAR_CHART_3, x1, EVIDENCE_Y1 - ICON_SMALL / 2 - 1, ICON_SMALL, '#64748b');
     x1 += ICON_SMALL + 6;
 
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(sessionLabel, x1, 440);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(sessionLabel, x1, EVIDENCE_Y1);
     x1 += sessionW;
 
     ctx.fillStyle = '#3a3a52';
-    ctx.fillText(separatorLabel, x1, 440);
+    ctx.fillText(separatorLabel, x1, EVIDENCE_Y1);
     x1 += sepW;
 
-    drawIcon(ctx, ICON_ZAP, x1, 440 - ICON_SMALL / 2 - 1, ICON_SMALL, '#64748b');
+    drawIcon(ctx, ICON_ZAP, x1, EVIDENCE_Y1 - ICON_SMALL / 2 - 1, ICON_SMALL, '#64748b');
     x1 += ICON_SMALL + 6;
 
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(tokenLabel, x1, 440);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(tokenLabel, x1, EVIDENCE_Y1);
   } else {
-    // 0 sessions fallback
-    ctx.font = `500 15px ${FONT_STACK}`;
+    ctx.font = `500 17px ${FONT_STACK}`;
     ctx.fillStyle = '#475569';
     ctx.textAlign = 'center';
-    ctx.fillText('Get started at code-insights.app', EVIDENCE_CENTER_X, 440);
+    ctx.fillText('Get started at code-insights.app', EVIDENCE_CENTER_X, EVIDENCE_Y1);
     ctx.textAlign = 'left';
   }
 
-  // Line 2: {N} lifetime · [tool logos]
+  // Line 2: {N} lifetime · [logo] Tool Name [logo] Tool Name ...
   {
     const lifetimeLabel = `${props.lifetimeSessions} lifetime`;
     const dedupedTools = deduplicateToolsForIcons(props.sourceTools).slice(0, 4);
-    const LOGO_SIZE_PX = 18;
-    const LOGO_GAP = 8;
+    const LOGO_PX = 20;
+    const LOGO_TEXT_GAP = 6;
+    const LOGO_ENTRY_GAP = 16; // gap between tool entries
+    const SEP = '  ·  ';
 
-    ctx.font = `400 14px ${FONT_STACK}`;
+    ctx.font = `400 15px ${FONT_STACK}`;
     const lifetimeW = ctx.measureText(lifetimeLabel).width;
-    const sepLabel = ' · ';
-    const sepW2 = ctx.measureText(sepLabel).width;
+    const sepW2 = ctx.measureText(SEP).width;
 
-    // Calculate logos section width
-    const logosCount = dedupedTools.filter(t => toolIcons.has(t)).length;
-    const logosW = logosCount > 0 ? logosCount * LOGO_SIZE_PX + (logosCount - 1) * LOGO_GAP : 0;
+    // Pre-measure each tool entry width: logo + gap + label text
+    const toolEntries = dedupedTools
+      .filter(t => toolIcons.has(t))
+      .map(t => {
+        const label = SOURCE_TOOL_DISPLAY_NAMES[t] ?? t;
+        const labelW = ctx.measureText(label).width;
+        return { tool: t, label, entryW: LOGO_PX + LOGO_TEXT_GAP + labelW };
+      });
 
-    const line2TotalW = lifetimeW + (logosCount > 0 ? sepW2 + logosW : 0);
+    const logosW = toolEntries.length > 0
+      ? toolEntries.reduce((s, e) => s + e.entryW, 0) + (toolEntries.length - 1) * LOGO_ENTRY_GAP
+      : 0;
+
+    const line2TotalW = lifetimeW + (toolEntries.length > 0 ? sepW2 + logosW : 0);
     let x2 = EVIDENCE_CENTER_X - line2TotalW / 2;
 
-    ctx.fillStyle = '#475569';
-    ctx.fillText(lifetimeLabel, x2, 464);
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(lifetimeLabel, x2, EVIDENCE_Y2);
     x2 += lifetimeW;
 
-    if (logosCount > 0) {
+    if (toolEntries.length > 0) {
       ctx.fillStyle = '#3a3a52';
-      ctx.fillText(sepLabel, x2, 464);
+      ctx.fillText(SEP, x2, EVIDENCE_Y2);
       x2 += sepW2;
 
-      for (const tool of dedupedTools) {
+      for (let i = 0; i < toolEntries.length; i++) {
+        const { tool, label, entryW } = toolEntries[i];
         const img = toolIcons.get(tool);
-        if (!img) continue;
-        const cx = x2 + LOGO_SIZE_PX / 2;
-        const cy = 464 - LOGO_SIZE_PX / 2 + 2;
-        drawToolIcon(ctx, img, cx, cy, LOGO_SIZE_PX);
-        x2 += LOGO_SIZE_PX + LOGO_GAP;
+        if (img) {
+          const cy = EVIDENCE_Y2 - LOGO_PX / 2 + 2;
+          drawToolIcon(ctx, img, x2 + LOGO_PX / 2, cy, LOGO_PX);
+        }
+        x2 += LOGO_PX + LOGO_TEXT_GAP;
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(label, x2, EVIDENCE_Y2);
+        x2 += entryW - LOGO_PX - LOGO_TEXT_GAP;
+
+        if (i < toolEntries.length - 1) x2 += LOGO_ENTRY_GAP;
       }
     }
   }
 
-  // ── Section 6: Footer (pinned to bottom) ─────────────────────────────────────
+  // ── Section 6: Effective Pattern Pills (y=494) ────────────────────────────────
 
-  const DIVIDER_Y = H - 120; // 510
-  const FOOTER_Y = H - 70;   // 560
+  const topPatterns = (props.effectivePatterns ?? []).slice(0, 3);
+  if (topPatterns.length > 0) {
+    const PILL_H = 28;
+    const PILL_PAD_X = 12;
+    const PILL_GAP = 10;
+    const PILL_Y = 494;
+
+    ctx.font = `500 13px ${FONT_STACK}`;
+    const STAR = '★ ';
+    const starW = ctx.measureText(STAR).width;
+
+    // Measure all pills first to center them as a group
+    const pillWidths = topPatterns.map(p => {
+      const labelW = ctx.measureText(p.label).width;
+      return PILL_PAD_X * 2 + starW + labelW;
+    });
+    const totalPillsW = pillWidths.reduce((s, w) => s + w, 0) + PILL_GAP * (topPatterns.length - 1);
+    let pillX = EVIDENCE_CENTER_X - totalPillsW / 2;
+
+    for (let i = 0; i < topPatterns.length; i++) {
+      const pattern = topPatterns[i];
+      const pillW = pillWidths[i];
+      const pc = PATTERN_PILL_COLORS[i % PATTERN_PILL_COLORS.length];
+
+      // Pill background
+      ctx.fillStyle = pc.bg;
+      ctx.beginPath();
+      ctx.roundRect(pillX, PILL_Y, pillW, PILL_H, PILL_H / 2);
+      ctx.fill();
+
+      // Pill border
+      ctx.strokeStyle = pc.border;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(pillX, PILL_Y, pillW, PILL_H, PILL_H / 2);
+      ctx.stroke();
+
+      // Star + label text
+      const textBaseline = PILL_Y + PILL_H * 0.65;
+      ctx.fillStyle = pc.text;
+      ctx.fillText(STAR, pillX + PILL_PAD_X, textBaseline);
+      ctx.fillText(pattern.label, pillX + PILL_PAD_X + starW, textBaseline);
+
+      pillX += pillW + PILL_GAP;
+    }
+  }
+
+  // ── Section 7: Footer (pinned to bottom) ─────────────────────────────────────
+
+  const DIVIDER_Y = H - 90; // 540
+  const FOOTER_Y = H - 54;  // 576
 
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
@@ -392,33 +518,59 @@ export function drawShareCard(
   ctx.lineTo(W - PAD, DIVIDER_Y);
   ctx.stroke();
 
-  const FOOTER_LOGO_SIZE = 20;
-  drawLogo(ctx, PAD, FOOTER_Y - FOOTER_LOGO_SIZE + 2, FOOTER_LOGO_SIZE);
+  const FOOTER_LOGO_SIZE = 22;
+  drawLogo(ctx, PAD, FOOTER_Y - FOOTER_LOGO_SIZE + 4, FOOTER_LOGO_SIZE);
 
-  ctx.font = `400 16px ${FONT_STACK}`;
+  ctx.font = `400 15px ${FONT_STACK}`;
   ctx.fillStyle = '#475569';
   ctx.fillText('code-insights.app', PAD + FOOTER_LOGO_SIZE + 10, FOOTER_Y);
 
-  ctx.font = `500 15px ${FONT_STACK}`;
-  ctx.fillStyle = '#6366f1';
-  ctx.textAlign = 'right';
-  ctx.fillText("What's yours?", W - PAD, FOOTER_Y);
-  ctx.textAlign = 'left';
+  // CLI CTA: `npx @code-insights/cli` — monospace, terminal-style with subtle bg
+  const CLI_CMD = 'npx @code-insights/cli';
+  ctx.font = `500 13px ${MONO_STACK}`;
+  const cmdW = ctx.measureText(CLI_CMD).width;
+  const CMD_PAD_X = 10;
+  const CMD_PAD_Y = 6;
+  const CMD_H = 22;
+  const cmdBoxW = cmdW + CMD_PAD_X * 2;
+  const cmdBoxX = W - PAD - cmdBoxW;
+  const cmdBoxY = FOOTER_Y - CMD_H + CMD_PAD_Y - 1;
+
+  // Terminal command background
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.beginPath();
+  ctx.roundRect(cmdBoxX, cmdBoxY, cmdBoxW, CMD_H, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(cmdBoxX, cmdBoxY, cmdBoxW, CMD_H, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#a5b4fc';
+  ctx.fillText(CLI_CMD, cmdBoxX + CMD_PAD_X, FOOTER_Y);
 }
 
 /**
- * Create an ephemeral canvas, draw the share card, and trigger a PNG download.
- * Async because tool logos need to be pre-loaded before drawing.
+ * Create an ephemeral 2× canvas, draw the share card at HiDPI resolution,
+ * then export as a 1200×630 PNG. The 2× internal resolution ensures the
+ * exported image looks sharp when rendered at social-media pixel densities.
  */
 export async function downloadShareCard(props: ShareCardProps): Promise<void> {
   // Pre-load tool logos before drawing (canvas drawImage requires loaded images)
   const toolIcons = await loadToolIcons(props.sourceTools);
 
+  const LOGICAL_W = 1200;
+  const LOGICAL_H = 630;
+
   const canvas = document.createElement('canvas');
-  canvas.width = 1200;
-  canvas.height = 630;
+  // Physical pixel dimensions at 2× — gives HiDPI sharpness in exported PNG
+  canvas.width = LOGICAL_W * DPR;
+  canvas.height = LOGICAL_H * DPR;
   drawShareCard(canvas, props, toolIcons);
 
+  // Export at the physical (2400×1260) size — social platforms downsample cleanly
   const blob = await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => {
       if (b) resolve(b);

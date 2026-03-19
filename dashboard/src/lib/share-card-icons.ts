@@ -177,6 +177,15 @@ const TOOL_ICON_URLS: Record<string, string> = {
   'copilot-cli': copilotUrl,
 };
 
+/** Human-readable display names for source tools (used in share card evidence section). */
+export const SOURCE_TOOL_DISPLAY_NAMES: Record<string, string> = {
+  'claude-code': 'Claude Code',
+  'cursor': 'Cursor',
+  'codex-cli': 'Codex CLI',
+  'copilot': 'GitHub Copilot',
+  'copilot-cli': 'GitHub Copilot',
+};
+
 /** Pre-load tool logo images. Returns a map of tool key → HTMLImageElement. */
 export async function loadToolIcons(tools: string[]): Promise<Map<string, HTMLImageElement>> {
   const deduped = deduplicateToolsForIcons(tools);

@@ -364,6 +364,7 @@ export default function PatternsPage() {
         pqScores={aggregation?.pqScores}
         lifetimeSessions={aggregation?.lifetimeSessions}
         totalTokens={aggregation?.totalTokens}
+        effectivePatterns={aggregation?.effectivePatterns?.slice(0, 3).map(ep => ({ label: ep.label, frequency: ep.frequency }))}
       />
 
       {/* 2-tab layout */}

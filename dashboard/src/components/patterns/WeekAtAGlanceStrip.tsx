@@ -30,6 +30,7 @@ interface WeekAtAGlanceStripProps {
   pqScores?: PQDimensionScores | null;
   lifetimeSessions?: number;
   totalTokens?: number;
+  effectivePatterns?: Array<{ label: string; frequency: number }>;
 }
 
 // DB outcome_satisfaction values: 'high' | 'medium' | 'low' | 'abandoned'
@@ -66,6 +67,7 @@ export function WeekAtAGlanceStrip({
   pqScores,
   lifetimeSessions,
   totalTokens,
+  effectivePatterns,
 }: WeekAtAGlanceStripProps) {
   const outcomeTotal = Object.values(outcomeDistribution).reduce((s, v) => s + v, 0);
   const hasOutcomes = outcomeTotal > 0;
@@ -111,6 +113,7 @@ export function WeekAtAGlanceStrip({
         lifetimeSessions: lifetimeSessions ?? totalSessions,
         sourceTools: sourceTools ?? [],
         currentWeek,
+        effectivePatterns,
       });
       toast.success('AI Fluency Score card downloaded');
     } catch {
@@ -118,7 +121,7 @@ export function WeekAtAGlanceStrip({
     } finally {
       setIsDownloading(false);
     }
-  }, [isDownloading, displayTagline, pqScores, totalSessions, totalTokens, lifetimeSessions, sourceTools, currentWeek]);
+  }, [isDownloading, displayTagline, pqScores, totalSessions, totalTokens, lifetimeSessions, sourceTools, currentWeek, effectivePatterns]);
 
   return (
     <>
