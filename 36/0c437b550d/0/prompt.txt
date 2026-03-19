@@ -1,0 +1,1362 @@
+Analyze @docs/plans/2026-03-19-growth-priorities-plan.md and @docs/plans/2026-03-08-gamification-shareable-badges.md and plan the implementation for SHarable badges feature
+
+---
+
+1. No User Identity for now. We can add later. 
+2. May be we can name the tools, if we have enough places. Tools used and their counts.. Seek clarity and recommendations from @"ux-engineer (agent)" 
+3. i like those milestone pills. add for now. we can review and remove later.
+4. Why not our app logo? the svg we already have? Use that.
+
+---
+
+yes, use start-feature and multiple reviews until zero down on comments
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes)."
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Create PR and run CI checks' (blockedBy: above)
+   - Task: 'Review: Triple-layer code review' (blockedBy: above)
+   - Task: 'Post review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically. When Dev creates a PR, message the orchestrator to trigger /start-review on the PR number.
+
+7. REPORT: When review is posted, message the orchestrator: 'PR #XX for Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes). is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- PRE-PR GATE (MANDATORY): Before any PR is created, `pnpm build` must pass from the repo root with zero errors. If it fails, dev fixes before creating the PR. GitHub Actions costs money — failed CI runs are wasted spend.",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: Shareable Working Style Card — downloadable 1200×630 PNG export from the Patterns page hero card. See the approved implementation plan in this conversation for full details (8 files, server + dashboard changes).. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed. PRE-PR GATE (MANDATORY): Before creating any PR, run `pnpm build` from the repo root and verify zero errors. If it fails, fix before creating the PR. This is non-negotiable — failed CI runs waste money.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM requests `/start-review` -> run the review command on the PR
+4. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 5: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:20:36.242Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for issue #198"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:20:40.308Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T01:27:28.343Z","idleReason":"available","summary":"[to pm-agent] PR #199 ready for review"}
+</teammate-message>
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 199
+
+You are setting up a triple-layer code review for PR `199`. This can be used standalone or as part of a `/start-feature` team workflow.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 199` to get PR title, description, and diff stats.
+Use `gh pr diff 199` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Decide if Wild Card reviewer is needed (see criteria below)
+
+---
+
+## Step 2: Determine Review Scope
+
+**Invoke Wild Card (3rd reviewer) if ANY of these apply:**
+- New feature with multiple files changed
+- Complex business logic
+- Schema impact (types.ts, SQLite migrations, server API changes)
+- Architectural changes
+- 200+ lines of changes
+
+**Skip Wild Card if ALL of these apply:**
+- Simple bug fix (< 50 lines)
+- Single file change
+- Straightforward UI/component change
+- Config/CI changes only
+
+**Invoke LLM Expert (4th reviewer) if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 3: Run Parallel Independent Reviews
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+**Launch TA Insider Review:**
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #199 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 199
+  Also fetch the PR details: gh pr view 199
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Outsider Review:**
+```
+Task {
+  name: "outsider-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent OUTSIDER review of PR #199 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 199
+
+  Review for:
+  - Security issues (XSS, injection, auth bypass)
+  - Best practices (React, TypeScript, Node.js)
+  - Logic bugs and edge cases
+  - Performance concerns
+  - Accessibility issues
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch LLM Expert Review (if applicable):**
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #199 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 199
+  Also fetch the PR details: gh pr view 199
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Wild Card Review (if applicable):**
+```
+Task {
+  name: "wildcard-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent WILD CARD review of PR #199 in the code-insights repo.
+
+  Fetch the PR diff using: gh pr diff 199
+
+  Your role is to provide a fresh perspective with NO constraints:
+  - Challenge assumptions in the implementation
+  - Look for edge cases others might miss
+  - Question whether the approach is the simplest that could work
+  - Check for hidden complexity or tech debt being introduced
+  - Look at error handling from a user's perspective
+
+  Output a structured review with findings categorized as blocking, suggestions, and notes.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #199.
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - FIX NOW items
+  - NOT APPLICABLE items with technical rationale
+  - ESCALATE TO FOUNDER items with reason
+  ### Final Verdict",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results
+
+After synthesis is complete:
+
+1. **If part of a /start-feature team**: Send the consolidated review to the dev-agent via SendMessage. Mark the review task as completed.
+
+2. **If standalone**: Present the consolidated review to the user. Ask if they want to:
+   - Have the review summary posted to the GitHub PR
+   - Have fixes implemented automatically
+
+3. **Post review summary to GitHub PR** using `gh pr comment`:
+
+```bash
+gh pr comment 199 --body "$(cat <<'EOF'
+## Triple-Layer Code Review Summary
+
+### Reviewers
+| Role | Focus |
+|------|-------|
+| TA (Insider) | Pattern compliance, schema impact, architecture |
+| Outsider | Security, best practices, logic bugs |
+| LLM Expert | Prompt quality, token efficiency, model selection (if applicable) |
+| Wild Card | Edge cases, fresh perspective |
+
+### Issues Found & Resolution
+#### FIX NOW
+[List from synthesis]
+
+#### NOT APPLICABLE
+[List with technical rationale]
+
+### Verification
+[Status of fixes if any were applied]
+
+**Review complete. [Ready for merge / Changes required].**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark outsider comments as "NOT APPLICABLE" with technical justification
+- **Always post summary to GitHub PR** — this creates the audit trail
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:27:29.561Z","idleReason":"available","summary":"[to orchestrator] PR #199 ready — trigger /start-review 199"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T01:27:38.251Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:27:41.783Z","idleReason":"available","summary":"[to orchestrator] Waiting on /start-review 199 from orchestrator"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T01:27:42.214Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:28:43.561Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="outsider-reviewer" color="purple" summary="Outsider review of PR #199 — 2 low-blocking, 5 suggestions, 5 notes">
+## Outsider Review — PR #199: Shareable Working Style Card
+
+I reviewed the full diff (9 files, 690 additions, 105 deletions) independently. Here are my findings.
+
+---
+
+### Blocking
+
+**1. `successRate` computed but unused in `WeekAtAGlanceStrip`**
+At line ~223 of the diff in `WeekAtAGlanceStrip.tsx`:
+```ts
+const successRate = outcomeTotal > 0 ? Math.round((successCount / outcomeTotal) * 100) : 0;
+```
+This variable is computed in the parent component but never used there — `WorkingStyleShareCard` computes its own `successRate` internally. This is dead code that should be removed. Not a bug, but it signals copy-paste drift that could cause confusion.
+
+**Severity: Low-blocking** — remove the unused variable to keep the component clean.
+
+**2. `handleDownload` has a stale closure over `isDownloading`**
+The `useCallback` depends on `[isDownloading]`, which means a new function reference is created on every state toggle. More critically, the guard `if (!shareCardRef.current || isDownloading)` reads the closure value. Because `setIsDownloading(true)` is async, rapid double-clicks could still fire two downloads before the re-render propagates the new `isDownloading` value.
+
+**Fix:** Use a ref for the download-in-progress guard instead of reading state in the callback, or use `disabled` on the button as the sole guard (which the code already does — so the `isDownloading` check in the callback is redundant but harmless). Alternatively, remove `isDownloading` from the dependency array and use a functional check. The current code works in practice because `disabled` on the button prevents clicks, but the double-guard is inconsistent.
+
+**Severity: Low-blocking** — the button `disabled` prop prevents real user double-clicks, but the pattern is fragile.
+
+---
+
+### Suggestions
+
+**3. Off-screen card stays mounted in the DOM permanently**
+The `WorkingStyleShareCard` is rendered with `position: absolute; left: -9999px` and stays in the DOM whenever `hasGenerated && displayTagline` is true — which is the entire time the user is on the Patterns page after generating. This is a hidden 1200x630 div with children.
+
+**Suggestion:** Consider lazy-mounting the card only when the download button is clicked (mount -> capture -> unmount). This avoids polluting the DOM and avoids potential issues with screen readers encountering hidden content. You could add `aria-hidden="true"` at minimum.
+
+**4. No `aria-hidden` on the off-screen card**
+Screen readers may attempt to read the off-screen share card content, which duplicates information already visible on the page.
+
+**Fix:** Add `aria-hidden="true"` to the off-screen card's root div.
+
+**5. Streak label says "Xd" (days) on the share card but "Xw streak" (weeks?) in the dashboard**
+In `WeekAtAGlanceStrip`, the streak badge shows `{streak}w streak`. In `WorkingStyleShareCard`, the stat box shows `${streak}d`. The `d` vs `w` inconsistency is confusing — is this days or weeks? The streak computation counts consecutive **days**, so `d` on the card seems correct, but then the dashboard badge is wrong (or vice versa).
+
+**Clarify:** Ensure consistent units. If streak is days, both should say "d" or "days".
+
+**6. `getMonthYear()` is called on every render**
+The footer calls `getMonthYear()` inline during render. This is trivial cost, but since the card is mounted persistently (see #3), it re-renders whenever parent state changes. Consider memoizing or extracting to a constant.
+
+**Severity: Trivial** — no real perf impact, just a note.
+
+**7. `downloadShareCard` doesn't revoke the object URL / clean up the anchor**
+The `link.click()` triggers download, but the created `<a>` element is never removed from memory. In practice, browsers GC these quickly, but the pattern of creating a temporary anchor is cleaner with explicit cleanup:
+```ts
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+```
+Or use `URL.revokeObjectURL` if switching to blob URLs. Minor, since `toPng` returns a data URL (not an object URL), so no revocation is needed — but the dangling anchor is slightly messy.
+
+**8. The `where` clause is reused for `sourceTools` query without verifying parameter safety**
+The `sourceToolRows` query in `shared-aggregation.ts` reuses the same `where` and `params` that are constructed by `buildWhereClause`. This is safe because `buildWhereClause` uses parameterized queries (not string interpolation). Confirmed safe — just noting I checked.
+
+---
+
+### Notes
+
+**9. Privacy — PASS**
+The share card is privacy-safe. It shows only:
+- Tagline (LLM-generated, generic)
+- Session count, streak, success rate (aggregate numbers)
+- Source tool names (tool identifiers, not user data)
+- Milestones (derived from aggregates)
+- Character distribution (aggregate percentages)
+- "code-insights.app" branding + month/year
+
+No project names, file paths, session titles, cost data, usernames, or LLM narrative content is exposed. The `getMonthYear()` footer only shows month + year, not specific dates.
+
+**10. Donut chart math — CORRECT**
+The SVG donut uses `stroke-dasharray` + `stroke-dashoffset` correctly:
+- `circumference = 2 * PI * r` — standard
+- Each segment: `dashLen = (value / total) * circumference`, gap = remainder
+- `offset = circumference - cumulativeOffset` positions each segment after the previous
+- The `-90deg` rotation starts segments from 12 o'clock
+- `total === 0` early return prevents division by zero
+
+The math checks out. Edge case: a single character type renders a full circle correctly (dashLen = circumference, gap = 0).
+
+**11. html-to-image choice is reasonable**
+Using `html-to-image` with inline styles (no Tailwind, no CSS variables) is the right call for PNG export. The library captures DOM-to-canvas, and avoiding Recharts/foreign objects prevents known rendering issues. The 2x pixel ratio produces a crisp 2400x1260 actual-pixel image.
+
+**12. Milestone thresholds are well-designed**
+The descending threshold loops (`1000, 500, 250, 100, 50` for sessions; `90, 60, 30, 14, 7` for streaks) correctly pick the highest achieved milestone. The `slice(0, 4)` cap prevents visual overflow. The success rate milestone requiring `>85% && >= 30 sessions` avoids showing it for users with too few data points.
+
+**13. New dependency `html-to-image@^1.11.13`**
+Zero transitive dependencies (pure JS library). Reasonable choice — lightweight, well-maintained, no security concerns.
+
+---
+
+### Summary
+
+| Category | Count |
+|----------|-------|
+| Blocking | 2 (both low-severity) |
+| Suggestions | 5 |
+| Notes | 5 |
+
+Overall this is a clean, well-thought-out implementation. The privacy model is solid, the donut math is correct, and the off-screen rendering approach is sound. The two blocking items are minor code quality issues (dead variable, slightly fragile double-click guard). The main suggestion worth acting on is adding `aria-hidden="true"` to the off-screen card (#4) — quick fix, real accessibility benefit.
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange" summary="Wild card review of PR #199 with 12 findings">
+# Wild Card Review — PR #199: Shareable Working Style Card
+
+Independent review completed. Here are my findings:
+
+---
+
+## Blocking
+
+### 1. Unused `successRate` computed in WeekAtAGlanceStrip but never passed anywhere
+
+In `WeekAtAGlanceStrip.tsx`, line ~223 (in the diff), a `successRate` variable is computed:
+
+```ts
+const successRate = outcomeTotal > 0 ? Math.round((successCount / outcomeTotal) * 100) : 0;
+```
+
+But it is **never used**. The `WorkingStyleShareCard` computes its own `successRate` internally from `outcomeDistribution`. This is dead code that should be removed. It's not harmful, but it's misleading — a reader would assume it's being passed to the share card.
+
+**Verdict: Should remove to avoid confusion. Low-risk but sloppy.**
+
+---
+
+## Suggestions
+
+### 2. `CHARACTER_DISPLAY_NAMES` duplicates `SESSION_CHARACTER_LABELS` from `constants/colors.ts`
+
+`WorkingStyleShareCard.tsx` defines its own `CHARACTER_DISPLAY_NAMES` map:
+```ts
+const CHARACTER_DISPLAY_NAMES: Record<string, string> = {
+  deep_focus: 'Deep Focus',
+  bug_hunt: 'Bug Hunt',
+  ...
+};
+```
+
+This is an exact copy of `SESSION_CHARACTER_LABELS` from `dashboard/src/lib/constants/colors.ts` (lines 44-52). If a new character type is added to the canonical map, this copy will silently go stale.
+
+**Recommendation:** Import `SESSION_CHARACTER_LABELS` and use it. The "no CSS variables" constraint applies to colors, not to string labels. A comment like `// Safe to import — pure strings, no CSS` would clarify the intent.
+
+### 3. `SOURCE_TOOL_DISPLAY_NAMES` is a third copy of tool display names
+
+The CLAUDE.md documents 5 source tools. The share card utils define their own display name map. There may already be display name maps in the CLI or server. Every time a new source tool is added (the project already went from 1 to 5), three+ maps need updating.
+
+**Recommendation:** At minimum, add a `// keep in sync with` comment pointing to the canonical list. Ideally, share a single map if the dashboard already has one.
+
+### 4. Milestone thresholds — streak uses "Day" but WeekAtAGlanceStrip shows "w" (weeks)
+
+The streak milestone labels say `"7-Day Streak"`, `"14-Day Streak"`, etc. But in the main UI (`WeekAtAGlanceStrip`), streak is displayed as `{streak}w streak` — using "w" for weeks. This inconsistency means the same number is labeled as days in the share card and weeks in the dashboard.
+
+**Which is correct?** If the streak value is "consecutive weeks with sessions" (which the ISO week navigation suggests), then the share card labels are wrong. If it's truly days, then the dashboard abbreviation `w` is misleading.
+
+**Recommendation:** Verify the streak unit and make both consistent.
+
+### 5. `handleDownload` has `isDownloading` in its `useCallback` dependency but reads it as a guard
+
+```ts
+const handleDownload = useCallback(async () => {
+    if (!shareCardRef.current || isDownloading) return;
+    setIsDownloading(true);
+    ...
+}, [isDownloading]);
+```
+
+Every time `isDownloading` changes, the callback is recreated. The `isDownloading` guard is to prevent double-clicks, but `disabled={isDownloading}` on the button already handles that. The guard is redundant. You could simplify to `useCallback(async () => { ... }, [])` with just the `disabled` prop for protection, or use a ref for the guard to avoid the dependency.
+
+This is minor but the current pattern means the callback identity changes on every download start/finish, which is unnecessary.
+
+### 6. The off-screen card is always mounted in the DOM when tagline exists
+
+```tsx
+{hasGenerated && displayTagline && (
+    <WorkingStyleShareCard ref={shareCardRef} ... />
+)}
+```
+
+This means the 1200x630 card with SVGs, gradients, and multiple child elements is rendered into the DOM on every visit to the Patterns page (after generation), even if the user never clicks Share. It's lightweight enough that this is probably fine, but it's worth noting that a lazy approach (mount on click, capture, unmount) would be cleaner and avoid any potential layout impact from the off-screen positioned element.
+
+**Not blocking** — the off-screen positioning works, and `html-to-image` needs a mounted element. Just a design tradeoff to be aware of.
+
+### 7. `getMonthYear()` uses runtime date, not the selected week
+
+The footer says `"Patterns . Mar 2026"` using `new Date()`. But the Patterns page uses ISO week navigation — the user could be viewing `2026-W08` (February) while the card says "Mar 2026". The month should reflect the selected week's date range, not today.
+
+**Recommendation:** Pass the selected week (or its date range) to the share card and derive the month from it.
+
+---
+
+## Notes
+
+### 8. `html-to-image` library choice is reasonable
+
+The library has 5K+ GitHub stars, zero dependencies, and the 1.11.13 version is stable. The decision to avoid Recharts/canvas for the donut chart is well-documented and correct — `html-to-image` uses DOM serialization, not canvas capture, so foreignObject and canvas elements are problematic.
+
+### 9. SVG donut math is correct
+
+I verified the stroke-dasharray/stroke-dashoffset segment calculation. The cumulative offset approach correctly positions segments around the circle. The `-90deg` rotation to start from 12 o'clock is standard. The `total === 0` guard prevents division by zero.
+
+### 10. Privacy model is well-maintained
+
+The card intentionally excludes project names, file paths, session titles, cost data, and usernames. This is documented in the component header and consistent with the project's local-first privacy model.
+
+### 11. The "3+ AI Tools" label is slightly odd
+
+When `sourceToolCount === 3`, the label is `"3+ AI Tools"`. The "+" implies more than 3, but the user has exactly 3. For 2, it says `"2+ AI Tools"`. Consider using exact numbers: `"3 AI Tools"`, `"2 AI Tools"` — the milestone already implies "at least N" by existing.
+
+### 12. Server query is efficient
+
+The new `SELECT DISTINCT source_tool FROM sessions s ${where}` reuses the same `WHERE` clause and params as existing queries. It's a lightweight query on an indexed column. No N+1 or performance concern.
+
+---
+
+## Summary
+
+The implementation is solid overall — well-structured, privacy-conscious, and the hardcoded-hex approach for `html-to-image` compatibility is the right call. The main issues are:
+
+1. **Dead code** (`successRate` in WeekAtAGlanceStrip) — easy fix
+2. **Duplicated display name maps** that will drift — maintainability concern
+3. **Streak unit inconsistency** (days vs weeks) — potential user-facing bug
+4. **Footer month ignores selected week** — incorrect data on the card
+
+None are truly blocking, but items 3 and 4 could produce misleading output on the exported card, which is the primary artifact of this feature.
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer" color="purple">
+{"type":"idle_notification","from":"outsider-reviewer","timestamp":"2026-03-19T01:29:33.148Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange">
+{"type":"idle_notification","from":"wildcard-reviewer","timestamp":"2026-03-19T01:29:40.396Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="Phase 1 insider review complete, 2 fixes needed">
+Phase 1 INSIDER review of PR #199 is complete and posted to the PR.
+
+**Verdict: Changes Required** — two items:
+
+1. **Missing test for `sourceTools`** in `shared-aggregation.test.ts` — the new `sourceTools: string[]` field added to the server aggregation has no test coverage. The existing `sourceToolCount` test should be extended or a sibling test added.
+
+2. **Unused `successRate` variable** in `WeekAtAGlanceStrip.tsx` — computed but never referenced (the share card computes its own internally). Dead code, should be removed.
+
+No architectural concerns. The data contract change is additive and backward-compatible. The `html-to-image` dependency is appropriate. Color/label duplication between share card hex constants and dashboard Tailwind classes is intentional and correct for the image export use case.
+
+Ready for Phase 2 synthesis once the outsider review is complete.
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-03-19T01:30:08.884Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-synthesizer" color="pink" summary="TA synthesis complete: 6 fixes, 2 suggestions, PR comments posted">
+TA Synthesis for PR #199 is complete. Both Phase 1 (insider review) and Phase 2 (synthesis) have been posted as PR comments.
+
+**Summary:**
+- **6 FIX NOW items** (must fix before merge)
+- **2 SUGGESTIONS** (recommended, not blocking)
+- **3 NOT APPLICABLE** (with rationale)
+
+**FIX NOW list for dev:**
+1. Remove unused `successRate` variable from WeekAtAGlanceStrip.tsx
+2. Add `sourceTools` assertion to existing server test in shared-aggregation.test.ts:454
+3. Add "keep in sync" comment on `CHARACTER_DISPLAY_NAMES` referencing `SESSION_CHARACTER_LABELS` in colors.ts
+4. Add "keep in sync" comments on `SOURCE_TOOL_DISPLAY_NAMES` in share-card-utils.ts ↔ CompactSessionRow.tsx
+5. Fix `getMonthYear()` to use selected week instead of runtime date (pass `currentWeek` ISO string through)
+6. Fix streak unit label from `{streak}w streak` to `{streak}d streak` (streak is consecutive days, not weeks)
+
+**Notable finding:** The "w" (weeks) label on the streak badge is a pre-existing bug — streak has always been consecutive days per the server comment. This PR surfaces it by rendering both "w" (dashboard) and "d" (share card) in the same component.
+
+**Final verdict:** Changes Required. Core implementation is solid — data contract is clean (additive field, no schema change), privacy model maintained, html-to-image is the right dependency choice.
+
+PR comments:
+- Phase 1: https://github.com/melagiri/code-insights/pull/199#issuecomment-4086906653
+- Phase 2: https://github.com/melagiri/code-insights/pull/199#issuecomment-4086910042
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"idle_notification","from":"ta-synthesizer","timestamp":"2026-03-19T01:33:30.185Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T01:37:05.228Z","idleReason":"available","summary":"[to pm-agent] All 6 review fixes pushed to PR #199"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:37:20.542Z","idleReason":"available","summary":"[to orchestrator] PR #199 ready for founder merge"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T01:37:25.610Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+one more round of review required
+
+---
+
+<teammate-message teammate_id="ta-reviewer-r2" color="cyan" summary="Round 2 TA insider review for PR #199">
+## TA Review Round 2: PR #199 — Shareable Working Style Card
+
+### Fix Verification
+
+**1. Unused `successRate` variable removed from WeekAtAGlanceStrip.tsx**
+VERIFIED. The variable `successRate` no longer exists in `WeekAtAGlanceStrip.tsx`. The `successCount` variable remains (used on line 68 for the "high-quality" stat display). Clean removal.
+
+**2. `sourceTools` assertion added to server test in shared-aggregation.test.ts**
+VERIFIED. Test at line 454 now asserts `Array.isArray(result.sourceTools)`, `toHaveLength(2)`, `toContain('claude-code')`, and `toContain('cursor')`. Thorough coverage of the new field.
+
+**3. "Keep in sync" comment on CHARACTER_DISPLAY_NAMES → SESSION_CHARACTER_LABELS**
+VERIFIED. Comment at `WorkingStyleShareCard.tsx:31` reads: `// Keep in sync with SESSION_CHARACTER_LABELS in dashboard/src/lib/constants/colors.ts`. The target file exists and exports `SESSION_CHARACTER_LABELS` at line 44 with identical keys and values (all 7 character types match exactly).
+
+**4. "Keep in sync" comment on SOURCE_TOOL_DISPLAY_NAMES → CompactSessionRow.tsx**
+VERIFIED. Comment at `share-card-utils.ts:6` reads: `// Keep in sync with SOURCE_LABELS in dashboard/src/components/sessions/CompactSessionRow.tsx`. The target file exists and exports `SOURCE_LABELS` at line 9 with matching keys. **Minor discrepancy noted** (see New Issues below).
+
+**5. getMonthYear() now uses selected week instead of runtime date**
+VERIFIED. The function is now `getMonthYearFromWeek(isoWeek: string)` at `WorkingStyleShareCard.tsx:54`. It parses the ISO week string to derive the Monday of that week, then formats it. The `currentWeek` prop flows from `PatternsPage.tsx` through `WeekAtAGlanceStrip` to `WorkingStyleShareCard`. The fallback for unparseable input still uses `new Date()`, which is acceptable as a defensive default that should never trigger in practice.
+
+**6. Streak unit label fixed from "w" to "d" in WeekAtAGlanceStrip**
+VERIFIED. Line 136 now reads `{streak}d streak` (was `{streak}w streak`). Consistent with the share card stat box which also uses `d` suffix (line 205).
+
+### New Issues Found
+
+**OBSERVATION (Not blocking):** `SOURCE_TOOL_DISPLAY_NAMES` in `share-card-utils.ts` maps `'copilot'` to `'VS Code Copilot'`, while `SOURCE_LABELS` in `CompactSessionRow.tsx` maps `'copilot'` to `'Copilot'`. The "keep in sync" comment implies they should match, but the share card version is more descriptive. This is actually **intentional and correct** for the share card context — a standalone PNG needs the full tool name for clarity, while the in-app session row can use the shorter form since context is provided by the UI. However, the "keep in sync" comment is slightly misleading since the values intentionally diverge. This is minor and non-blocking.
+
+No other new issues were introduced by the fixes. The fix commit is clean — no accidental regressions, no stray debug code.
+
+### Architecture / Type Alignment
+
+- **Server → Dashboard type contract**: `AggregatedData.sourceTools: string[]` (server, line 150) matches `FacetAggregation.sourceTools: string[]` (dashboard api.ts, line 263). Aligned.
+- **Server query**: `SELECT DISTINCT source_tool FROM sessions s ${where}` (line 367-368) correctly reuses the same `where` clause and `params` as the existing `sourceToolCount` query. Prepared statement pattern followed.
+- **Props chain**: `PatternsPage` → `WeekAtAGlanceStrip` → `WorkingStyleShareCard`. Both `sourceTools` and `currentWeek` flow correctly. `sourceTools` is optional in the strip (defaulted to `[]`), required in the card. Clean.
+- **No breaking changes**: `sourceTools` is additive on the API response. Existing consumers that don't destructure it are unaffected.
+- **forwardRef usage**: `WorkingStyleShareCard` correctly uses `forwardRef` for the html-to-image capture ref. Pattern is sound.
+
+### Verdict: APPROVED
+
+All 6 Round 1 fixes are correctly implemented. No new issues introduced. Type alignment is clean across server/dashboard boundary. The one observation about the "keep in sync" comment wording is cosmetic and non-blocking — the dev can optionally update the comment to say "adapted from" instead of "keep in sync" but this is not required for merge.
+
+Ready to proceed to Phase 2 synthesis (pending outsider review).
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer-r2" color="cyan">
+{"type":"idle_notification","from":"ta-reviewer-r2","timestamp":"2026-03-19T01:42:26.081Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer-r2" color="blue" summary="Round 2 wild card review of PR #199">
+## Round 2 Wild Card Review — PR #199: Shareable Working Style Card
+
+I've reviewed the complete diff with fresh eyes. Here's my assessment.
+
+---
+
+### Blocking
+
+**None.** The PR is clean and ready to merge.
+
+---
+
+### Suggestions (worth considering, not blocking)
+
+**1. Redundant SQL query for `sourceTools` vs `sourceToolCount`**
+
+In `shared-aggregation.ts`, the PR adds a *second* query (`SELECT DISTINCT source_tool`) right next to the existing `SELECT COUNT(DISTINCT source_tool)`. The count can be derived from the array length (`sourceTools.length`), making the COUNT query redundant. However, this is a pre-existing pattern — `sourceToolCount` was already consumed by other code before this PR, and removing it would be a separate refactor touching other consumers. **Leave as-is, but note for future cleanup.**
+
+**2. `useCallback` dependency on `isDownloading` creates a new function on every download toggle**
+
+In `WeekAtAGlanceStrip.tsx`:
+```ts
+const handleDownload = useCallback(async () => {
+    if (!shareCardRef.current || isDownloading) return;
+    ...
+}, [isDownloading]);
+```
+The `isDownloading` guard inside the callback means the callback identity changes every time `isDownloading` flips. A ref-based guard (`isDownloadingRef.current`) would keep the callback stable. In practice this is harmless — the button is `disabled={isDownloading}` anyway, so the guard is belt-and-suspenders. **No action needed**, just noting.
+
+**3. Streak badge label changed from `w` to `d` (unrelated to share card feature)**
+
+The diff changes `{streak}w streak` to `{streak}d streak` on line ~276 of the diff. This looks like a bug fix (weeks -> days) sneaked into this PR. It's correct — the streak IS in days — but it's an unrelated behavioral change. **Already in the diff, fine to ship, just noting it's a drive-by fix.**
+
+**4. The off-screen card is always mounted in the DOM when tagline exists**
+
+The `WorkingStyleShareCard` is rendered at `left: -9999px` permanently when there's a tagline, not just when the user clicks Share. This is intentional (html-to-image needs a mounted DOM node), but it means ~330 lines of DOM are always present. For a single card this is negligible. **No action needed.**
+
+**5. `downloadShareCard` doesn't clean up the created anchor element**
+
+```ts
+const link = document.createElement('a');
+link.download = 'code-insights-working-style.png';
+link.href = dataUrl;
+link.click();
+```
+The `<a>` element is created but never appended to the DOM, so there's nothing to clean up — `link` gets GC'd after the function exits. The `dataUrl` (base64 PNG) is also released. **This is fine.**
+
+---
+
+### Notes (observations)
+
+**1. Hardcoded hex colors are justified.** The PR comment explains why: html-to-image cannot resolve CSS variables or Tailwind classes. Every hex literal is necessary for the export to work. The duplicated `CHARACTER_DISPLAY_NAMES` / `CHARACTER_DONUT_COLORS` maps are the cost of this constraint — acceptable.
+
+**2. Privacy model is respected.** The card shows: tagline, session count, streak, success rate, source tools, character distribution, milestones. It does NOT show: project names, file paths, session titles, cost data, or usernames. Good.
+
+**3. `getMonthYearFromWeek` ISO week calculation is correct.** The algorithm (find Monday of week 1 via Jan 4, then offset) is the standard ISO 8601 approach. The fallback to current date on parse failure is reasonable.
+
+**4. `computeMilestones` is well-structured.** Threshold families are priority-ordered, `slice(0, 4)` caps output. The success rate milestone requires 30+ sessions — prevents misleading badges from small samples.
+
+**5. Error handling is graceful.** `html-to-image` failure shows a toast ("Failed to generate card") and re-enables the button via `finally`. The user can retry. No unhandled promise rejections.
+
+**6. Test coverage for the server change is adequate.** The existing test was extended to verify `sourceTools` is a `string[]` containing the expected values. The query is straightforward enough that this single test case is sufficient.
+
+**7. No accessibility concerns for the download button.** It has a `title` attribute, uses semantic `<button>`, and has a text label ("Share" / "Generating..."). The off-screen card is non-interactive and invisible to screen readers (off-screen positioning).
+
+**8. Component cleanup is fine.** No subscriptions, no intervals, no event listeners. The `useRef` for the card element and `useState` for `isDownloading` are the only stateful hooks. The async `toPng` call is protected by the `isDownloading` guard against double-invocation.
+
+---
+
+### Verdict
+
+**Ship it.** This is a clean, focused feature addition. The implementation is pragmatic — using inline styles and hex colors for the export card is the right call given html-to-image's constraints. The code is well-commented, the edge cases are handled, and a future developer would understand the "why" from the file-level doc comments. The server change is minimal and additive.
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer-r2" color="blue">
+{"type":"idle_notification","from":"wildcard-reviewer-r2","timestamp":"2026-03-19T01:42:35.546Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer-r2" color="red" summary="Round 2 outsider review of PR #199 — approve with minor suggestions">
+## Round 2 Outsider Review — PR #199: Shareable Working Style Card
+
+### Blocking
+
+**None found.** The Round 1 fixes addressed the major issues well. The code is clean and ready for merge.
+
+---
+
+### Suggestions (Should Consider)
+
+**1. `useCallback` dependency on `isDownloading` creates a stale closure risk**
+File: `dashboard/src/components/patterns/WeekAtAGlanceStrip.tsx` (diff line ~222)
+
+```ts
+const handleDownload = useCallback(async () => {
+    if (!shareCardRef.current || isDownloading) return;
+    // ...
+}, [isDownloading]);
+```
+
+The `isDownloading` guard inside the callback + `isDownloading` in the dependency array means the callback is recreated on every download state change. This is technically correct but slightly unusual. A more idiomatic pattern would be to use a ref for the guard and remove the dependency:
+
+```ts
+const isDownloadingRef = useRef(false);
+const handleDownload = useCallback(async () => {
+    if (!shareCardRef.current || isDownloadingRef.current) return;
+    isDownloadingRef.current = true;
+    setIsDownloading(true);
+    // ...finally { isDownloadingRef.current = false; setIsDownloading(false); }
+}, []);
+```
+
+However, the current code works correctly — the button is also `disabled={isDownloading}`, so double-clicks are already prevented at the UI layer. This is a minor polish item, not a blocker.
+
+**2. `getMonthYearFromWeek` edge case: Week 0 and single-digit weeks**
+File: `dashboard/src/components/patterns/WorkingStyleShareCard.tsx` (diff line ~491)
+
+The regex `^(\d{4})-W(\d{2})$` requires exactly 2 digits for the week number. `2026-W1` would fall through to the fallback (current date). This is fine since the `currentWeek` prop always comes from `getCurrentIsoWeek()` which formats with zero-padded weeks. But worth noting for robustness.
+
+Also: `W00` passes the regex and produces `Dec {year-1}` which is technically wrong (ISO weeks are 1-53). Since the input is always from a controlled source, this is harmless, but a `week < 1 || week > 53` guard would be defensive.
+
+**3. `2+ AI Tools` label is slightly inconsistent**
+File: `dashboard/src/lib/share-card-utils.ts` (diff lines ~849-857)
+
+The milestone labels are: `5 AI Tools`, `4 AI Tools`, `3+ AI Tools`, `2+ AI Tools`. The `+` suffix is inconsistent — `5 AI Tools` and `4 AI Tools` have no `+`, while `3+` and `2+` do. Probably intentional (at 4-5 you know exactly how many), but worth a quick check.
+
+---
+
+### Notes (Observations)
+
+**1. Streak unit change from `w` to `d` — confirmed correct.**
+The PR changes `{streak}w streak` to `{streak}d streak` in `WeekAtAGlanceStrip.tsx`. The share card also uses `${streak}d` in the stat box and `${t}-Day Streak` in milestones. This is internally consistent. The streak computation counts consecutive *days*, so `d` is the correct unit — `w` was a pre-existing bug.
+
+**2. Privacy model is solid.** The card shows no project names, file paths, session titles, cost data, or usernames. Only aggregate stats, character distribution, and tool names. Good.
+
+**3. `html-to-image` approach is sound.** Using off-screen DOM rendering with inline styles (no CSS variables, no Tailwind classes) avoids the common pitfalls with `html-to-image`. The `position: absolute; left: -9999px` pattern is standard.
+
+**4. SVG donut math is correct.** The `stroke-dasharray`/`stroke-dashoffset` approach with cumulative offset correctly renders proportional segments. The `-90deg` rotation starts segments from 12 o'clock. The `total === 0` guard prevents division by zero.
+
+**5. `source_tool` column is `NOT NULL DEFAULT 'claude-code'`** in the schema, so the new `SELECT DISTINCT source_tool` query will never return null values. The server-side addition is safe.
+
+**6. Test coverage is meaningful.** The updated test in `shared-aggregation.test.ts` validates both the count and the actual array contents (using `toContain`), which verifies the new field end-to-end through the aggregation pipeline.
+
+**7. `abbreviateCount` handles the stated 10K+ edge case** — `10000` becomes `"10K"`, `1500` becomes `"1.5K"`. Clean.
+
+**8. The `forwardRef` pattern on `WorkingStyleShareCard` is correct** for passing the ref to `html-to-image`. React 19 supports ref as a prop directly, but `forwardRef` is still valid and works fine.
+
+---
+
+**Verdict: APPROVE.** No blocking issues. The suggestions are minor polish items that can be addressed in a follow-up if desired. The code is well-structured, privacy-safe, and handles edge cases properly.
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer-r2" color="red">
+{"type":"idle_notification","from":"outsider-reviewer-r2","timestamp":"2026-03-19T01:42:44.951Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+merged
+
+---
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"pm-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"shutdown_approved","requestId":"shutdown-1773884799940@pm-agent","from":"pm-agent","timestamp":"2026-03-19T01:46:44.347Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"dev-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"shutdown_approved","requestId":"shutdown-1773884800982@dev-agent","from":"dev-agent","timestamp":"2026-03-19T01:46:46.826Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"outsider-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer" color="purple">
+{"type":"shutdown_approved","requestId":"shutdown-1773884823740@outsider-reviewer","from":"outsider-reviewer","timestamp":"2026-03-19T01:47:11.803Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"wildcard-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"outsider-reviewer-r2 has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-synthesizer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-reviewer-r2 has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange">
+{"type":"shutdown_approved","requestId":"shutdown-1773884824243@wildcard-reviewer","from":"wildcard-reviewer","timestamp":"2026-03-19T01:47:13.450Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"shutdown_approved","requestId":"shutdown-1773884823288@ta-reviewer","from":"ta-reviewer","timestamp":"2026-03-19T01:47:13.610Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer-r2" color="red">
+{"type":"shutdown_approved","requestId":"shutdown-1773884825965@outsider-reviewer-r2","from":"outsider-reviewer-r2","timestamp":"2026-03-19T01:47:13.882Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"shutdown_approved","requestId":"shutdown-1773884825171@ta-synthesizer","from":"ta-synthesizer","timestamp":"2026-03-19T01:47:14.540Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer-r2" color="cyan">
+{"type":"shutdown_approved","requestId":"shutdown-1773884825507@ta-reviewer-r2","from":"ta-reviewer-r2","timestamp":"2026-03-19T01:47:15.053Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"wildcard-reviewer-r2 has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer-r2" color="blue">
+{"type":"shutdown_approved","requestId":"shutdown-1773884826303@wildcard-reviewer-r2","from":"wildcard-reviewer-r2","timestamp":"2026-03-19T01:47:15.697Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+---
+
+# /release — Automated Release Workflow
+
+**Arguments**: minor
+
+You are executing the release workflow for `@code-insights/cli`. Parse `minor` to extract:
+- **type** (required): `patch`, `minor`, or `major`
+- **description** (optional): A one-liner for the release title
+
+If type is missing or not one of `patch`/`minor`/`major`, ask the user to provide it.
+
+---
+
+## Step 1: Pre-flight Checks
+
+Run ALL of these checks. If any fail, STOP and tell the user what to fix.
+
+```bash
+# Must be on master
+git branch --show-current  # Must output "master"
+
+# Must have clean working tree
+git status --porcelain     # Must be empty
+
+# Pull latest
+git pull origin master
+```
+
+Read the current version from `cli/package.json` (the `"version"` field).
+
+Compute the new version:
+- `patch`: increment the third number (3.6.1 → 3.6.2)
+- `minor`: increment the second number, reset third to 0 (3.6.1 → 3.7.0)
+- `major`: increment the first number, reset second and third to 0 (3.6.1 → 4.0.0)
+
+**Resume detection**: Run `npm view @code-insights/cli version` to get the currently published version. If the version in `package.json` is ALREADY GREATER than the npm version, this is a **resumed release** — skip to Step 6.
+
+---
+
+## Step 2: Analyze Changes
+
+Find the last git tag and analyze what changed:
+
+```bash
+# Find latest tag
+git describe --tags --abbrev=0
+
+# Commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Full diff since last tag
+git diff $(git describe --tags --abbrev=0)..HEAD --stat
+```
+
+Read the full diff and commit messages. Then:
+
+1. **Generate a CHANGELOG entry** in the existing format (see `cli/CHANGELOG.md` for style). Group changes under `### Added`, `### Changed`, `### Fixed`, `### Improved` as appropriate. Match the existing tone — concise but descriptive, with bold lead-ins.
+
+2. **Generate a release title** — a short phrase summarizing the release (e.g., "LLM-Powered Export Page", "PostHog custom domain"). Use the user's description if provided, otherwise derive from the changes.
+
+3. **For minor/major releases**: Assess which docs need updating:
+   - `docs/ROADMAP.md` — if new milestones were completed
+   - `docs/PRODUCT.md` — if product capabilities changed
+   - `docs/VISION.md` — for major releases, if the vision expanded
+   - `README.md` — if user-facing features or setup changed
+
+---
+
+## GATE 1: Review Changelog
+
+**STOP and present to the user:**
+
+```
+Release: vX.Y.Z — {title}
+Type: {patch|minor|major}
+
+Proposed CHANGELOG entry:
+─────────────────────────
+{the generated changelog entry}
+─────────────────────────
+
+Files to modify:
+  - cli/package.json (version bump)
+  - cli/CHANGELOG.md (new entry)
+  {- docs/ROADMAP.md (if applicable)}
+  {- docs/PRODUCT.md (if applicable)}
+  {- docs/VISION.md (if applicable)}
+
+Approve, or tell me what to change?
+```
+
+Wait for user approval. If they provide edits, incorporate them.
+
+---
+
+## Step 3: Apply Version Bump
+
+After approval, make the changes:
+
+1. **`cli/package.json`** — Update the `"version"` field to the new version
+2. **`cli/CHANGELOG.md`** — Prepend the new entry at the top (after the header, before the previous version entry). Format: `## [X.Y.Z] - YYYY-MM-DD`
+3. **Docs** (if approved at Gate 1) — Make the specific updates discussed
+
+---
+
+## Step 4: Build & Test
+
+Run the full build and test suite:
+
+```bash
+# Full workspace build (this is what prepublishOnly does)
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+
+# Run tests
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && pnpm test
+```
+
+**If build fails → STOP.** Show the error. Do not continue.
+**If tests fail → STOP.** Show the error. Do not continue.
+
+---
+
+## GATE 2: Confirm Publish
+
+**STOP and present to the user:**
+
+Show the full `git diff` of all changes made, then:
+
+```
+Build: PASSED
+Tests: PASSED
+
+Ready to:
+  1. Commit changes to master
+  2. Push to origin
+  3. Publish v{X.Y.Z} to npm
+  4. Create GitHub release
+
+Proceed?
+```
+
+Wait for explicit user approval before continuing.
+
+---
+
+## Step 5: Commit & Push
+
+Commit with specific files only (never `git add .`):
+
+```bash
+# Add only the files we changed
+git add cli/package.json cli/CHANGELOG.md
+# Add any docs files that were modified (if applicable)
+# git add docs/ROADMAP.md docs/PRODUCT.md docs/VISION.md README.md
+
+git commit -m "$(cat <<'EOF'
+chore: bump version to vX.Y.Z
+
+{one-line summary of what changed}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+git push origin master
+```
+
+---
+
+## Step 6: Publish to npm
+
+```bash
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && npm publish
+```
+
+The `prepublishOnly` script in `package.json` handles building all packages and copying dashboard/server dist files automatically.
+
+Verify the publish succeeded:
+
+```bash
+npm view @code-insights/cli version
+```
+
+If publish fails, show the error and STOP. The commit is already pushed — tell the user to fix the issue and re-run `/release` (resume detection will skip to this step).
+
+---
+
+## Step 7: GitHub Release
+
+Create the GitHub release using the changelog entry as the body:
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — {release title}" \
+  --notes "$(cat <<'EOF'
+{changelog entry content, formatted for GitHub}
+
+**Full Changelog**: https://github.com/melagiri/code-insights/compare/{previous_tag}...vX.Y.Z
+EOF
+)"
+```
+
+---
+
+## GATE 3: Verify
+
+**STOP and present to the user:**
+
+```
+Release vX.Y.Z complete!
+
+  npm: @code-insights/cli@X.Y.Z ✓
+  GitHub: {release URL}
+  Commit: {commit hash}
+
+Everything look correct?
+```
+
+---
+
+## Step 8: Done
+
+Summarize the release:
+
+```
+Released @code-insights/cli vX.Y.Z
+
+  Changes: {brief summary}
+  npm: https://www.npmjs.com/package/@code-insights/cli
+  GitHub: {release URL}
+  Files modified: {list}
+```
+
+---
+
+## Important Rules
+
+- **NEVER skip the gates** — always pause for user confirmation
+- **NEVER use `git add .` or `git add -A`** — add specific files only
+- **If build or tests fail, STOP** — do not try to fix and continue
+- **Commit message format**: `chore: bump version to vX.Y.Z` (matches existing pattern)
+- **Resume is safe** — if re-run after a partial release, it picks up where it left off
+
+---
+
+What about @../cli/README.md and @../README.md changes?
+
+---
+
+approved
+
+---
+
+yes
