@@ -1,6 +1,5 @@
 /**
- * WorkingStyleShareCard — 960×560px shareable JPEG export card.
- * Built at native export resolution — no upscaling. pixelRatio: 1 in downloadShareCard().
+ * WorkingStyleShareCard — 480×280px shareable JPEG export card.
  *
  * CRITICAL RULES:
  * - ALL colors as hex or rgba() — NO CSS variables, NO Tailwind classes
@@ -112,8 +111,8 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           position: 'absolute',
           left: '-9999px',
           top: 0,
-          width: '960px',
-          height: '560px',
+          width: '480px',
+          height: '280px',
           fontFamily: FONT_STACK,
           overflow: 'hidden',
           // Solid background — html-to-image toJpeg backgroundColor handles base color,
@@ -139,10 +138,10 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
         <div
           style={{
             position: 'absolute',
-            top: '-80px',
-            left: '-80px',
-            width: '400px',
-            height: '400px',
+            top: '-40px',
+            left: '-40px',
+            width: '200px',
+            height: '200px',
             borderRadius: '50%',
             zIndex: 0,
             background: 'radial-gradient(circle, rgba(59,130,246,0.13) 0%, transparent 70%)',
@@ -152,10 +151,10 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
         <div
           style={{
             position: 'absolute',
-            bottom: '-100px',
-            right: '-80px',
-            width: '500px',
-            height: '500px',
+            bottom: '-50px',
+            right: '-40px',
+            width: '250px',
+            height: '250px',
             borderRadius: '50%',
             zIndex: 0,
             background: 'radial-gradient(circle, rgba(168,85,247,0.09) 0%, transparent 70%)',
@@ -168,7 +167,7 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           style={{
             position: 'relative',
             zIndex: 1,
-            padding: '48px',
+            padding: '24px',
             height: '100%',
             boxSizing: 'border-box',
             display: 'flex',
@@ -176,16 +175,16 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           }}
         >
           {/* ── Header: Logo + app name (left) + tool pills (right) ── */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               {/* App logo SVG */}
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <svg width="14" height="14" viewBox="0 0 28 28" fill="none">
                 <rect width="28" height="28" rx="7" fill="#3b82f6" />
                 <path d="M8 10h12M8 14h8M8 18h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
               </svg>
               <span
                 style={{
-                  fontSize: '18px',
+                  fontSize: '9px',
                   color: '#a0a0b8',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
@@ -196,7 +195,7 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
               </span>
             </div>
             {hasTools && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                 {sourceTools.map((tool) => {
                   const colors = SOURCE_TOOL_PILL_COLORS[tool] ?? {
                     bg: '#1e293b', text: '#94a3b8', border: 'rgba(148,163,184,0.3)',
@@ -207,9 +206,9 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        padding: '6px 16px',
+                        padding: '3px 8px',
                         borderRadius: '999px',
-                        fontSize: '18px',
+                        fontSize: '9px',
                         fontWeight: 500,
                         backgroundColor: colors.bg,
                         color: colors.text,
@@ -225,16 +224,16 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           </div>
 
           {/* ── Tagline block: title + subtitle ── */}
-          <div style={{ marginBottom: '28px', maxWidth: '800px' }}>
+          <div style={{ marginBottom: '14px', maxWidth: '400px' }}>
             {/* Solid color — html-to-image cannot render background-clip:text gradient */}
             <p
               style={{
-                fontSize: '44px',
+                fontSize: '22px',
                 fontWeight: 700,
                 lineHeight: 1.2,
-                margin: '0 0 8px 0',
+                margin: '0 0 4px 0',
                 color: '#a78bfa',
-                // Prevent 3-line overflow at 44px in 560px card
+                // Prevent 3-line overflow at 22px in 280px card
                 overflow: 'hidden',
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
@@ -245,7 +244,7 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
             </p>
             <p
               style={{
-                fontSize: '22px',
+                fontSize: '11px',
                 fontWeight: 400,
                 lineHeight: 1.3,
                 margin: 0,
@@ -257,7 +256,7 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           </div>
 
           {/* ── Stat cards ── */}
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '28px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
             {[
               { value: abbreviateCount(totalSessions), label: 'Sessions' },
               { value: streak > 0 ? `${streak}d` : '\u2014', label: 'Streak' },
@@ -266,28 +265,28 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
               <div
                 key={label}
                 style={{
-                  width: '200px',
-                  height: '104px',
-                  borderRadius: '12px',
+                  width: '100px',
+                  height: '52px',
+                  borderRadius: '6px',
                   backgroundColor: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.07)',
-                  padding: '16px 24px',
+                  padding: '8px 12px',
                   boxSizing: 'border-box',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
                 }}
               >
-                <span style={{ fontSize: '44px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
+                <span style={{ fontSize: '22px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1 }}>
                   {value}
                 </span>
                 <span
                   style={{
-                    fontSize: '16px',
+                    fontSize: '8px',
                     color: '#64748b',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
-                    marginTop: '4px',
+                    marginTop: '2px',
                   }}
                 >
                   {label}
@@ -298,24 +297,24 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
 
           {/* ── Character distribution pills (replaces donut) ── */}
           {hasChars && (
-            <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '8px' }}>
               {top3Chars.map(([key, count]) => {
                 const pct = charTotal > 0 ? Math.round((count / charTotal) * 100) : 0;
                 return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <div
                       style={{
-                        width: '14px',
-                        height: '14px',
+                        width: '7px',
+                        height: '7px',
                         borderRadius: '50%',
                         backgroundColor: CHARACTER_COLORS[key] ?? '#64748b',
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontSize: '20px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
                       {CHARACTER_DISPLAY_NAMES[key] ?? key}
                     </span>
-                    <span style={{ fontSize: '20px', color: '#64748b' }}>
+                    <span style={{ fontSize: '10px', color: '#64748b' }}>
                       {pct}%
                     </span>
                   </div>
@@ -326,17 +325,17 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
 
           {/* ── Milestone pills (max 3) ── */}
           {hasMilestones && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {milestones.map((m, i) => (
                 <span
                   key={i}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 16px',
+                    gap: '3px',
+                    padding: '3px 8px',
                     borderRadius: '999px',
-                    fontSize: '18px',
+                    fontSize: '9px',
                     fontWeight: 500,
                     backgroundColor: 'rgba(255,255,255,0.04)',
                     color: '#94a3b8',
@@ -351,16 +350,16 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
           )}
 
           {/* ── Footer: stacked brand + CTA ── */}
-          <div style={{ marginTop: 'auto', paddingTop: '14px' }}>
-            <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.07)', marginBottom: '16px' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
+          <div style={{ marginTop: 'auto', paddingTop: '7px' }}>
+            <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.07)', marginBottom: '8px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="10" height="10" viewBox="0 0 28 28" fill="none">
                 <rect width="28" height="28" rx="7" fill="#3b82f6" />
                 <path d="M8 10h12M8 14h8M8 18h10" stroke="white" strokeWidth="2" strokeLinecap="round" />
               </svg>
-              <span style={{ fontSize: '18px', fontWeight: 500, color: '#94a3b8' }}>code-insights.app</span>
+              <span style={{ fontSize: '9px', fontWeight: 500, color: '#94a3b8' }}>code-insights.app</span>
             </div>
-            <p style={{ fontSize: '16px', fontWeight: 400, color: '#475569', margin: '4px 0 0 0' }}>
+            <p style={{ fontSize: '8px', fontWeight: 400, color: '#475569', margin: '2px 0 0 0' }}>
               Analyze your AI coding sessions
             </p>
           </div>
