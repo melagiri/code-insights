@@ -264,9 +264,13 @@ export function drawShareCard(canvas: HTMLCanvasElement, props: ShareCardProps):
     ctx.clip();
 
     let segX = PAD;
-    for (const [key, count] of sortedChars) {
+    for (let i = 0; i < sortedChars.length; i++) {
+      const [key, count] = sortedChars[i];
       const pct = count / charTotal;
-      const segW = Math.round(pct * CONTENT_W);
+      // Last segment fills the remainder to avoid a rounding gap at the bar's right edge
+      const segW = (i === sortedChars.length - 1)
+        ? (PAD + CONTENT_W) - segX
+        : Math.round(pct * CONTENT_W);
       const color = CHARACTER_COLORS[key] ?? '#64748b';
 
       ctx.fillStyle = color;
