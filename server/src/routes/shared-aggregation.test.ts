@@ -451,12 +451,16 @@ describe('getAggregatedData', () => {
     expect(result.streak).toBe(0);
   });
 
-  it('counts sourceToolCount correctly', () => {
+  it('counts sourceToolCount correctly and returns sourceTools as string[]', () => {
     seedSessionWithFacets(testDb, 'sess-cc', { sourceTool: 'claude-code' });
     seedSessionWithFacets(testDb, 'sess-cur', { sourceTool: 'cursor' });
 
     const result = getAggregatedData(testDb, '', []);
     expect(result.sourceToolCount).toBe(2);
+    expect(Array.isArray(result.sourceTools)).toBe(true);
+    expect(result.sourceTools).toHaveLength(2);
+    expect(result.sourceTools).toContain('claude-code');
+    expect(result.sourceTools).toContain('cursor');
   });
 
   it('skips effective patterns with confidence below 50', () => {

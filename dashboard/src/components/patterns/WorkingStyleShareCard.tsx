@@ -28,6 +28,7 @@ const CHARACTER_DONUT_COLORS: Record<string, string> = {
   quick_task:    '#64748b',
 };
 
+// Keep in sync with SESSION_CHARACTER_LABELS in dashboard/src/lib/constants/colors.ts
 const CHARACTER_DISPLAY_NAMES: Record<string, string> = {
   deep_focus:    'Deep Focus',
   bug_hunt:      'Bug Hunt',
@@ -46,10 +47,24 @@ function abbreviateCount(n: number): string {
   return String(n);
 }
 
-/** Compute the month + year label for the card footer, e.g. "Mar 2026" */
-function getMonthYear(): string {
-  const d = new Date();
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+/**
+ * Derive month + year label from an ISO week string (e.g. "2026-W11" → "Mar 2026").
+ * Uses the Monday of that week — avoids showing the wrong month when viewing historical weeks.
+ */
+function getMonthYearFromWeek(isoWeek: string): string {
+  const match = /^(\d{4})-W(\d{2})$/.exec(isoWeek);
+  if (!match) {
+    return new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
+  const year = parseInt(match[1], 10);
+  const week = parseInt(match[2], 10);
+  // Find Monday of ISO week 1: Jan 4 is always in week 1
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay();
+  const daysToMonday = jan4Day === 0 ? 6 : jan4Day - 1;
+  const week1Monday = new Date(jan4.getTime() - daysToMonday * 86400000);
+  const weekMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
+  return weekMonday.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 export interface WorkingStyleShareCardProps {
@@ -59,11 +74,12 @@ export interface WorkingStyleShareCardProps {
   sourceTools: string[];
   characterDistribution: Record<string, number>;
   outcomeDistribution: Record<string, number>;
+  currentWeek: string;  // ISO week string — determines footer month label (avoids showing wrong month for historical weeks)
 }
 
 export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShareCardProps>(
   function WorkingStyleShareCard(
-    { tagline, totalSessions, streak, sourceTools, characterDistribution, outcomeDistribution },
+    { tagline, totalSessions, streak, sourceTools, characterDistribution, outcomeDistribution, currentWeek },
     ref
   ) {
     // Compute success rate (high outcomes / total faceted sessions)
@@ -302,7 +318,7 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
                 <span style={{ fontSize: '13px', color: '#64748b' }}>code-insights.app</span>
               </div>
               <span style={{ fontSize: '12px', color: '#475569' }}>
-                Patterns · {getMonthYear()}
+                Patterns · {getMonthYearFromWeek(currentWeek)}
               </span>
             </div>
           </div>

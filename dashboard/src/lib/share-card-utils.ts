@@ -3,6 +3,7 @@
 
 import { toPng } from 'html-to-image';
 
+// Keep in sync with SOURCE_LABELS in dashboard/src/components/sessions/CompactSessionRow.tsx
 export const SOURCE_TOOL_DISPLAY_NAMES: Record<string, string> = {
   'claude-code': 'Claude Code',
   'cursor': 'Cursor',

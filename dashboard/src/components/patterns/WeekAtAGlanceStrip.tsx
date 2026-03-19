@@ -24,6 +24,7 @@ interface WeekAtAGlanceStripProps {
   rateLimitCount?: number;
   rateLimitSessionsAffected?: number;
   sourceTools?: string[];
+  currentWeek: string;  // ISO week string (e.g. "2026-W11") — used for share card footer month
 }
 
 // DB outcome_satisfaction values: 'high' | 'medium' | 'low' | 'abandoned'
@@ -55,6 +56,7 @@ export function WeekAtAGlanceStrip({
   rateLimitCount,
   rateLimitSessionsAffected,
   sourceTools,
+  currentWeek,
 }: WeekAtAGlanceStripProps) {
   const outcomeTotal = Object.values(outcomeDistribution).reduce((s, v) => s + v, 0);
   const hasOutcomes = outcomeTotal > 0;
@@ -102,9 +104,6 @@ export function WeekAtAGlanceStrip({
     }
   }, [isDownloading]);
 
-  // Compute success rate for share card
-  const successRate = outcomeTotal > 0 ? Math.round((successCount / outcomeTotal) * 100) : 0;
-
   return (
     <>
       <div className="rounded-lg border bg-gradient-to-br from-blue-500/5 to-violet-500/5 dark:from-blue-500/10 dark:to-violet-500/10 p-4 space-y-3">
@@ -134,7 +133,7 @@ export function WeekAtAGlanceStrip({
             {showStreak && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 text-xs font-medium border border-amber-500/20">
                 <Flame className="h-3 w-3" />
-                {streak}w streak
+                {streak}d streak
               </span>
             )}
             {(rateLimitCount ?? 0) > 0 && (
@@ -247,6 +246,7 @@ export function WeekAtAGlanceStrip({
           sourceTools={sourceTools ?? []}
           characterDistribution={characterDistribution ?? {}}
           outcomeDistribution={outcomeDistribution}
+          currentWeek={currentWeek}
         />
       )}
     </>
