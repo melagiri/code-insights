@@ -234,8 +234,10 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
                 margin: '0 0 4px 0',
                 color: '#a78bfa',
                 // Prevent 3-line overflow at 22px in 280px card
-                maxHeight: '54px',
                 overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
               }}
             >
               {tagline}
@@ -246,7 +248,7 @@ export const WorkingStyleShareCard = forwardRef<HTMLDivElement, WorkingStyleShar
                 fontWeight: 400,
                 lineHeight: 1.3,
                 margin: 0,
-                color: '#8b8ba0',
+                color: '#94a3b8',
               }}
             >
               {subtitle}

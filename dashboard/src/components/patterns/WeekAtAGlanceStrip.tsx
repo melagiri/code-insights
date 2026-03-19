@@ -7,7 +7,7 @@
  */
 
 import { useRef, useState, useCallback } from 'react';
-import { Activity, CheckCircle2, LayoutGrid, Flame, Zap, Download } from 'lucide-react';
+import { Activity, CheckCircle2, LayoutGrid, Flame, Zap, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SESSION_CHARACTER_COLORS, SESSION_CHARACTER_LABELS } from '@/lib/constants/colors';
 import { WorkingStyleShareCard } from './WorkingStyleShareCard';
@@ -156,9 +156,9 @@ export function WeekAtAGlanceStrip({
                 onClick={handleDownload}
                 disabled={isDownloading}
                 className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 text-xs font-medium border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Download working style card"
+                title="Share working style card"
               >
-                <Download className="h-3 w-3" />
+                <Share2 className="h-3 w-3" />
                 {isDownloading ? 'Generating…' : 'Share'}
               </button>
             )}
