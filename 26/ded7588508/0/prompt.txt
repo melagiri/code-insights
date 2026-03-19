@@ -1,0 +1,3592 @@
+Implement @docs/plans/share-card-v2-content-dense.md
+
+---
+
+[Request interrupted by user]
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: @docs/plans/share-card-v2-content-dense.md
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `@docs/plans/share-card-v2-content-dense.md`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from @docs/plans/share-card-v2-content-dense.md):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: @docs/plans/share-card-v2-content-dense.md"
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: @docs/plans/share-card-v2-content-dense.md
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Verify feature and create PR' (blockedBy: above) -- includes pre-PR verification protocol
+   - Task: 'Review: Triple-layer code review (loops until 0 FIX NOW)' (blockedBy: above)
+   - Task: 'Post final review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+   IMPORTANT — Classify the feature scope for Dev's verification protocol:
+   - Does it touch UI/visual rendering? → Tag: VISUAL
+   - Does it produce output artifacts (images, PDFs, exports)? → Tag: OUTPUT_ARTIFACT
+   - Does it add new npm dependencies? → Tag: NEW_DEPS
+   - Does it change API endpoints? → Tag: API_CHANGE
+   Include these tags in the GitHub Issue so Dev knows which verification tiers apply.
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically.
+   - When Dev creates a PR, message the orchestrator: 'REVIEW_REQUEST: PR #XX is ready for /start-review'
+   - The orchestrator will run /start-review which loops until 0 FIX NOW items
+   - If review finds FIX NOW items, the orchestrator sends them to Dev. Dev fixes and pushes. Review re-runs automatically.
+   - You do NOT need to request additional review rounds — the loop is built into /start-review.
+
+7. REPORT: When review converges (0 FIX NOW items) and final summary is posted, message the orchestrator: 'PR #XX for @docs/plans/share-card-v2-content-dense.md is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- PRE-PR GATE (MANDATORY): Before any PR is created, Dev must complete the full verification protocol (see Dev agent instructions). GitHub Actions costs money — failed CI runs are wasted spend.",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: @docs/plans/share-card-v2-content-dense.md. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: @docs/plans/share-card-v2-content-dense.md. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: @docs/plans/share-card-v2-content-dense.md. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed.
+
+## Pre-PR Verification Protocol (MANDATORY)
+
+Before creating any PR, you MUST complete ALL applicable verification tiers. Check the GitHub Issue for scope tags (VISUAL, OUTPUT_ARTIFACT, NEW_DEPS, API_CHANGE) to know which tiers apply.
+
+### Tier 1: Build & Test (ALWAYS required)
+1. Run `pnpm build` from the worktree repo root — must pass with zero errors
+2. Run `pnpm test` from cli/ — must pass
+3. If build or tests fail, fix before proceeding. Do NOT create the PR.
+
+### Tier 2: New Dependency Audit (required if NEW_DEPS tag)
+If you added any new npm dependencies:
+1. Search the library's GitHub issues for known limitations and common gotchas
+2. Read the library's README for caveats, browser compatibility, and unsupported features
+3. Specifically check for: CSS compatibility, serialization constraints, SSR issues, bundle size impact
+4. Document findings in the PR description under '## Dependency Audit'
+5. If you find high-risk limitations, verify your code handles them correctly
+
+### Tier 3: Functional Verification (required if VISUAL or API_CHANGE tag)
+You must verify the feature works by running it:
+
+**Server access:**
+1. First, check if the dev server is already running: `curl -s -o /dev/null -w '%{http_code}' http://localhost:7890/api/health` (or just `http://localhost:7890`)
+2. If the server responds (200), use the existing server — do NOT start a new one
+3. If the server is NOT running, start one:
+   ```bash
+   cd <worktree-path> && node cli/dist/index.js dashboard --no-sync &
+   DEV_SERVER_PID=$!
+   ```
+4. CRITICAL: If you started a server, you MUST kill it when done: `kill $DEV_SERVER_PID`
+5. NEVER leave orphaned server processes running
+
+**For UI features (VISUAL tag):**
+- Navigate to the affected page using agent-browser tools
+- Take a screenshot showing the feature renders correctly
+- Attach the screenshot to the PR description under '## Verification'
+
+**For output-producing features (OUTPUT_ARTIFACT tag):**
+- Trigger the feature (e.g., click download, run export)
+- Verify the output file exists and is non-empty
+- If it's a visual artifact (image, PDF), take a screenshot of the output
+- Attach evidence to the PR description under '## Verification'
+
+**For API changes (API_CHANGE tag):**
+- curl the new/modified endpoints
+- Verify the response shape matches the TypeScript types
+- Include the curl output in the PR description under '## Verification'
+
+### Tier 4: Cleanup
+- If you started a dev server, confirm it's killed: `kill $DEV_SERVER_PID 2>/dev/null`
+- Verify no orphaned node processes on port 7890: `lsof -ti:7890` (should return nothing, or only the user's existing server)
+
+## PR Description Template
+
+Your PR description MUST include these sections:
+
+```markdown
+## Summary
+[What this PR does]
+
+## Dependency Audit (if NEW_DEPS)
+[Library name]: [Known limitations found, or 'No significant limitations found']
+
+## Verification
+- Build: PASS
+- Tests: PASS
+- [Screenshot of feature rendering] (if VISUAL)
+- [Screenshot/proof of output artifact] (if OUTPUT_ARTIFACT)
+- [curl output] (if API_CHANGE)
+
+## Test plan
+- [ ] [Checklist of what to test]
+```
+
+## During Review Rounds
+
+If the review team sends back FIX NOW items:
+1. Read each item carefully
+2. Implement the fixes in the worktree
+3. Re-run applicable verification tiers (at minimum Tier 1)
+4. If fixes are visual, re-capture screenshots
+5. Push the fix commits to the PR branch
+6. Message pm-agent that fixes are pushed
+
+This is non-negotiable — thorough pre-PR verification prevents wasted review cycles and catches bugs that static code review cannot.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM sends a REVIEW_REQUEST -> run `/start-review` on the PR number
+4. **Review loop management**:
+   - `/start-review` handles the loop internally (runs rounds until 0 FIX NOW items)
+   - If review finds FIX NOW items, relay them to the dev-agent via SendMessage
+   - After dev pushes fixes, `/start-review` re-runs targeted reviewers automatically
+   - If review hits max rounds (4) without converging, escalate to user
+5. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 6: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+- **Dev must complete pre-PR verification** — build, test, functional check, dependency audit (as applicable)
+- **Review loops automatically** — orchestrator runs /start-review which iterates until convergence
+- **No orphaned processes** — dev agent must kill any server it starts
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T09:18:58.081Z","idleReason":"available","summary":"[to orchestrator] Request dev-agent spawn for Share Card V2 (#210)"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T09:19:08.079Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:28:40.373Z","idleReason":"available","summary":"[to pm-agent] PR #211 created, build + tests green"}
+</teammate-message>
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 211
+
+You are setting up a triple-layer code review for PR `211`. This can be used standalone or as part of a `/start-feature` team workflow. The review loops until all FIX NOW items are resolved — it does NOT end after a single pass.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 211` to get PR title, description, and diff stats.
+Use `gh pr diff 211` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Decide if Wild Card reviewer is needed (see criteria below)
+
+---
+
+## Step 2: Determine Review Scope
+
+**Invoke Wild Card (3rd reviewer) if ANY of these apply:**
+- New feature with multiple files changed
+- Complex business logic
+- Schema impact (types.ts, SQLite migrations, server API changes)
+- Architectural changes
+- 200+ lines of changes
+
+**Skip Wild Card if ALL of these apply:**
+- Simple bug fix (< 50 lines)
+- Single file change
+- Straightforward UI/component change
+- Config/CI changes only
+
+**Invoke LLM Expert (4th reviewer) if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 2.5: Pre-Review Gates
+
+Before launching reviewers, check these gates. If any gate fails, the review CANNOT proceed — send the PR back to the dev agent (or inform the user if standalone) with what's missing.
+
+### Gate A: New Dependency Audit
+
+Check if `package.json` (any workspace) was modified in the PR diff.
+
+If new dependencies were added:
+
+```
+Task {
+  name: "dep-auditor",
+  subagent_type: "Explore",
+  prompt: "Research the following new npm dependencies added in PR #211. For EACH dependency:
+
+  1. Search the library's GitHub issues for known limitations, gotchas, and common pitfalls
+  2. Read the library's README for caveats, browser compatibility notes, and unsupported features
+  3. Check if the library has specific CSS, rendering, or serialization constraints
+  4. Check the library's weekly downloads and last publish date (is it maintained?)
+
+  Output a structured report:
+  ## Dependency Audit: [package-name]
+  ### Known Limitations
+  ### Gotchas for Our Use Case
+  ### Risk Level (low/medium/high)
+  ### Recommendation
+
+  Be thorough — silent failures from library limitations are the hardest bugs to catch in code review.",
+  mode: "bypassPermissions"
+}
+```
+
+Include the dependency audit findings in the context given to ALL reviewers.
+
+### Gate B: Functional Verification Evidence
+
+Check the PR description for a **Verification** section. The dev agent is required to include:
+
+- **For all PRs**: Build passes (`pnpm build` output or confirmation)
+- **For UI/visual features**: Screenshot of the feature rendering in the browser
+- **For features that produce output** (image export, PDF, file download): The actual output artifact or proof it's non-empty (file size, screenshot of result)
+- **For API changes**: curl output showing the endpoint returns the expected response shape
+
+If the PR description lacks verification evidence:
+- **If part of /start-feature**: Message the dev agent via SendMessage: "PR is missing verification evidence. Add a Verification section to the PR description with [specific evidence needed]. See the pre-PR verification protocol."
+- **If standalone**: Inform the user the PR needs verification evidence before review can proceed.
+
+**Do NOT proceed to Step 3 until verification evidence is present.**
+
+### Gate C: Visual Output Check (Conditional)
+
+If the PR produces visual output (images, PDFs, charts, OG cards, share cards, exports):
+- The exported/generated artifact MUST be attached to or linked from the PR description
+- A reviewer must be able to visually inspect the output without running the code
+- If missing, send PR back with: "This PR produces visual output — attach the generated artifact to the PR description."
+
+---
+
+## Step 3: Run Parallel Independent Reviews (Round N)
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+Track the current round number. Round 1 is the initial review. Round 2+ are follow-up reviews after fixes.
+
+**For Round 1**: Launch all applicable reviewers (TA, Outsider, Wild Card, LLM Expert).
+**For Round 2+**: Launch only targeted reviewers — those whose prior findings had FIX NOW items that were addressed. Skip reviewers whose prior findings were all resolved or NOT APPLICABLE.
+
+**Launch TA Insider Review:**
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #211 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 211
+  Also fetch the PR details: gh pr view 211
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  ADDITIONAL CHECKS:
+  7. If new dependencies were added, review the dependency audit findings: [INSERT DEP AUDIT IF APPLICABLE]
+  8. If the PR produces visual output, verify the attached artifact looks correct
+  9. Check that verification evidence in the PR description is credible (not just 'it works')
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title] — Round [N]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Outsider Review:**
+```
+Task {
+  name: "outsider-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent OUTSIDER review of PR #211 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 211
+
+  Review for:
+  - Security issues (XSS, injection, auth bypass)
+  - Best practices (React, TypeScript, Node.js)
+  - Logic bugs and edge cases
+  - Performance concerns
+  - Accessibility issues
+  - Third-party library misuse (check if APIs are used correctly per their docs)
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output a structured review with findings categorized as:
+  - 🔴 FIX NOW (blocking — must fix before merge)
+  - 🟡 SUGGESTION (recommended but not blocking)
+  - 🔵 NOTE (informational)",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch LLM Expert Review (if applicable):**
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #211 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 211
+  Also fetch the PR details: gh pr view 211
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title] — Round [N]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+**Launch Wild Card Review (if applicable):**
+```
+Task {
+  name: "wildcard-reviewer",
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "You are performing an independent WILD CARD review of PR #211 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 211
+
+  Your role is to provide a fresh perspective with NO constraints:
+  - Challenge assumptions in the implementation
+  - Look for edge cases others might miss
+  - Question whether the approach is the simplest that could work
+  - Check for hidden complexity or tech debt being introduced
+  - Look at error handling from a user's perspective
+  - If new dependencies were added, think about what could go wrong at runtime (not just in code review)
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output a structured review with findings categorized as:
+  - 🔴 FIX NOW (blocking — must fix before merge)
+  - 🟡 SUGGESTION (recommended but not blocking)
+  - 🔵 NOTE (informational)",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #211. This is review ROUND [N].
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title] — Round [N]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - 🔴 FIX NOW items (MUST be resolved before merge)
+  - ❌ NOT APPLICABLE items with technical rationale
+  - ⚠️ ESCALATE TO FOUNDER items with reason
+  - 🟡 SUGGESTIONS (non-blocking, dev's discretion)
+  ### Final Verdict: [PASS — ready for merge | CHANGES REQUIRED — Round [N+1] needed]",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results & Loop Decision
+
+After synthesis is complete, check the Final Verdict:
+
+### If PASS (0 FIX NOW items):
+
+1. **Post final review summary to GitHub PR** (see template below)
+2. **If part of /start-feature**: Message the PM agent that review is complete and PR is ready for founder merge.
+3. **If standalone**: Inform the user the PR is approved.
+
+### If CHANGES REQUIRED (1+ FIX NOW items):
+
+1. **Post round summary to GitHub PR** (see template below)
+2. **Send FIX NOW items to dev agent** (or user if standalone):
+   - List each FIX NOW item with clear description of what needs to change
+   - Reference specific files and line numbers where possible
+3. **Wait for fixes to be pushed** — dev agent pushes fix commits to the PR branch
+4. **After fixes are pushed**: Dev must re-verify (build passes, and if visual: re-attach updated artifact)
+5. **Go back to Step 3** with Round N+1, targeting only the reviewers whose areas were affected
+
+### Loop Safety
+
+- **Max 4 rounds** — if FIX NOW items remain after 4 rounds, ESCALATE TO FOUNDER with full context
+- **Round 2+ is targeted** — only re-invoke reviewers whose prior FIX NOW items were addressed (don't re-run all 4 reviewers for a one-line fix)
+- **New issues found during fix verification count as new FIX NOW items** — the loop continues
+
+### PR Comment Template
+
+```bash
+gh pr comment 211 --body "$(cat <<'EOF'
+## Triple-Layer Code Review — Round [N] of [TOTAL]
+
+### Reviewers
+| Role | Focus | This Round |
+|------|-------|------------|
+| TA (Insider) | Pattern compliance, schema impact, architecture | [Active/Skipped] |
+| Outsider | Security, best practices, logic bugs | [Active/Skipped] |
+| LLM Expert | Prompt quality, token efficiency, model selection | [Active/Skipped/N/A] |
+| Wild Card | Edge cases, fresh perspective | [Active/Skipped/N/A] |
+
+### Pre-Review Gates
+- [ ] New dependency audit: [PASS/N/A]
+- [ ] Functional verification evidence: [PASS — describe what was verified]
+- [ ] Visual output attached: [PASS/N/A]
+
+### Issues Found & Resolution
+#### 🔴 FIX NOW
+[List from synthesis — empty if PASS]
+
+#### ❌ NOT APPLICABLE
+[List with technical rationale]
+
+#### 🟡 SUGGESTIONS
+[Non-blocking items]
+
+### Verification
+[Status of fixes if any were applied]
+
+**Round [N] verdict: [PASS — Ready for merge | CHANGES REQUIRED — see FIX NOW items]**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark outsider comments as "NOT APPLICABLE" with technical justification
+- **Always post summary to GitHub PR** — this creates the audit trail
+- **Review loops until 0 FIX NOW items** — a single pass is not sufficient if blocking issues exist
+- **Pre-review gates are mandatory** — missing verification evidence blocks the review from starting
+- **Max 4 rounds** — escalate to founder if review doesn't converge
+- **Round 2+ is targeted** — don't waste reviewer cycles re-reviewing areas with no changes
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T09:28:52.934Z","idleReason":"available","summary":"[to orchestrator] PR #211 ready for /start-review"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:28:59.704Z","idleReason":"available","summary":"[to pm-agent] Duplicate task assignment, all work already done"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T09:29:00.026Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T09:29:03.953Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:29:10.982Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:29:15.911Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="Phase 1 insider review: APPROVED, one optimization suggestion">
+## TA Review (Phase 1 - Insider): Share Card V2 — Content-Dense Redesign — Round 1
+
+### Architecture Alignment
+
+**Data Contract**: Clean. The change adds `pqAverageScore: number | null` to the server's `AggregatedData` interface and mirrors it exactly in the dashboard's `FacetAggregation` type in `api.ts`. Nullable field — fully backward compatible. No SQLite schema changes. No type definitions in `cli/src/types.ts` affected.
+
+**API Surface**: `/api/facets/aggregated` response now includes `pqAverageScore`. Additive-only change — existing consumers unaffected.
+
+**ShareCardProps Evolution**: `outcomeDistribution` removed, `promptClarityScore` and `effectivePatterns` added as optional fields. This is a dashboard-internal interface (not serialized or persisted), so the breaking change is fine — it's contained within the share card feature boundary.
+
+### Data Contract Impact
+- [x] Types aligned across CLI, server, and dashboard
+- [x] SQLite schema unchanged — no migrations needed
+- [x] CLI binary name is `code-insights` (unchanged)
+- [x] No breaking changes to existing SQLite data
+
+### Test Coverage (TDD Domain Verification)
+- [x] `server/src/routes/shared-aggregation.ts` change — N/A per existing pattern. `computePQAverageScore` follows the exact same structure as `aggregatePQFindings` (same file, same query pattern, same metadata parsing). The aggregation functions in this file are tested via integration in the server test suite (468/468 passing).
+- [ ] N/A — No parser, normalizer, migration, or utility changes in TDD domains
+- [ ] N/A — Dashboard changes (SKIP domain)
+- [ ] N/A — CLI command wiring (SKIP domain)
+
+### Pattern Consistency
+- [x] `computePQAverageScore` follows the identical pattern as `aggregatePQFindings`: same `hasWhere`/`extraPrefix` guard, same `JOIN sessions s`, same JSON metadata parsing with try/catch, same null-safe type guards
+- [x] SQLite queries use prepared statements with parameterized `where`/`params`
+- [x] Canvas rendering follows the same section-based structure with comment headers
+- [x] `ShareCardProps` optional fields follow the same `?:` convention as existing optional props
+
+### Issues Found
+
+**FIX NOW:**
+
+None.
+
+**SUGGESTION (non-blocking):**
+
+1. **Duplicate PQ query** (`shared-aggregation.ts:502-508` and `450-456`): `computePQAverageScore` and `aggregatePQFindings` both execute the exact same SQL query (`SELECT i.metadata FROM insights i JOIN sessions s ON i.session_id = s.id WHERE i.type = 'prompt_quality'`). For a week with 50 PQ insights, this means fetching and JSON-parsing the same rows twice. Consider merging the two functions — `aggregatePQFindings` already iterates over every metadata row and could extract `dimension_scores` in the same pass. This is a performance optimization, not a correctness issue — the current approach works correctly.
+
+   **However**: This is a "while we're at it" optimization. The query is fast (PQ insights are typically <100 rows per week), and the separation keeps the functions focused. I would NOT block the PR for this — noting it for a future cleanup pass if PQ data volume grows.
+
+**NOTE:**
+
+2. **Design spec minor deviation** — The plan specified `pqDimensionAverages: { overall: number, ... } | null` with per-dimension breakdowns. The implementation simplified to `pqAverageScore: number | null` (grand average only). This is a reasonable simplification since the share card only needs the single number. The per-dimension breakdown can be added later if needed for a dashboard detail view.
+
+3. **Stacked bar rounding** — `Math.round(pct * CONTENT_W)` for segment widths could accumulate rounding errors, potentially leaving a 1-2px gap at the right edge (or overflow). With 5 segments at 1104px width, the worst case is ~2px off. This is virtually invisible at the card's resolution and within the clipped roundRect, so it's cosmetic only. No action needed.
+
+4. **Tool pills could overflow into #MyCodeStyle** — If a user has 4 source tools with long names, the tool pills starting after the URL could potentially overlap with the right-aligned `#MyCodeStyle` hashtag. With the current max of 4 tools and the existing display names (longest is "VS Code Copilot" ~90px at 11px font), this fits within the ~700px available space. Safe for current data, but worth watching if new source tools are added with longer names.
+
+### Phase 1 Verdict
+
+[x] **Approved** (from architecture perspective)
+
+The implementation is clean, well-structured, and matches the design spec faithfully. Data contract is additive and backward compatible. The `computePQAverageScore` function follows established patterns in the same file. Canvas rendering code is readable with clear section markers. All graceful fallbacks from the spec are implemented. The one suggestion (duplicate query) is a minor optimization opportunity, not a blocker.
+
+Ready for Phase 2 synthesis after outsider review completes.
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-03-19T09:32:35.716Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer" color="purple" summary="Outsider review of PR #211 complete">
+## Outsider Review — PR #211: Share Card V2 Content-Dense Redesign
+
+**Scope:** 4 files changed — `share-card-utils.ts` (Canvas rewrite), `shared-aggregation.ts` (new SQL/aggregation function), `WeekAtAGlanceStrip.tsx` (prop threading), `PatternsPage.tsx` (data wiring), `api.ts` (type addition).
+
+---
+
+### FINDINGS
+
+#### 1. Stacked bar segment rounding can leave a 1-2px gap or overflow
+
+**Category:** BUG — Canvas rendering
+**Severity:** SUGGESTION
+
+`share-card-utils.ts:269` — Each segment width is `Math.round(pct * CONTENT_W)`. When 5 segments are present, cumulative rounding error can leave the bar 1-2px short of `CONTENT_W` (visible gap at the right edge) or overshoot slightly (hidden by clip, but wastes a draw call).
+
+**Fix:** Compute the last segment as `CONTENT_W - (segX - PAD)` instead of rounding, so the bar always fills exactly.
+
+```ts
+const segW = (i === sortedChars.length - 1)
+  ? (PAD + CONTENT_W) - segX   // fill remainder
+  : Math.round(pct * CONTENT_W);
+```
+
+This is cosmetic but visible on certain distributions. Not blocking.
+
+---
+
+#### 2. `computePQAverageScore` duplicates the metadata fetch from `aggregatePQFindings`
+
+**Category:** PERFORMANCE
+**Severity:** SUGGESTION
+
+`shared-aggregation.ts:502-508` — `computePQAverageScore` runs the exact same SQL query as `aggregatePQFindings` (lines 450-456) — both `SELECT i.metadata FROM insights ... WHERE i.type = 'prompt_quality'`. For a user with many PQ insights, this doubles the row fetches and JSON parsing.
+
+**Fix:** Either combine both functions into one pass, or have `getAggregatedData` call the query once and pass the parsed rows to both. Not blocking — the insights table is small per-week — but worth noting for future optimization.
+
+---
+
+#### 3. Tool pills in footer can overflow past the `#MyCodeStyle` hashtag
+
+**Category:** BUG — Canvas rendering
+**Severity:** SUGGESTION
+
+`share-card-utils.ts:399-421` — The tool pill loop starts at `TOOL_PILL_START_X` (after the URL) and grows rightward with no bounds check. With 4 tools (e.g., "Claude Code", "VS Code Copilot", "Copilot CLI", "Codex CLI"), the pills could overlap or overrun the `#MyCodeStyle` text at `W - PAD`.
+
+**Fix:** Before drawing each pill, check if `toolX + pillW > W - PAD - hashtagWidth - margin`. If so, stop rendering more pills. Or measure total pill width upfront and cap at 3 if needed.
+
+---
+
+#### 4. Strengths pills: wrapping logic only checks overflow, not first-pill-on-row
+
+**Category:** BUG — Canvas rendering  
+**Severity:** NOTE
+
+`share-card-utils.ts:342` — The wrap condition `pillX + pillW > W - PAD && pillRow < MAX_ROWS - 1` correctly wraps to the next row, but if a single pill label is wider than `CONTENT_W` (extremely unlikely but theoretically possible with very long pattern labels), it would still draw beyond the card boundary. The `slice(0, 3)` and typical label lengths make this essentially impossible in practice.
+
+---
+
+#### 5. `outcomeDistribution` removed from share card but not from `useCallback` deps — CORRECT
+
+**Category:** NOTE
+**Severity:** NOTE
+
+The diff correctly removes `outcomeDistribution` from the `downloadShareCard` call AND from the `useCallback` dependency array. The prop is still received by `WeekAtAGlanceStrip` for its own UI rendering (outcome bar, success rate display), which is correct — only the share card no longer uses it. Clean separation.
+
+---
+
+#### 6. `computeMilestones` removed — no remaining consumers
+
+**Category:** NOTE
+**Severity:** NOTE
+
+The `computeMilestones` function and `MilestonePill` interface are fully removed. Grep confirms no remaining imports or references anywhere in the dashboard. Clean removal.
+
+---
+
+#### 7. SQL injection safety — SAFE
+
+**Category:** SECURITY
+**Severity:** NOTE
+
+`computePQAverageScore` follows the same `where`/`params` parameterized query pattern as every other function in `shared-aggregation.ts`. The `extraPrefix` pattern (AND vs WHERE) is consistent with the existing code. The `i.type = 'prompt_quality'` is a hardcoded literal, not user input. No injection risk.
+
+---
+
+#### 8. `pqAverageScore` type alignment across the stack
+
+**Category:** NOTE
+**Severity:** NOTE
+
+- Server: `pqAverageScore: number | null` in `AggregatedData`
+- API type: `pqAverageScore: number | null` in `FacetAggregation`
+- PatternsPage: `aggregation?.pqAverageScore ?? undefined` converts `null` to `undefined`
+- ShareCardProps: `promptClarityScore?: number` (optional, not nullable)
+
+The `?? undefined` conversion is correct — it bridges `null` (API) to `undefined` (optional prop). Type-safe across the full stack.
+
+---
+
+#### 9. Canvas state management — `ctx.save()`/`ctx.restore()` usage
+
+**Category:** NOTE
+**Severity:** NOTE
+
+The clipping region for the character distribution bar correctly uses `ctx.save()` before clipping and `ctx.restore()` after (lines 261, 287). This prevents the clip path from affecting subsequent drawing. Good practice.
+
+However, `ctx.textAlign` is set to `'right'` in two places (lines 180, 426) and manually reset to `'left'` immediately after. This works but is fragile — if a future edit adds drawing between the set and reset, alignment bugs will appear. Not blocking, just a maintainability note.
+
+---
+
+### SUMMARY
+
+| Level | Count |
+|-------|-------|
+| FIX NOW | 0 |
+| SUGGESTION | 3 (#1 rounding gap, #2 duplicate query, #3 footer overflow) |
+| NOTE | 6 |
+
+**Overall assessment:** Clean, well-structured PR. The Canvas rendering is solid with proper clip/restore usage. The SQL function follows established patterns. The type threading from server to API to dashboard is correct. The three suggestions are cosmetic/performance — none are blocking. Ready to merge as-is, with the rounding fix and footer overflow check as optional polish.
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer" color="purple">
+{"type":"idle_notification","from":"outsider-reviewer","timestamp":"2026-03-19T09:32:46.029Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange" summary="Wild card review of PR #211 with 2 fixes, 5 suggestions">
+# Wild Card Review — PR #211 (Share Card V2 Content-Dense Redesign)
+
+**Reviewer:** Wild Card (Round 1, independent)
+
+---
+
+## Summary
+
+The PR replaces the V1 share card layout with a content-dense V2: swapping success rate for prompt clarity score, replacing dot legend with a stacked horizontal bar, adding strengths pills, moving tool pills to the footer, and adding a #MyCodeStyle hashtag. Server-side adds PQ dimension score averaging. Overall a clean, well-structured change. A few issues worth addressing below.
+
+---
+
+## Findings
+
+### RED — FIX NOW (blocking)
+
+#### R1: Stacked bar segment widths can leave a gap or overflow due to rounding
+
+**File:** `dashboard/src/lib/share-card-utils.ts:269`
+
+Each segment width is computed as `Math.round(pct * CONTENT_W)`, but rounding independently per segment means the sum of segment widths may not equal `CONTENT_W`. With 5 segments, the accumulated rounding error could be up to +/-3px, leaving a visible gap at the right edge or causing a tiny overflow (clipped, but asymmetric).
+
+**Fix:** Compute segment positions cumulatively. For each segment, calculate the cumulative end position as `Math.round((cumulativePct) * CONTENT_W)` and derive segment width as `endX - segX`. This guarantees the final segment ends exactly at `PAD + CONTENT_W`.
+
+```typescript
+let segX = PAD;
+let cumCount = 0;
+for (const [key, count] of sortedChars) {
+  cumCount += count;
+  const endX = PAD + Math.round((cumCount / charTotal) * CONTENT_W);
+  const segW = endX - segX;
+  // ... draw with segW ...
+  segX = endX;
+}
+```
+
+#### R2: Legend row can overflow beyond CONTENT_W with 5 character types
+
+**File:** `dashboard/src/lib/share-card-utils.ts:290-308`
+
+With 5 character types (the max `slice(0, 5)`), the legend row renders all 5 entries left-to-right with no overflow check. Labels like "Feature Build 45%" with a dot and 24px gap each can easily exceed 1104px total. There is no truncation or wrapping — text will render outside the card boundary.
+
+**Fix:** Either (a) cap the legend to 4 entries with a "+1 more" indicator, (b) measure total width first and skip entries that would overflow, or (c) reduce to showing only segments >= some threshold (e.g., >= 5%).
+
+---
+
+### YELLOW — SUGGESTION (recommended but not blocking)
+
+#### Y1: Design spec says legend Y = `BAR_TOP + 44` but code uses `BAR_TOP + BAR_H + 14`
+
+**File:** `dashboard/src/lib/share-card-utils.ts:290` vs spec line 129
+
+The spec says the legend row is at `y = BAR_TOP + 44` (which is `BAR_TOP + 36 + 8`). The code uses `BAR_TOP + BAR_H + 14 = BAR_TOP + 50`. That's 6px lower than spec. Similarly, the spec says `labelBottom = BAR_TOP + BAR_H + 8 + 6` (line 201) which feeds into STRENGTHS_TOP, but the code uses `sectionBottom = LEGEND_Y + 6 = BAR_TOP + 56`. The cumulative effect is the Strengths section is ~12px lower than designed.
+
+Not visually catastrophic, but worth reconciling with the spec if pixel-precision matters for the "best case" layout where all 6 sections need to fit.
+
+#### Y2: `STRENGTHS_TOP` calculation doesn't match spec when character bar is absent
+
+**File:** `dashboard/src/lib/share-card-utils.ts:319`
+
+Spec says: `STRENGTHS_TOP = hasCharBar ? labelBottom + 16 : statBottom + 32`. Code uses `sectionBottom + 16` where `sectionBottom = statBottom` when there's no char bar. So: code gives `statBottom + 16` vs spec's `statBottom + 32` — a 16px difference. The Strengths section will be closer to the stat boxes than intended when character data is missing.
+
+#### Y3: `computePQAverageScore` fetches all PQ metadata rows into memory
+
+**File:** `server/src/routes/shared-aggregation.ts:502-508`
+
+The function loads every `prompt_quality` insight's full metadata JSON string into Node memory, then parses each one in JS. For users with many sessions, this could be hundreds of rows with large JSON blobs. Consider using SQLite's `json_extract` to pull only `dimension_scores` in the SQL query, or even compute the averages in SQL directly:
+
+```sql
+SELECT AVG(json_extract(i.metadata, '$.dimension_scores.context_provision')) as avg_cp,
+       AVG(json_extract(i.metadata, '$.dimension_scores.request_specificity')) as avg_rs,
+       ...
+```
+
+This would be both faster and lower-memory. Not blocking because the current approach works, but it's a missed optimization.
+
+#### Y4: `frequency` field on `effectivePatterns` is passed but never used in the card
+
+**File:** `dashboard/src/lib/share-card-utils.ts:126-129` and `share-card-utils.ts:316-369`
+
+The `ShareCardProps` interface includes `frequency` on each pattern, but the drawing code never references `pattern.frequency` — it only uses `pattern.label`. The frequency is used upstream for sorting (top 3), but since the slice already happens in `PatternsPage.tsx:365`, the field is dead weight in the props. Minor, but either use it (e.g., show count in the pill) or remove it from the interface.
+
+#### Y5: Tool pills in footer can overlap the #MyCodeStyle hashtag
+
+**File:** `dashboard/src/lib/share-card-utils.ts:393-427`
+
+Tool pills are drawn left-to-right starting after the URL, and `#MyCodeStyle` is right-aligned. With 4 tool labels (especially "VS Code Copilot" which is wide), the pills could overlap the hashtag. There's no collision detection. Consider measuring the hashtag width and capping tool pill rendering when `toolX + pillW` would exceed `W - PAD - hashtagWidth - gap`.
+
+---
+
+### BLUE — NOTE (informational)
+
+#### B1: `computeMilestones` and `MilestonePill` properly removed
+
+The deleted code (`computeMilestones`, `MilestonePill` interface) was the only consumer — clean removal with no orphan references.
+
+#### B2: `outcomeDistribution` still passed in PatternsPage but no longer consumed by share card
+
+**File:** `dashboard/src/pages/PatternsPage.tsx:357`
+
+`outcomeDistribution` is still passed to `WeekAtAGlanceStrip` (for the dashboard display), but no longer threaded to `downloadShareCard`. This is correct — the strip UI still uses outcomes for its own rendering, only the share card stopped using it. Just noting for clarity.
+
+#### B3: The `where` clause in `computePQAverageScore` follows the established pattern
+
+The function correctly reuses the same `where`/`params`/`extraPrefix` pattern from `getAggregatedData` and `aggregatePQFindings`. The `hasWhere` check is safe because `buildWhereClause` always produces a `WHERE ...` string (never empty in practice — there's always at least the non-trivial filter).
+
+#### B4: Design spec mentions `pqDimensionAverages: { overall: number, ... } | null` but implementation returns flat `pqAverageScore: number | null`
+
+The spec (line 234) suggested returning per-dimension averages too, but the implementation only returns the grand average. This is fine since the card only needs one number, but if per-dimension breakdowns are wanted later, the aggregation function already computes them internally — they'd just need to be returned.
+
+---
+
+## Overall Assessment
+
+**Approve with fixes.** R1 (rounding gap) and R2 (legend overflow) are real rendering bugs that will manifest with common data distributions. The suggestions are quality improvements but not blocking. The server-side PQ averaging is correct and well-guarded. The Canvas drawing code is clean and well-organized.
+
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange">
+{"type":"idle_notification","from":"wildcard-reviewer","timestamp":"2026-03-19T09:33:03.988Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-synthesizer" color="pink" summary="TA Synthesis for PR #211 Round 1 — 1 FIX NOW item">
+## TA Synthesis (Phase 2): Share Card V2 — Content-Dense Redesign — Round 1
+
+---
+
+### Review of Outsider Comments
+
+**Outsider #1 (Stacked bar rounding gap):** AGREE. Verified with math: a 5-segment distribution like `[4, 12, 18, 19, 20]` produces segment widths summing to 1102 — a 2px gap. The bar is clipped to a roundRect, so overshoot is harmless (clipped away), but undershoot leaves a visible dark gap at the right edge of the bar. On a 1200px card shared to social media, a 2px gap inside a colored bar is visible. Promoting to FIX NOW.
+
+**Outsider #2 (Duplicate PQ query):** AGREE as suggestion. `computePQAverageScore` and `aggregatePQFindings` both run `SELECT i.metadata FROM insights ... WHERE i.type = 'prompt_quality'` — same query, same scope. For a weekly view with <100 PQ rows, this is ~0ms extra. Non-blocking.
+
+**Outsider #3 (Tool pills overflow):** NOT APPLICABLE. Tool pills start after `code-insights.app` text (~160px from PAD). With 4 max pills at ~100px each = ~400px. Plus #MyCodeStyle right-aligned at ~120px. Total ~680px vs 1104px available. Even with all 5 source tools at max name length ("VS Code Copilot" is the longest), this cannot overflow. The `slice(0, 4)` cap ensures it.
+
+**Outsider notes (SQL injection, type alignment, canvas save/restore, computeMilestones removal):** All correct observations, no action needed.
+
+---
+
+### Review of Wild Card Comments
+
+**Wild Card R1 (Stacked bar rounding):** AGREE — FIX NOW. Same finding as Outsider #1. I verified: the undershoot can reach 2px with 5 segments. The fix is straightforward — compute the last segment as `CONTENT_W - (segX - PAD)` instead of independently rounding. This is a 1-line change.
+
+**Wild Card R2 (Legend row overflow with 5 types):** NOT APPLICABLE. I calculated the worst case: 5 character types with labels like "Feature Build 45%" at 13px font. The cumulative legend width is ~752px. CONTENT_W is 1104px. There is 352px of headroom. Even with the widest possible labels, this cannot overflow. The Wild Card likely overestimated character widths at 13px system font.
+
+**Wild Card Y1 (Legend Y position 6px off spec):** Confirmed. Spec says `BAR_TOP + 44`, implementation uses `BAR_TOP + 50` (computed as `BAR_H + 14` = `36 + 14` = `50`). This is a 6px difference. However, this is a cosmetic tuning choice the dev likely made deliberately during visual testing — the spec is a starting point, not a pixel contract. SUGGESTION, not FIX NOW.
+
+**Wild Card Y2 (STRENGTHS_TOP spacing without char bar):** When characterDistribution is empty, `sectionBottom = statBottom`. The code uses `sectionBottom + 16`, spec says `statBottom + 32`. This means 16px less breathing room when there's no character bar. Minor layout density issue for an edge case (no character data). SUGGESTION.
+
+**Wild Card Y3 (computePQAverageScore loads full metadata JSON):** Same as Outsider #2. Using `json_extract` in SQL would avoid parsing full JSON blobs in JS. For <100 rows per week, this is a micro-optimization. SUGGESTION.
+
+**Wild Card Y4 (frequency field passed but unused):** Confirmed. `effectivePatterns` carries `frequency` in `ShareCardProps` but the drawing code never uses it. Harmless — it's there for future use (e.g., showing frequency counts on pills). NOT APPLICABLE — unused fields in props are normal in TypeScript.
+
+**Wild Card Y5 (Tool pills overlap):** Same as Outsider #3. NOT APPLICABLE — see analysis above.
+
+---
+
+### Second Pass Findings
+
+After reviewing all three reviews against the code:
+
+1. **No security issues.** All SQL is parameterized. No user input reaches the canvas.
+2. **Type contract is clean.** `pqAverageScore: number | null` added to `AggregatedData`, threaded through API response, consumed in dashboard with proper null handling (`?? undefined`). No schema changes needed.
+3. **No orphaned code.** `computeMilestones` cleanly removed, `outcomeDistribution` still used by WeekAtAGlanceStrip.
+4. **Backward compatibility preserved.** The `promptClarityScore` and `effectivePatterns` props are optional — existing callers work without them.
+
+---
+
+### Consolidated Review (For Dev Agent)
+
+**FIX NOW:**
+1. **Stacked bar rounding gap** — Independent `Math.round(pct * CONTENT_W)` per segment can produce a cumulative sum that undershoots CONTENT_W by up to 2px, leaving a visible dark gap at the bar's right edge. **Fix:** Compute the last segment width as `CONTENT_W - (segX - PAD)` instead of rounding independently. This ensures the segments always fill the full clipped area. Location: `share-card-utils.ts` around line 269.
+
+**NOT APPLICABLE (With Evidence):**
+1. **Legend row overflow (Wild Card R2)** — Math disproves this: 5 labels at 13px system font total ~704px cumulative width. CONTENT_W is 1104px. 400px headroom. Cannot overflow.
+2. **Tool pills overflow (Outsider #3, Wild Card Y5)** — `slice(0, 4)` caps pills. 4 pills + URL + hashtag total ~680px vs 1104px available.
+3. **Unused `frequency` field (Wild Card Y4)** — Optional prop field, standard TypeScript pattern. No dead code.
+
+**SUGGESTIONS (non-blocking, dev's discretion):**
+1. **Merge PQ queries** — `computePQAverageScore` and `aggregatePQFindings` fetch the same rows. Could be combined into one function returning both findings and average score. Non-blocking at current data volumes.
+2. **Legend Y offset** — Implementation is 6px lower than spec (`BAR_TOP + 50` vs `BAR_TOP + 44`). If intentional from visual testing, document it. If not, adjust to match spec.
+3. **STRENGTHS_TOP spacing without char bar** — 16px gap instead of spec's 32px when no character distribution data. Edge case, but worth checking visually.
+
+---
+
+### Final Verdict: CHANGES REQUIRED — Round 2 needed
+
+One FIX NOW item: stacked bar rounding gap. This is a 1-line fix. After dev implements it, Round 2 should be a quick pass to confirm the fix and approve merge.
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"idle_notification","from":"ta-synthesizer","timestamp":"2026-03-19T09:37:11.068Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="Share card screenshot embedded in PR #211">
+Visual verification complete. The share card V2 PNG is now embedded in PR #211 comment (https://github.com/melagiri/code-insights/pull/211#issuecomment-4088883414). All 6 sections render correctly with real data: 19 sessions, 23d streak, 78 prompt clarity, Bug Hunt/Exploration stacked bar, 3 strengths pills (Effective Tooling, Structured Planning, Context Gathering), and #MyCodeStyle footer. Dev server stopped.
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:44:45.625Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="Bar rounding fix pushed — commit 2379603">
+Fix applied and pushed. Converted for-of to indexed loop so the last segment fills the remainder `(PAD + CONTENT_W) - segX` instead of rounding independently. Build passes. Commit: 2379603 on feature/share-card-v2-content-dense.
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:45:46.816Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="Fix already applied in commit 2379603 — ready to merge">
+The fix is already in — commit 2379603 was pushed earlier this session. The file at line 271-273 contains exactly the remainder fill pattern:
+```
+const segW = (i === sortedChars.length - 1)
+  ? (PAD + CONTENT_W) - segX
+  : Math.round(pct * CONTENT_W);
+```
+`git log --oneline -4` confirms it's the tip of the branch on origin. PR #211 is ready to merge.
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T09:46:58.334Z","idleReason":"available","summary":"[to orchestrator] PR #211 ready for founder merge"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="PR #211 complete, all commits pushed">
+PR #211 is complete. All 4 commits are on `feature/share-card-v2-content-dense` and pushed:
+
+1. `cabf1ce` — feat(server): add PQ dimension score averaging to facet aggregation
+2. `b65c6a2` — feat(dashboard): rewrite share card V2 — content-dense layout
+3. `6f435fb` — feat(dashboard): thread PQ score + effective patterns into share card
+4. `2379603` — fix(dashboard): eliminate rounding gap at stacked bar right edge
+
+The stacked bar rounding fix from the review is in commit `2379603`. No open dev tasks remain. Ready for founder merge.
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T09:48:09.986Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+we must compact it further. this is still big and feels vague.. not conrete or actionable or even increase eagerness in people to use the app to know their style
+
+---
+
+Base directory for this skill: /Users/melagiri/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.5/skills/brainstorming
+
+# Brainstorming Ideas Into Designs
+
+Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+
+<HARD-GATE>
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+</HARD-GATE>
+
+## Anti-Pattern: "This Is Too Simple To Need A Design"
+
+Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Explore project context** — check files, docs, recent commits
+2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
+3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+7. **Spec review loop** — dispatch spec-document-reviewer subagent with precisely crafted review context (never your session history); fix issues and re-dispatch until approved (max 3 iterations, then surface to human)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
+9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+
+## Process Flow
+
+```dot
+digraph brainstorming {
+    "Explore project context" [shape=box];
+    "Visual questions ahead?" [shape=diamond];
+    "Offer Visual Companion\n(own message, no other content)" [shape=box];
+    "Ask clarifying questions" [shape=box];
+    "Propose 2-3 approaches" [shape=box];
+    "Present design sections" [shape=box];
+    "User approves design?" [shape=diamond];
+    "Write design doc" [shape=box];
+    "Spec review loop" [shape=box];
+    "Spec review passed?" [shape=diamond];
+    "User reviews spec?" [shape=diamond];
+    "Invoke writing-plans skill" [shape=doublecircle];
+
+    "Explore project context" -> "Visual questions ahead?";
+    "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
+    "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
+    "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
+    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Propose 2-3 approaches" -> "Present design sections";
+    "Present design sections" -> "User approves design?";
+    "User approves design?" -> "Present design sections" [label="no, revise"];
+    "User approves design?" -> "Write design doc" [label="yes"];
+    "Write design doc" -> "Spec review loop";
+    "Spec review loop" -> "Spec review passed?";
+    "Spec review passed?" -> "Spec review loop" [label="issues found,\nfix and re-dispatch"];
+    "Spec review passed?" -> "User reviews spec?" [label="approved"];
+    "User reviews spec?" -> "Write design doc" [label="changes requested"];
+    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+}
+```
+
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+
+## The Process
+
+**Understanding the idea:**
+
+- Check out the current project state first (files, docs, recent commits)
+- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
+- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- Prefer multiple choice questions when possible, but open-ended is fine too
+- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Focus on understanding: purpose, constraints, success criteria
+
+**Exploring approaches:**
+
+- Propose 2-3 different approaches with trade-offs
+- Present options conversationally with your recommendation and reasoning
+- Lead with your recommended option and explain why
+
+**Presenting the design:**
+
+- Once you believe you understand what you're building, present the design
+- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- Ask after each section whether it looks right so far
+- Cover: architecture, components, data flow, error handling, testing
+- Be ready to go back and clarify if something doesn't make sense
+
+**Design for isolation and clarity:**
+
+- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
+- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
+- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
+- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+
+**Working in existing codebases:**
+
+- Explore the current structure before proposing changes. Follow existing patterns.
+- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
+- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## After the Design
+
+**Documentation:**
+
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+  - (User preferences for spec location override this default)
+- Use elements-of-style:writing-clearly-and-concisely skill if available
+- Commit the design document to git
+
+**Spec Review Loop:**
+After writing the spec document:
+
+1. Dispatch spec-document-reviewer subagent (see spec-document-reviewer-prompt.md)
+2. If Issues Found: fix, re-dispatch, repeat until Approved
+3. If loop exceeds 3 iterations, surface to human for guidance
+
+**User Review Gate:**
+After the spec review loop passes, ask the user to review the written spec before proceeding:
+
+> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+
+Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+
+**Implementation:**
+
+- Invoke the writing-plans skill to create a detailed implementation plan
+- Do NOT invoke any other skill. writing-plans is the next step.
+
+## Key Principles
+
+- **One question at a time** - Don't overwhelm with multiple questions
+- **Multiple choice preferred** - Easier to answer than open-ended when possible
+- **YAGNI ruthlessly** - Remove unnecessary features from all designs
+- **Explore alternatives** - Always propose 2-3 approaches before settling
+- **Incremental validation** - Present design, get approval before moving on
+- **Be flexible** - Go back and clarify when something doesn't make sense
+
+## Visual Companion
+
+A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+
+**Offering the companion:** When you anticipate that upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
+> "Some of what we're working on might be easier to explain if I can show it to you in a web browser. I can put together mockups, diagrams, comparisons, and other visuals as we go. This feature is still new and can be token-intensive. Want to try it? (Requires opening a local URL)"
+
+**This offer MUST be its own message.** Do not combine it with clarifying questions, context summaries, or any other content. The message should contain ONLY the offer above and nothing else. Wait for the user's response before continuing. If they decline, proceed with text-only brainstorming.
+
+**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+
+- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
+- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
+
+A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
+
+If they agree to the companion, read the detailed guide before proceeding:
+`skills/brainstorming/visual-companion.md`
+
+---
+
+1. Score card
+
+---
+
+B feels right.. but, Lets not put just 1 prompt clarity score.. put the average of each category as bar chart? What might work, ask cofounder agent
+
+---
+
+<teammate-message teammate_id="cofounder" color="cyan">
+{"type":"idle_notification","from":"cofounder","timestamp":"2026-03-19T10:05:07.822Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="cofounder" color="cyan" summary="Hybrid share card: big score + bar fingerprint">
+## Cofounder Design Review: Share Card — Score Card Direction
+
+### The Verdict: Hybrid (Big Score + Visual Fingerprint)
+
+**Do NOT ship the 5-bar-only version. Do NOT drop the single number.**
+
+### Question-by-Question Analysis
+
+**Q1: 5 bars vs 1 number — which creates more "I want to know mine" energy?**
+
+One number wins. Every time. Spotify Wrapped shows "47,293 minutes" — not a 5-dimension breakdown. Five bars create analysis paralysis, not envy. A single number creates instant ranking energy: "I got 82. What did you get?"
+
+**Q2: Comparison mechanics?**
+
+People compare single numbers trivially — it's a leaderboard instinct. Comparing two 5-bar charts requires holding 10 data points in working memory and deciding which dimensions matter. That's homework, not sharing energy.
+
+**Q3: Hybrid approach?**
+
+Yes — this is the right answer. Specifically:
+
+```
+The Methodical Achiever           ← archetype (identity hook)
+         82                       ← HERO: Prompt Clarity score, large
+  ██████████████████░░  CP        ← tiny inline bars, NO numbers
+  ████████████████████  RS          just relative fill + abbreviations
+  ██████████░░░░░░░░░░  SM          creates "shape" not "data"
+  ███████████████░░░░░  IT
+  ████████████████████  CQ
+42 sessions · Claude Code + Cursor
+code-insights.app
+```
+
+Key design decisions:
+- Bars have NO individual numbers — intentional. Forces people to run the tool to see their actual dimension scores. This is the conversion mechanic.
+- The bars create a "fingerprint" — your shape is unique, like Spotify's audio aura. People post side-by-side because shapes look different.
+- The archetype is the identity hook — "I'm a Methodical Achiever" is tweetable.
+
+**Q4: Shareability calculus?**
+
+The version that gets the most replies is the one easiest to respond to. "I got 82" gets "I got 76" back. Five bars get "cool" back.
+
+| Element | Driver | Present? |
+|---------|--------|----------|
+| Identity label | "I'm a [type]" personality test energy | Yes (archetype) |
+| Single number | "What's yours?" competition | Yes (hero score) |
+| Visual uniqueness | "My shape differs from yours" | Yes (bar fingerprint) |
+| Tool diversity | "I use Claude Code AND Cursor" flex | Yes (evidence line) |
+| Curiosity gap | "What do those bars mean?" | Yes (unlabeled fills) |
+
+**Specific call: Kill the streak from the evidence line.** Streaks are gamification — doesn't match "developer profile" framing. Replace with source tool mix: "42 sessions across Claude Code + Cursor". That's the unique flex no competitor can offer.
+
+**Q5: What makes devs NEED to check their score?**
+
+Three triggers:
+1. **Competence anxiety** — "Am I prompting AI well or wasting tokens?" Frame as "How well do you communicate with AI?" not "How good are your prompts?"
+2. **Fingerprint effect** — When bar shapes visibly differ between people, it creates "what does MY shape look like?" curiosity
+3. **Cross-tool status signal** — "I use 3 AI coding tools and here's my score across all" is a power-user flex only we can offer
+
+### Positioning Impact
+
+This strengthens our story. The share card becomes: "Code Insights doesn't just track your AI sessions — it scores how well you work with AI." That's a category-defining frame.
+
+### Risk
+
+The composite score feels arbitrary if we can't explain it simply. "Average of 5 dimensions" is defensible. Mitigation: the Patterns page shows the full breakdown. Card = teaser, page = explanation. Classic progressive disclosure (exactly what Spotify does).
+
+### Recommendation: PROCEED WITH HYBRID
+
+- Hero: Single Prompt Clarity composite, large typography
+- Supporting: 5 dimension bars as visual fingerprint (no individual numbers on bars)
+- Identity: Archetype tagline at top
+- Evidence: Session count + source tools (drop streak)
+- CTA: code-insights.app
+</teammate-message>
+
+<teammate-message teammate_id="cofounder" color="cyan">
+{"type":"idle_notification","from":"cofounder","timestamp":"2026-03-19T10:11:43.836Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+Why are you calling it Prompt Clarity? Why not just AI Engineer Score? and add tagline or sub text for specifying it is prompt skills score, because it is not just prompting, we are setting rules, skills, agents, orchestrations, guardrails, validations.. so many thing..
+
+---
+
+yes go with A with sub-text or description using the term AI Fluency
+
+---
+
+ask @"devtools-cofounder (agent)" to come up with proper branding for this.. and then ask @"technical-architect (agent)" and @"ux-engineer (agent)" to design
+
+---
+
+should it rely on only 1 week's metric? or should we do it at a higher level as in using last 4 weeks data?
+
+---
+
+<teammate-message teammate_id="ta-design" color="blue" summary="Share card V3 data architecture decisions">
+## TA Design Response: Share Card V3 — Score Card + Fingerprint
+
+I've read all five files. Here are my architecture decisions.
+
+---
+
+### 1. Data Availability — Exposing Per-Dimension Scores
+
+**Recommendation: Option A — Modify `computePQAverageScore()` to return a richer object.**
+
+Rename it to `computePQScores()` and return:
+
+```typescript
+export interface PQDimensionScores {
+  overall: number;
+  context_provision: number;
+  request_specificity: number;
+  scope_management: number;
+  information_timing: number;
+  correction_quality: number;
+}
+
+export function computePQScores(
+  db: ReturnType<typeof getDb>,
+  where: string,
+  params: (string | number)[]
+): PQDimensionScores | null
+```
+
+**Why Option A over B or C:**
+- The function already computes per-dimension averages internally (lines 541-546 of `shared-aggregation.ts` — `dimAverages` array built from `sums[key] / counts[key]`). It then throws them away and only returns the grand average. We're literally discarding the data we need.
+- Option B (separate function) would duplicate the same SQL query and metadata parsing — wasteful.
+- Option C is effectively the same as A — just less precise naming.
+
+**Implementation note:** The existing `DIMENSION_KEYS` array (line 510-516) already defines the 5 keys in the exact order we want. Instead of pushing to `dimAverages[]` anonymously, build a `Record<string, number>` keyed by dimension name, then compute `overall` from those values.
+
+The caller in `getAggregatedData()` (line 414) currently does:
+```typescript
+const pqAverageScore = computePQAverageScore(db, where, params);
+```
+
+Change to:
+```typescript
+const pqScores = computePQScores(db, where, params);
+```
+
+And update `AggregatedData` to carry `pqScores: PQDimensionScores | null` instead of `pqAverageScore: number | null`.
+
+**Backward compat:** The only consumers of `pqAverageScore` are:
+1. `AggregatedData` interface (server)
+2. `FacetAggregation` interface in `dashboard/src/lib/api.ts`
+3. `PatternsPage.tsx` (passes it to `WeekAtAGlanceStrip` as `promptClarityScore`)
+4. The reflect prompts (consume the aggregated data for LLM synthesis)
+
+All four need updating, but they're all in-repo and this is a single PR. No external consumers.
+
+---
+
+### 2. ShareCardProps Simplification
+
+```typescript
+export interface ShareCardProps {
+  tagline: string;
+  taglineSubtitle?: string;
+  aiEngineerScore: number;                    // 0-100, the grand average
+  dimensionScores: PQDimensionScores | null;  // null = no PQ data, bars hidden
+  totalSessions: number;
+  sourceTools: string[];
+  currentWeek: string;                        // ISO week for month/year derivation
+}
+```
+
+**Design notes:**
+- `aiEngineerScore` is separate from `dimensionScores` because the card always shows the hero number even if individual breakdowns are null (edge case: some dimensions missing data).
+- Actually, on reflection — if `dimensionScores` is null, there's no score to show. **Simplify further:** just use `dimensionScores: PQDimensionScores | null`. If null, show a "No data yet" state. The `overall` field inside `PQDimensionScores` IS the hero number. No need for a separate `aiEngineerScore` prop.
+
+**Revised:**
+
+```typescript
+export interface ShareCardProps {
+  tagline: string;
+  taglineSubtitle?: string;
+  dimensionScores: PQDimensionScores | null;  // null = no PQ data
+  totalSessions: number;
+  sourceTools: string[];
+  currentWeek: string;
+}
+```
+
+The hero number is `dimensionScores.overall`. The 5 bars are `dimensionScores.context_provision`, etc. Clean single source.
+
+---
+
+### 3. Type Flow: Server -> API -> Dashboard
+
+```
+Server (shared-aggregation.ts)
+  PQDimensionScores interface  ──exported──>  used in AggregatedData.pqScores
+
+API Response (GET /api/facets/aggregated)
+  JSON serializes AggregatedData as-is  ──>  { pqScores: { overall, context_provision, ... } | null }
+
+Dashboard (api.ts)
+  FacetAggregation.pqScores: PQDimensionScores | null  ──>  matches server shape
+
+Dashboard (share-card-utils.ts)
+  ShareCardProps.dimensionScores: PQDimensionScores | null  ──>  consumed from FacetAggregation
+```
+
+**Where to define `PQDimensionScores`:**
+
+Think of it like the existing `RateLimitInfo` — it's defined in `shared-aggregation.ts` on the server side, and the dashboard has its own matching interface in `api.ts`. Follow the same pattern:
+- **Server:** define `PQDimensionScores` in `shared-aggregation.ts` (authoritative)
+- **Dashboard:** define a matching `PQDimensionScores` in `api.ts` (or in `share-card-utils.ts` since that's where it's consumed for drawing)
+
+This follows the existing pattern where `RateLimitInfo` is defined in both `shared-aggregation.ts:132` and `api.ts:233`.
+
+---
+
+### 4. Dead Code from V2
+
+These become dead with V3 and should be **deleted** (not commented out):
+
+**In `share-card-utils.ts`:**
+- `CHARACTER_COLORS` map (line 29-37)
+- `CHARACTER_LABELS` map (line 40-48)
+- `abbreviateCount()` helper (line 52-56) — sessions count is now a simple string, no abbreviation needed for the evidence line
+- Entire Section 3 (stat boxes — lines 200-241): sessions/streak/prompt clarity boxes removed
+- Entire Section 4 (character distribution bar + legend — lines 245-316): character bar removed
+- Entire Section 5 (strengths pills — lines 318-374): strengths removed
+
+**In `ShareCardProps` (share-card-utils.ts):**
+- `streak` — removed from card
+- `characterDistribution` — removed from card
+- `promptClarityScore` — replaced by `dimensionScores.overall`
+- `effectivePatterns` — removed from card
+
+**In `WeekAtAGlanceStrip.tsx`:**
+- Props: `promptClarityScore`, `effectivePatterns` — no longer passed through to share card
+- The `handleDownload` callback needs updating to pass the new props shape
+
+**In `FacetAggregation` (api.ts):**
+- `pqAverageScore` field replaced by `pqScores`
+
+**In `AggregatedData` (shared-aggregation.ts):**
+- `pqAverageScore` field replaced by `pqScores`
+
+**Keep:**
+- `SOURCE_TOOL_DISPLAY_NAMES` — still used for evidence line "Claude Code + Cursor"
+- `SOURCE_TOOL_PILL_COLORS` — may still be useful if V3 footer uses colored tool names. If not, delete.
+- `drawLogo()` — still used in header/footer
+- `getMonthYearFromWeek()` — still used for header date
+- `truncateText()` — still used for tagline
+- `FONT_STACK` — still used everywhere
+- `downloadShareCard()` — entry point, stays
+
+---
+
+### 5. PR Strategy — Amend #211 vs New PR
+
+**Recommendation: Amend PR #211.** Here's why:
+
+- PR #211 is not merged. The V2 code it introduces is being almost entirely replaced — merging V2 then immediately replacing it creates pointless git history noise.
+- The foundation from #211 is still useful: the `drawShareCard` function structure, `drawLogo`, `SOURCE_TOOL_DISPLAY_NAMES`, `downloadShareCard`, the Canvas 2D approach, and the wiring in `WeekAtAGlanceStrip` + `PatternsPage`.
+- The server-side `computePQAverageScore` change is additive — it extends to return more data, not a rewrite.
+
+**Approach:** Force-push to the PR #211 branch with the V3 implementation. The PR description gets updated to reflect the new design.
+
+---
+
+### Summary of Changes by Layer
+
+| Layer | File | Change |
+|-------|------|--------|
+| Server | `shared-aggregation.ts` | `computePQAverageScore` -> `computePQScores`, returns `PQDimensionScores \| null`. `AggregatedData.pqAverageScore` -> `pqScores` |
+| Server | `facets.ts` | No change (passes through `AggregatedData` as-is) |
+| Dashboard | `api.ts` | `FacetAggregation.pqAverageScore` -> `pqScores: PQDimensionScores \| null` |
+| Dashboard | `share-card-utils.ts` | New `ShareCardProps`, rewrite `drawShareCard` for V3 layout, delete dead V2 code |
+| Dashboard | `WeekAtAGlanceStrip.tsx` | Update share card prop passing (remove `streak`, `characterDistribution`, `promptClarityScore`, `effectivePatterns`; add `dimensionScores`) |
+| Dashboard | `PatternsPage.tsx` | Update `aggregation?.pqAverageScore` references to `aggregation?.pqScores` |
+
+**TA Approval: Architecture is clean. Proceed with implementation on the PR #211 branch.**
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="cofounder-branding" color="red" summary="Share card branding assessment — 7 dimensions">
+## Cofounder Branding Review: Score Card + Fingerprint
+
+I've reviewed the existing card implementation (`dashboard/src/lib/share-card-utils.ts`), the badge plan doc, the product positioning, and the competitive landscape. Here's my assessment across all 7 dimensions.
+
+---
+
+### 1. Name: "AI Engineer Score"
+
+**Verdict: CHANGE IT.**
+
+"AI Engineer Score" has three problems:
+
+1. **"AI Engineer" is a contested job title.** Half of dev Twitter will argue "AI Engineer means something else" (ML/infra). You're measuring prompt fluency, not AI engineering competence. The name invites a legitimacy debate you don't want.
+2. **"Score" is reductive.** Developers are allergic to being reduced to a number by a tool they don't control. WakaTime gets away with "hours coded" because it's objective. A composite score invites "who decided 82 is good?"
+3. **It doesn't tweet well.** "My AI Engineer Score is 82" reads like a LinkedIn post, not a developer flex.
+
+**Recommended name: "AI Fluency Score"**
+
+Why this works:
+- **"Fluency" is the right metaphor.** It implies a skill you develop over time, not a grade you pass/fail. It's borrowed from language learning — everyone intuitively understands fluency as a spectrum, not a binary.
+- **It's novel.** Nobody owns "AI Fluency" in devtools. You'd own this term.
+- **It tweets naturally.** "My AI Fluency score is 82 — apparently I'm a Methodical Achiever" reads like something a developer would actually post.
+- **It matches the subtitle** you're already considering ("Your AI fluency, measured").
+- **It sidesteps the job-title debate.** Fluency is a skill attribute, not a role claim.
+
+**Runner-up: "Prompt Fluency Score"** — more precise but narrower. "AI Fluency" is broader and more aspirational, which is better for sharing. You want people who don't use Code Insights to be curious about what it measures.
+
+**Kill list:** "AI Readiness Score" (too corporate), "Copilot Score" (trademark minefield), "Dev Score" (too generic), "Prompt Score" (too clinical).
+
+---
+
+### 2. Subtitle: "Your AI fluency, measured"
+
+**Verdict: KEEP IT — with one tweak.**
+
+"Your AI fluency, measured" is strong. It's declarative, confident, and implies you have data backing this up. The period-less ending reads like a tagline, not a sentence.
+
+**One alternative worth considering: "How well do you speak AI?"**
+
+This is more provocative — it frames fluency as a question and creates curiosity. But it's also riskier: some developers will find it condescending. The declarative version is safer and still effective.
+
+**My recommendation: Ship "Your AI fluency, measured."** It's the right balance of confidence and approachability. Save the provocative version for marketing copy on the landing page, not the card itself.
+
+---
+
+### 3. Dimension Labels
+
+The current abbreviated labels (Context, Specificity, Scope, Timing, Correction) are functional but clinical. They read like a rubric, not a profile. For a shareable card, the labels need to feel like personality traits, not test criteria.
+
+**Recommended labels:**
+
+| Current | Recommended | Why |
+|---------|-------------|-----|
+| Context | **Context** | Already good — universally understood |
+| Specificity | **Clarity** | "Specificity" is jargon. "Clarity" is intuitive and positive-sounding |
+| Scope | **Focus** | "Scope" is PM-speak. "Focus" implies discipline — a trait people identify with |
+| Timing | **Timing** | Already good — clean and intuitive |
+| Correction | **Steering** | "Correction" implies you made mistakes. "Steering" implies you guide the AI — agency, not error recovery |
+
+So the five bars become: **Context / Clarity / Focus / Timing / Steering**
+
+These read like a skill profile, not a test rubric. Someone looking at the bars thinks "I'm strong on Context and Steering but weak on Focus" — that's identity-forming language.
+
+**Important constraint:** These labels are ONLY for the share card display. The underlying data model and API should keep the precise names (Context Provision, Request Specificity, etc.). The card is a presentation layer, not a schema change.
+
+---
+
+### 4. Visual Hierarchy: Archetype Above or Below Score?
+
+**Verdict: ARCHETYPE ABOVE THE SCORE.**
+
+Here's why, grounded in sharing psychology:
+
+The sharing impulse follows this sequence:
+1. **Identity hook** — "That's ME" (archetype tagline)
+2. **Validation** — "And I'm good at it" (score number)
+3. **Proof** — "Here's the evidence" (dimension bars)
+
+If you lead with the number, people process it as a test result. If you lead with the archetype, they process it as an identity. **Identity gets shared. Test results get hidden.**
+
+The tweet writes itself: "Apparently I'm a Methodical Achiever with an AI Fluency of 82" — archetype first, score second. Nobody tweets "I got 82, I'm a Methodical Achiever" because the number alone has no emotional anchor.
+
+**Precedent:** Spotify Wrapped leads with "You're a [listener type]" before showing the stats. MBTI profiles lead with the type ("INTJ") before the trait breakdowns. The pattern is consistent: identity label first, quantification second.
+
+**Layout recommendation:**
+```
+CODE INSIGHTS                    [Claude Code] [Cursor]
+
+The Methodical Achiever          <- identity hook (large, gradient text)
+Your AI fluency, measured        <- subtitle (muted)
+
+        82                       <- hero number (massive, centered or left)
+   AI Fluency Score              <- score label (small, beneath number)
+
+Context   ████████████████░░░░   <- fingerprint bars (no numbers)
+Clarity   ██████████████░░░░░░
+Focus     ████████████░░░░░░░░
+Timing    █████████████████░░░
+Steering  ███████████████░░░░░
+
+42 sessions analyzed             <- evidence
+code-insights.app                <- CTA
+```
+
+---
+
+### 5. Evidence Line
+
+**"42 sessions · Claude Code + Cursor" — CHANGE FORMAT.**
+
+The tool names are good (cross-tool is the moat), but "42 sessions" is weak evidence for some users and a flex for others. The problem: if someone has 8 sessions, the card looks thin.
+
+**Recommended: "42 sessions analyzed · Claude Code + Cursor"**
+
+Adding "analyzed" does two things:
+1. It implies depth — these aren't just counted, they're analyzed by AI
+2. It makes small numbers sound more impressive ("8 sessions analyzed" sounds like a deliberate study, "8 sessions" sounds like you just started)
+
+**Alternative considered and rejected:** Date range ("Mar 3-17, 2026"). Too specific, ages poorly when shared, and doesn't add sharing value. Nobody cares when you ran it — they care how much data backs it up.
+
+**Alternative considered and rejected:** Project count ("across 5 projects"). Risks leaking organizational info if someone has a project named after a client.
+
+---
+
+### 6. Hashtag / Meme Potential
+
+**Verdict: NO HASHTAG ON THE CARD. YES to a CTA.**
+
+Hashtags on developer cards are cringe. Developers who post on X will add their own hashtag if they want one. Putting #AIFluency on the card signals "we're trying too hard to go viral" — and developers have finely-tuned cringe detectors.
+
+**But DO add a soft CTA: "What's yours?"**
+
+Place it small, near the bottom, in muted text. It's not a hashtag — it's a question. It invites comparison without being pushy. Spotify Wrapped doesn't put #SpotifyWrapped on the card — users add it themselves. The comparison mechanic should be implicit, not branded.
+
+**For marketing (not on the card):** Establish ONE hashtag for the landing page and social templates: **#AIFluency**. It's ownable, searchable, and directly tied to the score name. Don't use #MyCodeStyle (too generic, already used by CSS communities) or #CodeInsights (too product-specific for viral reach).
+
+**Card footer should read:**
+```
+[logo] code-insights.app          What's yours?          Patterns · Mar 2026
+```
+
+---
+
+### 7. Overall Brand Coherence
+
+**Does "AI Fluency Score" fit the Code Insights brand? YES — strongly.**
+
+| Brand Attribute | How AI Fluency Score Aligns |
+|----------------|----------------------------|
+| **Local-first** | Score is computed locally, shared as a static PNG — no cloud dependency |
+| **Developer-centric** | "Fluency" respects developers as skilled practitioners, not test subjects |
+| **Analytical** | 5-dimension breakdown is rigorous, not gimmicky |
+| **Multi-source** | Tool pills on the card reinforce the cross-tool positioning |
+| **Personal learning** | Fluency implies growth over time — "I'm getting more fluent" |
+
+**Brand risks to monitor:**
+
+1. **Gamification creep.** The score is one step from leaderboards, streaks-as-pressure, and competitive rankings. Hard boundary: this is a personal reflection tool. No comparisons with other users. No "top 10%" claims. The "What's yours?" CTA is safe because it invites peers to self-assess, not to compete.
+
+2. **Score anxiety.** Some developers will see 62 and feel bad. Mitigate by never calling it a "grade" — always "fluency score." Fluency at 62 means "conversational" not "failing." Consider whether the Patterns page should contextualize scores (e.g., "Most developers score 55-75 in their first month").
+
+3. **Legitimacy challenge.** "Who says 82 is good?" The 5-dimension breakdown is your defense — it shows the score isn't arbitrary. The bars without numbers on the card force people to run the tool to see details, which is exactly the PLG mechanic you want.
+
+---
+
+### Summary: Recommended Card Spec
+
+| Element | Recommendation |
+|---------|---------------|
+| **Score name** | AI Fluency Score |
+| **Subtitle** | Your AI fluency, measured |
+| **Bar labels** | Context / Clarity / Focus / Timing / Steering |
+| **Hierarchy** | Archetype ABOVE score |
+| **Evidence** | "{N} sessions analyzed · {tools}" |
+| **Hashtag** | None on card. "What's yours?" as soft CTA |
+| **Brand fit** | Strong alignment. Watch for gamification creep |
+
+The existing Canvas 2D implementation in `share-card-utils.ts` will need layout restructuring to accommodate the new hierarchy (archetype -> score -> bars), but the rendering infrastructure is solid. The tool pills, gradient background, and footer are all reusable as-is.
+
+One final note: the bars-without-numbers mechanic is brilliant. It creates a visual fingerprint that's recognizable but incomplete — the information gap drives people to run the tool. This is the core PLG mechanic of the card. Protect it.
+</teammate-message>
+
+---
+
+i am fine with this. should we add overall stats as well.. like lifetime session count, tools used..
+
+---
+
+<teammate-message teammate_id="ta-design" color="blue">
+{"type":"idle_notification","from":"ta-design","timestamp":"2026-03-19T10:36:41.784Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="cofounder-branding" color="red">
+{"type":"idle_notification","from":"cofounder-branding","timestamp":"2026-03-19T10:36:49.648Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+C is good
+
+---
+
+and i agree with Cofounder - let's call it "AI Fluency Score"
+
+---
+
+<teammate-message teammate_id="ux-designer" color="green" summary="Full pixel-precise share card V3 design spec">
+# Share Card V3: "Score Card + Fingerprint" — Full Design Spec
+
+## Design Philosophy
+
+The current V1/V2 cards are **information dashboards** — lots of small stats competing for attention. The new card flips the hierarchy: **one hero number, one visual fingerprint, one identity statement**. Everything else is supporting evidence. Think credit score report meets Spotify Wrapped meets developer badge.
+
+The key insight: on social media, you have ~1 second. The viewer should immediately grasp "this person scored 82 on AI fluency" and see a unique visual shape. Details come second.
+
+---
+
+## ASCII Wireframe (1200x630, true proportions)
+
+```
++============================================================================+
+|  [SHARE CARD V3: Score Card + Fingerprint]            [STATUS: draft]      |
+|  Context: Exported from Patterns page, shared on social media              |
+|  Breakpoint: Fixed 1200x630 (OG image standard)                           |
++============================================================================+
+
++--------------------------------------------------------------------------- +
+|                                                                    1200px   |
+|  (logo) CODE INSIGHTS                               Mar 2026      y=48     |
+|                                                                             |
+|                                                                             |
+|       "The Methodical Achiever"                                    y=138    |
+|        Your AI fluency, measured                                   y=178    |
+|                                                                             |
+|                                                                             |
+|  +--------------------+          CONTEXT   ████████████████░░░░    y=240    |
+|  |                    |          CLARITY   ██████████████░░░░░░    y=272    |
+|  |        82          |          SCOPE     ████████████████████    y=304    |
+|  |    AI ENGINEER     |          TIMING    ██████████░░░░░░░░░░   y=336    |
+|  |      SCORE         |          FEEDBACK  ████████████████░░░░    y=368    |
+|  |                    |                                                     |
+|  +--------------------+                                                     |
+|                                                                             |
+|         42 sessions                  Claude Code · Cursor          y=440    |
+|                                                                             |
+|  -----------------------------------------------------------------------    |
+|  (logo) code-insights.app                        #MyAIScore        y=580   |
+|         Free & open source                                         y=600   |
+|                                                                             |
++-----------------------------------------------------------------------------+
+              630px height
+```
+
+### Proportional Layout (Zones)
+
+```
+y=0─────────────────── TOP EDGE
+y=48                   Header bar (logo + brand + date)
+y=100                  ─── breathing room ───
+y=138                  Archetype tagline (hero text)
+y=178                  Subtitle
+y=220                  ─── breathing room ───
+y=240─y=400            HERO ZONE: Score circle (left) + Fingerprint bars (right)
+y=420                  ─── breathing room ───
+y=440                  Evidence line (sessions + tools)
+y=480                  ─── breathing room ───
+y=510                  Divider
+y=546─y=600            Footer (brand + CTA + hashtag)
+y=630─────────────────  BOTTOM EDGE
+```
+
+---
+
+## Pixel-Precise Element Specification
+
+### Background
+
+| Property | Value |
+|----------|-------|
+| Base gradient | Linear `(0,0)→(1200,630)`: `#0c0c18` → `#141428` |
+| Glow 1 (top-left) | Radial at `(-60,-60)` r=400, `rgba(99,102,241,0.12)` → transparent |
+| Glow 2 (bottom-right) | Radial at `(1260,690)` r=500, `rgba(168,85,247,0.10)` → transparent |
+| Glow 3 (score accent) | Radial at `(240,320)` r=200, `rgba(167,139,250,0.08)` → transparent |
+
+Rationale: Darker than V1/V2 (`#0c0c18` vs `#0f0f23`) to make the score pop more. Third glow centers on the score circle to create a subtle spotlight effect.
+
+### 1. Header Bar (y=48)
+
+| Element | x | y | Font | Color | Notes |
+|---------|---|---|------|-------|-------|
+| Logo icon | 48 | 48 | — | `#3b82f6` bg | 28x28px, reuse `drawLogo()` |
+| "CODE INSIGHTS" | 86 | 68 | 600 13px, letterSpacing 2px | `#64748b` | Muted — not the star here |
+| Month/year | right-aligned at x=1152 | 68 | 500 14px | `#475569` | Even more muted than V1 |
+
+Design choice: Header is deliberately quieter than V1/V2 (using `#64748b` instead of `#a0a0b8`). The brand should be recognizable but not compete with the score.
+
+### 2. Archetype Identity (y=138)
+
+| Element | x | y | Font | Color | Notes |
+|---------|---|---|------|-------|-------|
+| Tagline | 48 | 138 | **bold 40px** | `#e2e0ff` | Near-white with slight purple tint |
+| Subtitle | 48 | 178 | 400 20px | `#6b6b88` | "Your AI fluency, measured" |
+
+Design choice: Tagline is `#e2e0ff` (not pure white, not purple). This is a "frosted" white with warmth — feels premium. Size reduced from 44px to 40px vs V1 because the score is the real hero, not the tagline.
+
+### 3. Hero Score Circle (y=240, LEFT ZONE)
+
+The score is the single most important element. It occupies the left third.
+
+| Element | Center x | Center y | Size | Notes |
+|---------|----------|----------|------|-------|
+| Outer ring (track) | 200 | 320 | r=90, 8px stroke | `rgba(255,255,255,0.06)` |
+| Score arc (filled) | 200 | 320 | r=90, 8px stroke | Gradient: `#a78bfa` → `#818cf8` |
+| Score number | 200 | 316 | **bold 72px** | `#f1f5f9` |
+| "AI ENGINEER" label | 200 | 354 | 600 13px, letterSpacing 1.5px | `#64748b` |
+| "SCORE" label | 200 | 372 | 600 11px, letterSpacing 2px | `#4a4a62` |
+
+**Score arc rendering:**
+- Arc starts at -90deg (12 o'clock position)
+- Arc sweep = `(score / 100) * 2 * PI`
+- Stroke uses `ctx.createLinearGradient` along the arc from `#a78bfa` to `#818cf8`
+- `lineCap = 'round'` for soft endpoints
+- Track ring drawn first, then score arc on top
+
+**Score color tiers** (the number itself):
+| Score | Number Color | Arc Color Start | Arc Color End |
+|-------|-------------|-----------------|---------------|
+| 80-100 | `#f1f5f9` | `#a78bfa` | `#818cf8` |
+| 60-79 | `#e2e8f0` | `#a78bfa` | `#818cf8` |
+| 40-59 | `#cbd5e1` | `#f59e0b` | `#eab308` |
+| 0-39 | `#94a3b8` | `#64748b` | `#475569` |
+
+Design choice: No red for low scores. This is a share card — people share voluntarily. Low scores get muted gray, not punishing red. The arc shortness already communicates the gap.
+
+### 4. Fingerprint Bars (y=240, RIGHT ZONE)
+
+Five horizontal bars creating a unique visual "shape" per person. This is the card's visual fingerprint — like Spotify's audio bars.
+
+| Property | Value |
+|----------|-------|
+| Bar zone x-start | 420 |
+| Bar zone x-end | 1152 (W - PAD) |
+| Bar max width | 732px (for 100% score) |
+| Bar height | 20px |
+| Bar gap | 12px (center-to-center = 32px) |
+| Bar radius | 10px (full pill) |
+| Track (bg) | `rgba(255,255,255,0.04)` with 1px `rgba(255,255,255,0.06)` border |
+| Label position | Left of bar, right-aligned at x=410 |
+| Label font | 500 13px |
+| Label color | `#6b6b88` |
+
+**Dimension bars (top to bottom):**
+
+| Row | y-center | Label | Data field |
+|-----|----------|-------|------------|
+| 1 | 252 | CONTEXT | `context_provision` |
+| 2 | 284 | CLARITY | `request_specificity` |
+| 3 | 316 | SCOPE | `scope_management` |
+| 4 | 348 | TIMING | `information_timing` |
+| 5 | 380 | FEEDBACK | `correction_quality` |
+
+**Bar fill colors — Rainbow fingerprint approach:**
+
+| Dimension | Fill Color | Rationale |
+|-----------|-----------|-----------|
+| CONTEXT | `#60a5fa` (blue) | Information, knowledge — blue |
+| CLARITY | `#a78bfa` (purple) | Precision, specificity — purple (brand) |
+| SCOPE | `#34d399` (green) | Management, control — green |
+| TIMING | `#fbbf24` (amber) | Time, sequence — warm amber |
+| FEEDBACK | `#f472b6` (pink) | Communication, correction — pink |
+
+Each bar fills to `(score / 100) * BAR_MAX_WIDTH` with its respective color. The rainbow creates a unique "shape" per person — someone strong in context but weak in timing produces a visually distinct pattern from someone balanced across all five.
+
+**Bar rendering details:**
+- Track: full-width pill at `rgba(255,255,255,0.04)`, 1px stroke `rgba(255,255,255,0.06)`
+- Fill: colored pill overlaid, width = `score/100 * 732`
+- Fill has subtle inner glow: apply a lighter version at 20% opacity along the top edge
+- Minimum fill width: 20px (so even a 0 score shows a tiny dot, preventing visual breakage)
+
+### 5. Evidence Line (y=448)
+
+A single centered line providing credibility context.
+
+| Element | Position | Font | Color | Notes |
+|---------|----------|------|-------|-------|
+| Session count | centered | 500 16px | `#64748b` | "42 sessions" |
+| Dot separator | after count | — | `#3a3a52` | " · " |
+| Source tools | after dot | 500 16px | `#64748b` | "Claude Code + Cursor" |
+
+Centered horizontally at x=600. If only 1 source tool, no separator needed. Up to 3 tools joined with " + ".
+
+### 6. Footer (y=510 divider, y=560 content)
+
+| Element | x | y | Font | Color |
+|---------|---|---|------|-------|
+| Divider line | 48→1152 | 510 | 1px | `rgba(255,255,255,0.06)` |
+| Logo icon | 48 | 546 | — | `#3b82f6` bg, 20x20px |
+| "code-insights.app" | 78 | 560 | 400 16px | `#475569` |
+| "Free & open source" | 48 | 584 | 400 13px | `#3a3a52` |
+| "#MyAIScore" | right-aligned 1152 | 560 | 500 14px | `#6366f1` |
+
+### Complete Color Palette
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `bg-deep` | `#0c0c18` | Background gradient start |
+| `bg-mid` | `#141428` | Background gradient end |
+| `text-hero` | `#f1f5f9` | Score number |
+| `text-tagline` | `#e2e0ff` | Archetype name |
+| `text-body` | `#94a3b8` | General body text |
+| `text-label` | `#64748b` | Labels, secondary info |
+| `text-muted` | `#475569` | Footer, tertiary |
+| `text-dim` | `#3a3a52` | Separators, ultra-muted |
+| `accent-purple` | `#a78bfa` | Score arc, brand accent |
+| `accent-indigo` | `#818cf8` | Score arc end |
+| `bar-context` | `#60a5fa` | Context bar (blue) |
+| `bar-clarity` | `#a78bfa` | Clarity bar (purple) |
+| `bar-scope` | `#34d399` | Scope bar (green) |
+| `bar-timing` | `#fbbf24` | Timing bar (amber) |
+| `bar-feedback` | `#f472b6` | Feedback bar (pink) |
+| `track` | `rgba(255,255,255,0.04)` | Bar/ring background |
+| `track-border` | `rgba(255,255,255,0.06)` | Bar/ring border |
+| `glow-indigo` | `rgba(99,102,241,0.12)` | Top-left ambient |
+| `glow-violet` | `rgba(168,85,247,0.10)` | Bottom-right ambient |
+
+---
+
+## Fallback States
+
+### No PQ data (no `dimension_scores`)
+- Score circle shows "—" at 64px bold, muted `#475569`
+- Arc track shown (empty ring), no fill arc
+- All 5 bars render at 0% fill (just the track pills visible — creates a "blank canvas" look)
+- Labels still shown to tease what the card could show
+- Subtitle changes to: "Analyze sessions to unlock your score"
+
+### No archetype tagline
+- Tagline falls back to: "AI Coding Profile"
+- Subtitle falls back to: "Your AI fluency, measured"
+
+### Only 1 source tool
+- Evidence line: "42 sessions · Claude Code" (no "+" needed)
+
+### 0 sessions
+- Score shows "—", all bars empty
+- Evidence line: "Get started at code-insights.app"
+
+### Very low session count (< 5)
+- Score renders normally but evidence line adds qualifier: "5 sessions · Early data"
+
+---
+
+## Bar Design Decision: Rainbow Pill Bars
+
+I recommend **rounded pill bars with per-dimension colors** (the rainbow fingerprint). Here's why:
+
+1. **Uniqueness**: Same-color bars at different fill levels look like a boring progress tracker. Different colors make each dimension visually distinct — the "shape" becomes a true fingerprint.
+
+2. **Scannability**: At thumbnail size (600px), you can't read labels. But you CAN see "blue long, purple long, green max, amber short, pink long" — each person's pattern is visually memorable.
+
+3. **Conversation starter**: "Why is my timing bar so short?" is more engaging than "Why is bar 4 short?" Colors create named landmarks.
+
+4. **Brand alignment**: The 5 colors span the cool-to-warm spectrum, with purple (brand color) in the center. It feels intentional, not random.
+
+**Rejected alternatives:**
+- Thin bars: Too subtle at thumbnail size. Need at least 20px height for the color to register.
+- Segmented/notched bars: Adds visual noise without information. The fill level IS the information.
+- Gradient fills (within each bar): Creates ambiguity about where the bar "ends." Solid fill is clearer.
+- Same-color bars: Loses the fingerprint uniqueness — becomes a generic stats display.
+
+---
+
+## Score Typography
+
+The "82" needs to feel like the hero without being garish.
+
+**Approach: Large number + subtle context**
+- 72px bold for the number — large enough to read at any preview size
+- System-ui bold renders cleanly on all platforms
+- `#f1f5f9` (near-white) against `#0c0c18` background = maximum contrast where it matters
+- NO glow effect on the text itself — glow effects on canvas text look cheap at non-retina resolutions
+- Instead: the ambient radial glow (Glow 3) centered behind the score circle creates a subtle "spotlight" effect that draws the eye without touching the text rendering
+
+**The arc ring does the heavy lifting**: A partially-filled ring communicates score intuitively (like a fitness tracker). The number confirms what the ring suggests. Together they're more effective than either alone.
+
+---
+
+## Breathing Room Strategy
+
+With only ~5 elements on a 1200x630 canvas, empty space is a feature, not a bug.
+
+**Vertical rhythm:**
+- 48px padding on all sides
+- ~50px gaps between major sections (header→tagline, tagline→hero zone, hero zone→evidence)
+- Hero zone (score + bars) is the densest area — 160px tall, centered vertically in a 630px canvas
+- Footer gets generous 120px from bottom edge
+
+**Horizontal split:**
+- Left 1/3 (48-360): Score circle — single focal point, lots of air
+- Right 2/3 (420-1152): Fingerprint bars — denser but structured by the 5-row rhythm
+- The asymmetric split avoids the "centered everything" feel of generic cards
+
+**What fills the "empty" space:**
+- The background glows (3 radial gradients) add depth and warmth
+- The score arc ring has visual weight despite being just a stroke
+- The color variety of the 5 bars creates visual richness
+- The contrast between sparse-left and dense-right creates visual interest
+
+---
+
+## Interface Update
+
+```typescript
+export interface ShareCardProps {
+  tagline: string;                      // "The Methodical Achiever"
+  taglineSubtitle?: string;             // "Your AI fluency, measured"
+  totalSessions: number;
+  sourceTools: string[];
+  currentWeek: string;
+  // V3: Score Card + Fingerprint
+  aiEngineerScore?: number;             // 0-100 composite PQ score
+  dimensionScores?: {
+    context_provision: number;           // 0-100
+    request_specificity: number;         // 0-100
+    scope_management: number;            // 0-100
+    information_timing: number;          // 0-100
+    correction_quality: number;          // 0-100
+  };
+}
+```
+
+Removed from V1/V2: `streak`, `characterDistribution`, `outcomeDistribution`, `effectivePatterns`, `promptClarityScore`. The new card is focused — identity + score + fingerprint + evidence. No stat boxes, no character bars, no milestone pills.
+
+---
+
+## Visual Hierarchy Summary (eye path)
+
+```
+1. Score number "82" ← largest text, highest contrast, center-left
+2. Rainbow bars ← unique color pattern draws eye right
+3. Tagline "The Methodical Achiever" ← identity statement, second-largest text
+4. Arc ring ← reinforces score meaning (how full is it?)
+5. Evidence line ← credibility ("42 sessions")
+6. Footer/brand ← attribution, CTA
+```
+
+This eye path works at both full-size (1200px) and thumbnail (600px). At thumbnail, you see: big number + colorful bars + purple text = enough to be intrigued.
+
+---
+
+Ready to implement once approved. The drawing function maps directly from this spec — every x/y/font/color is pinned down.
+</teammate-message>
+
+<teammate-message teammate_id="ux-designer" color="green">
+{"type":"idle_notification","from":"ux-designer","timestamp":"2026-03-19T10:37:59.394Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ux-designer" color="green" summary="Spec already delivered, awaiting review">
+Already sent — the full pixel-precise spec was delivered in my previous message. It covers all 7 deliverables: ASCII wireframe, pixel positions, color palette, bar design (rainbow pill bars), score typography, fallback states, and breathing room strategy. Ready for your review and synthesis.
+</teammate-message>
+
+<teammate-message teammate_id="ux-designer" color="green">
+{"type":"idle_notification","from":"ux-designer","timestamp":"2026-03-19T10:38:09.024Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+Rather than Steering, can we call orchestration?
+
+---
+
+instead of tool names, can we download and store the tool icons in our codebase and use them.. also icons for sessions count and tokens count.. to make it more visually appealing. even the sections/categories with charts
+
+---
+
+and the hero logo behind AI Fluency Score
+
+---
+
+<teammate-message teammate_id="icon-researcher" color="yellow" summary="Icon research complete — Lucide already in project">
+## Icon Research Complete ✓
+
+**Library:** Lucide React (v0.475.0) is already a dependency in the dashboard. This is perfect — it's an MIT-licensed icon library with extensive coverage, monochrome outline style, and works great at small sizes.
+
+### Dimension Labels (5)
+- **Context** → `BookOpen` (open book) — metaphor for information/knowledge
+- **Clarity** → `Target` (concentric circles) — precision/specificity
+- **Focus** → `Eye` (eyeball) — direct visual metaphor for scope/attention
+- **Timing** → `Clock` (analog clock) — information timing
+- **Orchestration** → `GitBranch` (branching paths) — workflow coordination
+
+### Stats (2)
+- **Sessions** → `BarChart3` (bar chart variant) — visual representation
+- **Tokens** → `Zap` (lightning bolt) — energy/power usage metaphor
+
+### Code Insights Logo
+Already implemented in `dashboard/src/lib/share-card-utils.ts` lines 118-145 — blue rounded rect with white horizontal lines. Excellent work.
+
+### SVG Path Data Extraction
+
+**How it works:**
+All Lucide icons are stored as SVG element definitions in JavaScript. Example (`target.js`):
+```javascript
+const __iconNode = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["circle", { cx: "12", cy: "12", r: "6", key: "1vlfrh" }],
+  ["circle", { cx: "12", cy: "12", r: "2", key: "1c9p78" }]
+];
+```
+
+**For Canvas 2D rendering:**
+1. Import the icon module to get `__iconNode` array
+2. Convert SVG elements to canvas `Path2D` objects (circles via `arc()`, paths via `Path2D(svgString)`)
+3. Scale/translate to desired canvas coordinates
+4. Stroke with your color
+
+**Lucide provides a base 24×24 viewBox**, so math is simple: `canvasX = baseX * (canvasSize / 24)`.
+
+### Tool Logos — Separate Treatment Recommended
+
+Brand logos (Claude, Cursor, GitHub, OpenAI) should **not** be represented as generic Lucide icons. Two options:
+
+**Option A (Recommended):** Simplified monochrome silhouettes
+- Claude → "C" letterform or abstract wave
+- Cursor → Cursor arrow shape
+- GitHub → Octocat silhouette
+- OpenAI → "O" circle or wavelength pattern
+- VS Code → "V" or code-bracket shape
+
+Keep them minimal (20×20px), outline only, matching Lucide's visual weight.
+
+**Option B:** Skip tool logos on the canvas entirely
+- Use only source tool pill labels at top (already implemented)
+- Dedicates canvas space to more important data
+
+### Recommendation
+**Go with Option A** — it maintains visual uniformity while giving tool representation. Create 5 simple SVG path definitions (~2-4 simple shapes each) and render them as Canvas paths alongside Lucide icons.
+
+### Next Steps
+Ready to:
+1. Create a utility module (`icon-utils.ts`) with Canvas renderers for each icon
+2. Define tool logo SVG paths
+3. Integrate into the share card drawing function
+
+Should I proceed with implementation?
+</teammate-message>
+
+<teammate-message teammate_id="icon-researcher" color="yellow">
+{"type":"idle_notification","from":"icon-researcher","timestamp":"2026-03-19T10:49:29.957Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+I added icons to @../code-insights/icons/ folder. take a look and see if they will work?
+
+---
+
+1. Use as-is in small circles - as these are not ours.. they are owned by respective companies
+2. Use GithubCopilot for both. Ensure it is not shown 2 times if both are used
+3. Google logo is for Google Antigravity - An IDE similar to Cursor, which we are yet to import/sync in our tool
+4. Full colors will be better.. as mentioned in point 1
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The user initially requested implementation of the Share Card V2 Content-Dense Redesign (`docs/plans/share-card-v2-content-dense.md`) via `/start-feature`. After the V2 was implemented (PR #211) and code-reviewed, the user pivoted — feeling V2 was "still big and feels vague... not concrete or actionable or even increase eagerness in people to use the app to know their style." The intent shifted to designing a dramatically simpler V3 "Score Card + Fingerprint" share card that creates viral "what's yours?" energy. The user drove multiple design decisions through the brainstorming process, ultimately arriving at a comprehensive V3 spec that replaces V2 entirely.
+
+2. Key Technical Concepts:
+   - **Canvas 2D rendering** — share card is a 1200×630 PNG drawn via HTML Canvas API (not HTML/CSS)
+   - **PQ Dimension Scores** — 5 prompt quality dimensions (context_provision, request_specificity, scope_management, information_timing, correction_quality) scored 0-100
+   - **AI Fluency Score** — composite grand average of 5 PQ dimensions, the hero metric
+   - **Fingerprint bars** — 5 rainbow-colored horizontal bars showing dimension scores WITHOUT numbers (PLG conversion mechanic)
+   - **Score circle with arc ring** — circular progress indicator showing score fill
+   - **Hero watermark** — large low-opacity Code Insights logo behind the score circle
+   - **4-week rolling scoring window** — aggregation across last 4 ISO weeks for stability
+   - **Lifetime session count** — all-time sessions for credibility
+   - **Token count** — total tokens in scoring window for volume signal
+   - **Lucide icons** — already in project as `lucide-react` v0.475.0, SVG paths extractable for Canvas rendering
+   - **Tool logo deduplication** — `copilot` and `copilot-cli` share one GitHub Copilot icon
+   - **Git worktree** — feature development isolated at `../code-insights-share-card-v2-content-dense/`
+   - **Triple-layer code review** — TA Insider + Outsider + Wild Card → TA Synthesis
+   - **`/start-feature` ceremony** — PM → TA (skipped) → Dev → Review workflow
+
+3. Files and Code Sections:
+   - **`docs/plans/share-card-v3-score-card.md`** (NEW — the V3 design spec)
+     - Created and iteratively updated throughout the brainstorming process
+     - Contains pixel-precise layout, color palette, icon system, data architecture, fallback states
+     - This is the authoritative spec for V3 implementation
+     - Key interface:
+     ```typescript
+     export interface PQDimensionScores {
+       overall: number;
+       context_provision: number;
+       request_specificity: number;
+       scope_management: number;
+       information_timing: number;
+       correction_quality: number;
+     }
+     
+     export interface ShareCardProps {
+       tagline: string;
+       dimensionScores: PQDimensionScores | null;
+       totalSessions: number;
+       totalTokens: number;
+       lifetimeSessions: number;
+       sourceTools: string[];
+       currentWeek: string;
+     }
+     ```
+   
+   - **`docs/plans/share-card-v2-content-dense.md`** (existing V2 plan — being superseded by V3)
+     - Original plan that was implemented in PR #211
+     - V3 replaces this design direction entirely
+
+   - **`server/src/routes/shared-aggregation.ts`** (to be modified)
+     - Currently has `computePQAverageScore()` that computes per-dimension averages internally but only returns grand average
+     - Needs to become `computePQScores()` returning full `PQDimensionScores | null`
+     - Also needs: lifetime session count query, token sum query, 4-week window support
+
+   - **`dashboard/src/lib/share-card-utils.ts`** (to be rewritten)
+     - Currently has V2 layout with 6 sections (header, tagline+subtitle, stat boxes, character bar, strengths pills, footer)
+     - V3 rewrites to: header, archetype tagline (no subtitle), hero score circle with watermark, 5 rainbow fingerprint bars with icons, two evidence lines with icons + tool logos, footer with "What's yours?"
+     - Dead code to delete: `CHARACTER_COLORS`, `CHARACTER_LABELS`, `abbreviateCount()`, stat boxes, character bar, strengths pills, `computeMilestones()`, `MilestonePill`
+
+   - **`dashboard/src/lib/share-card-icons.ts`** (NEW — to be created)
+     - Lucide icon SVG path definitions for Canvas 2D rendering
+     - `drawIcon(ctx, iconDef, x, y, size, color)` utility
+     - Icons: BookOpen (Context), Target (Clarity), Eye (Focus), Clock (Timing), GitBranch (Orchestration), BarChart3 (Sessions), Zap (Tokens)
+
+   - **`dashboard/src/lib/api.ts`** (to be modified)
+     - `FacetAggregation.pqAverageScore` → `pqScores: PQDimensionScores | null`
+     - Add `lifetimeSessions`, `totalTokens`
+
+   - **`dashboard/src/components/patterns/WeekAtAGlanceStrip.tsx`** (to be modified)
+     - Update prop threading — remove streak, characterDistribution, promptClarityScore, effectivePatterns; add dimensionScores
+
+   - **`dashboard/src/pages/PatternsPage.tsx`** (to be modified)
+     - Update aggregation references, pass lifetime/tokens
+
+   - **`icons/`** directory (already exists at repo root)
+     - `Claude_Code.svg` — SVG, orange spark (Anthropic mark)
+     - `cursor.png` — PNG 1024×1024, 3D hexagon on black bg
+     - `codex.png` — PNG 816×816, blue cloud terminal
+     - `github-copilot-icon.png` — PNG 512×512, pilot face
+     - `Google-Antigravity-Logo-Icon-PNG.png` — PNG 974×859, rainbow A (future source tool)
+
+   - **PR #211** on branch `feature/share-card-v2-content-dense`
+     - 4 commits: server PQ averaging, dashboard V2 rewrite, prop threading, rounding fix
+     - Strategy: amend this PR with V3 (force-push), not create a new PR
+     - Currently passed code review but user pivoted before merge
+
+4. Errors and fixes:
+   - **Missing visual verification in PR**: Pre-review gate caught that PR #211 had no screenshot. Dev agent was sent back to add visual evidence. Dev eventually added a screenshot comment to the PR.
+   - **Rounding fix not applied**: After code review identified the stacked bar rounding gap as FIX NOW, dev agent initially did visual verification but forgot the rounding fix. Had to send a second explicit message. Dev then applied fix in commit 2379603 (last segment fills remainder: `(PAD + CONTENT_W) - segX`).
+   - **Dev agent couldn't restart server from worktree**: The running server at port 7890 was from the main repo, not the worktree. Couldn't do proper visual verification without killing user's server. Proceeded with code review noting visual check should be manual.
+   - **Cofounder agent idle without response**: First cofounder spawn went idle without delivering analysis. Had to send a follow-up message to get the response.
+
+5. Problem Solving:
+   - **V2 too dense/vague**: Solved by pivoting to V3 "Score Card + Fingerprint" — single hero metric, visual fingerprint, identity statement. Dramatically simpler.
+   - **Score comparison mechanic**: Cofounder analysis showed single number > 5-bar breakdown for viral sharing. Hybrid approach (big number + bars without numbers) creates both comparison energy AND visual uniqueness.
+   - **"Prompt Clarity" too narrow**: User pointed out they're doing more than prompting (agents, orchestrations, guardrails). Renamed to "AI Fluency Score" with "AI Engineer Score" considered and rejected (job-title debate risk).
+   - **Dimension label "Correction" too negative**: Evolved from "Correction" → "Steering" (cofounder) → "Orchestration" (user's final choice) — implies guiding AI workflow, not fixing errors.
+   - **Subtitle redundancy**: User identified "Your AI fluency, measured" adds no value when "AI FLUENCY SCORE" is already the label. Removed.
+   - **Sessions alone don't show volume**: User suggested adding token count — "1.2M tokens" is a stronger credibility signal than session count alone.
+   - **Icon uniformity**: User insisted all icons be same style/size. Solution: Lucide icons (already in project) for generic icons, official brand logos for tools — rendered as small 18×18 circles.
+
+6. All user messages:
+   - "Implement @docs/plans/share-card-v2-content-dense.md" (then interrupted and invoked /start-feature)
+   - "/start-feature @docs/plans/share-card-v2-content-dense.md"
+   - "we must compact it further. this is still big and feels vague.. not conrete or actionable or even increase eagerness in people to use the app to know their style"
+   - "1. Score card" (choosing option 1 — score-led design)
+   - "B feels right.. but, Lets not put just 1 prompt clarity score.. put the average of each category as bar chart? What might work, ask cofounder agent"
+   - "yes go with A with sub-text or description using the term AI Fluency" (approving "AI Engineer Score" with fluency subtitle)
+   - "Why are you calling it Prompt Clarity? Why not just AI Engineer Score? and add tagline or sub text for specifying it is prompt skills score, because it is not just prompting, we are setting rules, skills, agents, orchestrations, guardrails, validations.. so many thing.."
+   - "i am fine with this. should we add overall stats as well.. like lifetime session count, tools used.."
+   - "C is good" (choosing two-line evidence format)
+   - "ask @devtools-cofounder to come up with proper branding for this.. and then ask @technical-architect and @ux-engineer to design"
+   - "should it rely on only 1 week's metric? or should we do it at a higher level as in using last 4 weeks data?"
+   - "i am fine with this" (approving cofounder branding recommendations)
+   - "Rather than Steering, can we call orchestration?"
+   - "Your AI fluency, measured - i don't see repeating this will add value.."
+   - "instead of just sessions, can we capture tokens count as well.. that will give the volume information.."
+   - "and the hero logo behind AI Fluency Score"
+   - "All icons should be same style, size and uniform.. find such icons"
+   - "We can get the logo from their official sites and download them to use it.."
+   - "I added icons to @../code-insights/icons/ folder. take a look and see if they will work?"
+   - "1. Use as-is in small circles - as these are not ours.. they are owned by respective companies; 2. Use GithubCopilot for both. Ensure it is not shown 2 times if both are used; 3. Google logo is for Google Antigravity - An IDE similar to Cursor, which we are yet to import/sync in our tool; 4. Full colors will be better.. as mentioned in point 1"
+
+7. Pending Tasks:
+   - **Spec review**: The V3 spec at `docs/plans/share-card-v3-score-card.md` needs user review/approval before implementation
+   - **Implementation planning**: Once spec is approved, invoke writing-plans skill to create implementation plan
+   - **V3 Implementation**: Amend PR #211 with V3 code (force-push to branch)
+   - **PR #211 not merged**: V2 code exists but will be replaced with V3
+   - **Team cleanup**: Team `feat-share-card-v2-content-dense` still active with agents (pm-agent, dev-agent, ta-reviewer, outsider-reviewer, wildcard-reviewer, ta-synthesizer, cofounder, cofounder-branding, ta-design, ux-designer, icon-researcher)
+   - **Worktree active**: `/Users/melagiri/Workspace/codeInsights/code-insights-share-card-v2-content-dense/` exists with V2 code
+
+8. Current Work:
+   The brainstorming phase for the V3 share card design is nearing completion. The design spec at `docs/plans/share-card-v3-score-card.md` has been iteratively built incorporating inputs from three parallel agents (cofounder-branding, technical-architect, ux-engineer) and multiple user decisions. The last actions were:
+   - Updated the spec with icon decisions: full-color official tool logos in small circles, Lucide icons for dimensions/stats, GitHub Copilot icon shared for both copilot source tools (deduplicated), Google Antigravity noted as future source tool
+   - Updated the files-to-change section to reference `icons/` directory
+   - Asked the user: "Want to review the full spec before we move to implementation planning? Or any other changes?"
+
+   The V3 spec covers: layout (1200×630), pixel positions, color palette, icon system (Lucide + official brand marks), data architecture (PQDimensionScores type, 4-week rolling window, lifetime count, token count), hero score circle with arc ring and watermark, 5 rainbow fingerprint bars, two evidence lines, fallback states, files to change, and PR strategy (amend #211).
+
+9. Optional Next Step:
+   The brainstorming skill's process flow calls for user review of the spec, then spec review loop (dispatch spec-document-reviewer subagent), then invoke writing-plans skill for implementation planning. The last assistant message asked: "Want to review the full spec before we move to implementation planning? Or any other changes?" — awaiting user confirmation to proceed.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/melagiri/.claude/projects/-Users-melagiri-Workspace-codeInsights-code-insights/93fc46d9-8e82-41f1-8e84-083ce0a3668e.jsonl
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: @docs/plans/share-card-v3-score-card.md
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `@docs/plans/share-card-v3-score-card.md`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from @docs/plans/share-card-v3-score-card.md):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: @docs/plans/share-card-v3-score-card.md"
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: @docs/plans/share-card-v3-score-card.md
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Verify feature and create PR' (blockedBy: above) -- includes pre-PR verification protocol
+   - Task: 'Review: Triple-layer code review (loops until 0 FIX NOW)' (blockedBy: above)
+   - Task: 'Post final review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+   IMPORTANT — Classify the feature scope for Dev's verification protocol:
+   - Does it touch UI/visual rendering? → Tag: VISUAL
+   - Does it produce output artifacts (images, PDFs, exports)? → Tag: OUTPUT_ARTIFACT
+   - Does it add new npm dependencies? → Tag: NEW_DEPS
+   - Does it change API endpoints? → Tag: API_CHANGE
+   Include these tags in the GitHub Issue so Dev knows which verification tiers apply.
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically.
+   - When Dev creates a PR, message the orchestrator: 'REVIEW_REQUEST: PR #XX is ready for /start-review'
+   - The orchestrator will run /start-review which loops until 0 FIX NOW items
+   - If review finds FIX NOW items, the orchestrator sends them to Dev. Dev fixes and pushes. Review re-runs automatically.
+   - You do NOT need to request additional review rounds — the loop is built into /start-review.
+
+7. REPORT: When review converges (0 FIX NOW items) and final summary is posted, message the orchestrator: 'PR #XX for @docs/plans/share-card-v3-score-card.md is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- PRE-PR GATE (MANDATORY): Before any PR is created, Dev must complete the full verification protocol (see Dev agent instructions). GitHub Actions costs money — failed CI runs are wasted spend.",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: @docs/plans/share-card-v3-score-card.md. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: @docs/plans/share-card-v3-score-card.md. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: @docs/plans/share-card-v3-score-card.md. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed.
+
+## Pre-PR Verification Protocol (MANDATORY)
+
+Before creating any PR, you MUST complete ALL applicable verification tiers. Check the GitHub Issue for scope tags (VISUAL, OUTPUT_ARTIFACT, NEW_DEPS, API_CHANGE) to know which tiers apply.
+
+### Tier 1: Build & Test (ALWAYS required)
+1. Run `pnpm build` from the worktree repo root — must pass with zero errors
+2. Run `pnpm test` from cli/ — must pass
+3. If build or tests fail, fix before proceeding. Do NOT create the PR.
+
+### Tier 2: New Dependency Audit (required if NEW_DEPS tag)
+If you added any new npm dependencies:
+1. Search the library's GitHub issues for known limitations and common gotchas
+2. Read the library's README for caveats, browser compatibility, and unsupported features
+3. Specifically check for: CSS compatibility, serialization constraints, SSR issues, bundle size impact
+4. Document findings in the PR description under '## Dependency Audit'
+5. If you find high-risk limitations, verify your code handles them correctly
+
+### Tier 3: Functional Verification (required if VISUAL or API_CHANGE tag)
+You must verify the feature works by running it:
+
+**Server access:**
+1. First, check if the dev server is already running: `curl -s -o /dev/null -w '%{http_code}' http://localhost:7890/api/health` (or just `http://localhost:7890`)
+2. If the server responds (200), use the existing server — do NOT start a new one
+3. If the server is NOT running, start one:
+   ```bash
+   cd <worktree-path> && node cli/dist/index.js dashboard --no-sync &
+   DEV_SERVER_PID=$!
+   ```
+4. CRITICAL: If you started a server, you MUST kill it when done: `kill $DEV_SERVER_PID`
+5. NEVER leave orphaned server processes running
+
+**For UI features (VISUAL tag):**
+- Navigate to the affected page using agent-browser tools
+- Take a screenshot showing the feature renders correctly
+- Attach the screenshot to the PR description under '## Verification'
+
+**For output-producing features (OUTPUT_ARTIFACT tag):**
+- Trigger the feature (e.g., click download, run export)
+- Verify the output file exists and is non-empty
+- If it's a visual artifact (image, PDF), take a screenshot of the output
+- Attach evidence to the PR description under '## Verification'
+
+**For API changes (API_CHANGE tag):**
+- curl the new/modified endpoints
+- Verify the response shape matches the TypeScript types
+- Include the curl output in the PR description under '## Verification'
+
+### Tier 4: Cleanup
+- If you started a dev server, confirm it's killed: `kill $DEV_SERVER_PID 2>/dev/null`
+- Verify no orphaned node processes on port 7890: `lsof -ti:7890` (should return nothing, or only the user's existing server)
+
+## PR Description Template
+
+Your PR description MUST include these sections:
+
+```markdown
+## Summary
+[What this PR does]
+
+## Dependency Audit (if NEW_DEPS)
+[Library name]: [Known limitations found, or 'No significant limitations found']
+
+## Verification
+- Build: PASS
+- Tests: PASS
+- [Screenshot of feature rendering] (if VISUAL)
+- [Screenshot/proof of output artifact] (if OUTPUT_ARTIFACT)
+- [curl output] (if API_CHANGE)
+
+## Test plan
+- [ ] [Checklist of what to test]
+```
+
+## During Review Rounds
+
+If the review team sends back FIX NOW items:
+1. Read each item carefully
+2. Implement the fixes in the worktree
+3. Re-run applicable verification tiers (at minimum Tier 1)
+4. If fixes are visual, re-capture screenshots
+5. Push the fix commits to the PR branch
+6. Message pm-agent that fixes are pushed
+
+This is non-negotiable — thorough pre-PR verification prevents wasted review cycles and catches bugs that static code review cannot.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM sends a REVIEW_REQUEST -> run `/start-review` on the PR number
+4. **Review loop management**:
+   - `/start-review` handles the loop internally (runs rounds until 0 FIX NOW items)
+   - If review finds FIX NOW items, relay them to the dev-agent via SendMessage
+   - After dev pushes fixes, `/start-review` re-runs targeted reviewers automatically
+   - If review hits max rounds (4) without converging, escalate to user
+5. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 6: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+- **Dev must complete pre-PR verification** — build, test, functional check, dependency audit (as applicable)
+- **Review loops automatically** — orchestrator runs /start-review which iterates until convergence
+- **No orphaned processes** — dev agent must kill any server it starts
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T12:03:16.706Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for V3 share card implementation, Issue #212"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T12:03:28.321Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:05:48.614Z","idleReason":"interrupted"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:05:48.783Z","idleReason":"interrupted"}
+</teammate-message>
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+I forgot to merge v2 changes. I have now merged them.. Update the Github issues old ones.. and then restart this v3 implementation by starting from scratch after studying latest implementation from latest master pull from origin
+
+---
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"dev-agent has shut down. 1 task(s) were unassigned: #2 \"Dev: Read handoff and design docs, prepare questions\". Use TaskList to check availability and TaskUpdate with owner to reassign them to idle teammates."}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"shutdown_approved","requestId":"shutdown-1773922088495@dev-agent","from":"dev-agent","timestamp":"2026-03-19T12:08:14.384Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:20:52.780Z","idleReason":"available","summary":"[to pm-agent] PR #213 ready for review"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:21:11.155Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T12:21:13.058Z","idleReason":"available","summary":"[to orchestrator] REVIEW_REQUEST: PR #213 ready for /start-review"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:21:16.184Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T12:21:17.099Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:21:21.665Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="Phase 1 insider review of PR #213">
+## TA Review (Phase 1 - Insider): Share Card V3 — AI Fluency Score + Fingerprint Bars — Round 1
+
+### Data Contract Impact
+
+- [x] **Types aligned across server and dashboard** — `PQDimensionScores` interface is defined identically in both `server/src/routes/shared-aggregation.ts` and `dashboard/src/lib/api.ts` (6 fields: overall + 5 dimensions). No CLI types touched — correct, since this is display-only.
+- [x] **SQLite schema unchanged** — no migration needed. New `lifetimeSessions` and `totalTokens` are computed at query time from existing columns (`total_input_tokens`, `total_output_tokens`).
+- [x] **CLI binary name** — not applicable (no CLI changes).
+- [x] **No breaking changes to existing SQLite data** — reads existing columns only.
+
+**API contract change:** `FacetAggregation.pqAverageScore` (number | null) replaced by `pqScores` (PQDimensionScores | null) + `lifetimeSessions` (number) + `totalTokens` (number). This is a **breaking API change**, but acceptable because:
+1. V2 share card was just merged (PR #211), no external consumers exist
+2. The only consumers are `PatternsPage.tsx` and `WeekAtAGlanceStrip.tsx`, both updated in this PR
+3. `reflect.ts` and `facets.ts` consume `getAggregatedData()` but don't destructure `pqAverageScore` — they pass the full object through, so the rename is safe
+
+**Verified:** No other dashboard files reference `pqAverageScore` (grep confirms only `api.ts` and `PatternsPage.tsx` on master, both updated in diff).
+
+### Test Coverage (TDD Domain Verification)
+
+- [ ] `server/src/routes/shared-aggregation.ts` change — **existing tests don't assert on `pqAverageScore`/`pqScores` directly** (confirmed via grep). The rename won't break tests, but there are **no new tests for `computePQScores`** returning the per-dimension breakdown or for the new `lifetimeSessions`/`totalTokens` queries. This is a gap — see FIX NOW #2.
+- [x] Dashboard changes — SKIP domain (dashboard, UI rendering)
+- [x] No parser/normalizer/migration changes
+
+### Pattern Consistency
+
+- [x] SQLite queries use prepared statements (lifetime count + token sum queries both use `db.prepare().get()`)
+- [x] `buildWhereClause('all', project, source)` pattern reused correctly for lifetime count (matches existing streak query pattern)
+- [x] Canvas 2D rendering pattern matches existing `drawShareCard` approach — ephemeral canvas, no DOM dependency
+- [x] Tool icon loading follows async pre-load pattern (Image onload/onerror with Promise)
+- [x] `drawIcon()` uses `ctx.save()/restore()` sandboxing — correct Canvas practice
+- [x] `deduplicateToolsForIcons()` correctly normalizes `copilot-cli` → `copilot` (matches provider knowledge)
+
+### Architecture Alignment
+
+- [x] `PQDimensionScores` fields match the 5 canonical PQ dimensions from the taxonomy (context_provision, request_specificity, scope_management, information_timing, correction_quality)
+- [x] Share card remains a pure Canvas 2D PNG export — no HTML/CSS rendering, no external dependencies
+- [x] Lucide icon paths extracted from lucide-react source — avoids adding lucide as a canvas dependency
+- [x] `downloadShareCard()` is now async — correct for image pre-loading
+- [x] Icon stroke width calculation `2 / scale` maintains consistent visual weight regardless of icon size
+
+### Issues Found
+
+**FIX NOW:**
+
+1. **Duplicate icon assets at repo root** — Icons are added to both `dashboard/public/icons/` (correct — served by Vite) AND `icons/` at repo root (orphan — not served, not referenced by any code). The `icons/` directory at repo root appears to be accidental. Remove `icons/Claude_Code.svg`, `icons/Google-Antigravity-Logo-Icon-PNG.png`, `icons/codex.png`, `icons/cursor.png`, `icons/github-copilot-icon.png`.
+
+2. **Unreferenced asset: `Google-Antigravity-Logo-Icon-PNG.png`** — This file is added to `dashboard/public/icons/` but never referenced in `share-card-icons.ts` or anywhere else. No `TOOL_ICON_URLS` entry maps to it. If it's intended for a future Gemini provider icon, it shouldn't ship in this PR. Remove it from `dashboard/public/icons/` as well.
+
+3. **`computePQScores` returns 0 for dimensions with no data instead of null** — When a dimension has no data points (`counts[k] === 0`), the function returns `0` for that dimension. This means a dimension that has never been scored will show as "0" (bad score) rather than "no data". The fingerprint bar fill calculation uses `score / 100 * BAR_MAX_W` — a 0 score renders as `MIN_FILL_W` (20px), which is visually misleading. Consider returning `null` per dimension, or at minimum document this behavior. The bar drawing code handles `dimensionScores === null` (whole object) but not individual dimension nulls.
+
+**SUGGESTION:**
+
+4. **`lineWidth` in `drawIcon` may render thick at small sizes** — The calculation `ctx.lineWidth = 2 / scale` where `scale = size / 24` means for a 16px icon, `scale = 0.667`, so `lineWidth = 3`. At 14px, `lineWidth = 3.4`. This is counterintuitive — smaller icons get thicker strokes. The intent is to keep 2px visual stroke at any scale, but since the canvas transform already scales the stroke, the `/scale` factor un-scales it. This is actually correct for maintaining consistent visual weight. Marking as note — verify visually that 14px icons don't look too heavy.
+
+5. **No CORS/CSP consideration for `Image()` loading** — The tool logos are loaded via `new Image()` with relative URLs (`/icons/...`). Since the dashboard SPA and server are same-origin (Hono serves both), this works. But if someone ever proxies the dashboard separately, image loading would fail silently (the `onerror` handler gracefully skips). This is fine for now — just noting the assumption.
+
+**NOTE:**
+
+6. **`PQDimensionScores` is defined in two places** — Once in `server/src/routes/shared-aggregation.ts` and once in `dashboard/src/lib/api.ts`. This is the existing pattern for server/dashboard type alignment (dashboard doesn't import from server). Acceptable, but worth noting that these must stay in sync manually. A "keep in sync" comment would be helpful.
+
+7. **`computePQAverageScore` still exists on master** — The diff renames it to `computePQScores` but the old export name may be referenced by tests or other code. Confirmed via grep: no external callers beyond `getAggregatedData()` which is updated in the diff. Safe.
+
+8. **Score text vertical positioning** — The score number is drawn at `y=316` (baseline) while the circle center is at `y=320`. With a 72px font, the text baseline at 316 should center the number visually near 320. This is a design judgment — verify visually.
+
+### Phase 1 Verdict
+
+**[ ] Changes Required**
+
+Three items must be addressed before merge:
+1. Remove duplicate `icons/` directory at repo root (5 files)
+2. Remove unreferenced `Google-Antigravity-Logo-Icon-PNG.png` from `dashboard/public/icons/`
+3. Address the `0 vs null` per-dimension score issue in `computePQScores` — either return null per dimension and handle in the bar renderer, or add a code comment explicitly documenting that 0 means "no data" and adjust `MIN_FILL_W` logic accordingly
+
+Items #1 and #2 are straightforward cleanup. Item #3 is a data correctness concern — a user who has never been scored on `correction_quality` (e.g., no corrections in their sessions) would see a tiny red bar implying "bad at orchestration" rather than "not yet measured."
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-03-19T12:24:18.068Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange" summary="Wild card review of PR #213 complete">
+## Wild Card Review — PR #213: Share Card V3
+
+Independent review, Round 1. I focused on hidden complexity, edge cases, runtime failures, and whether the approach is the simplest that could work.
+
+---
+
+### RED — FIX NOW (blocking)
+
+**1. Duplicate icon assets committed at repo root (`icons/`)**
+
+The diff adds icon files to BOTH `dashboard/public/icons/` (correct — served by Vite) AND `icons/` at the repo root. The root-level copies are never referenced by any code. They're dead weight in the git history — including a 218KB PNG (`Google-Antigravity-Logo-Icon-PNG.png`) and a 354KB PNG (`codex.png`).
+
+Files to remove from the PR:
+- `icons/Claude_Code.svg`
+- `icons/Google-Antigravity-Logo-Icon-PNG.png`
+- `icons/codex.png`
+- `icons/cursor.png`
+- `icons/github-copilot-icon.png`
+
+**2. Unreferenced `Google-Antigravity-Logo-Icon-PNG.png` in `dashboard/public/icons/`**
+
+This file (218KB) is added to the public icons directory but is never referenced in any code — not in `TOOL_ICON_URLS`, not in `share-card-icons.ts`, nowhere. It appears to be a Codex/Google logo that was explored but not wired up. Should be removed before merge. If it's intended for future use, add a comment or don't ship it yet.
+
+---
+
+### YELLOW — SUGGESTION (recommended)
+
+**3. `PQDimensionScores` interface duplicated across server and dashboard**
+
+The identical `PQDimensionScores` interface is defined independently in:
+- `server/src/routes/shared-aggregation.ts`
+- `dashboard/src/lib/api.ts`
+
+If these drift apart, the dashboard will silently misinterpret the API response. This is a known pattern in the codebase (dashboard types mirror server types), but worth noting: consider a shared types package or at minimum a "keep in sync with" comment linking the two definitions.
+
+**4. `ctx.fillStyle = 'none'` in `drawIcon()` is not valid Canvas 2D**
+
+At `share-card-icons.ts` line ~117, `ctx.fillStyle = 'none'` is set. Unlike SVG, Canvas 2D does not recognize `'none'` as a fill style. The assignment silently fails, leaving the previous `fillStyle` active. Currently harmless because no `ctx.fill()` calls follow for icon paths, but it's misleading and fragile — if someone adds a `fill()` call later, it will use whatever fillStyle was previously set. Replace with `ctx.fillStyle = 'transparent'` or simply remove the line since fill is never called.
+
+**5. `lineCap = 'round'` state leak in score arc drawing**
+
+At `share-card-utils.ts` around the score arc block (line ~213 in the feature branch), `ctx.lineCap = 'round'` is set without a matching `save()/restore()`. This means all subsequent strokes (fingerprint bar borders, footer divider) inherit round line caps. Visually this is probably fine, but it's an unintentional state leak. Wrap the score arc drawing in `save()/restore()` for correctness.
+
+**6. Score number vertical centering uses hardcoded Y=316 vs circle center Y=320**
+
+The score number is drawn at `ctx.fillText(String(score), SCORE_CX, 316)` while the circle is centered at `SCORE_CY = 320`. The 4px offset is presumably to visually center the text (since `fillText` baseline is alphabetic), but at 72px font size the actual visual center depends heavily on the system font. On systems where `system-ui` resolves to a font with different ascent metrics (e.g., Segoe UI on Windows vs SF Pro on macOS), the number may appear noticeably off-center. Consider using `ctx.textBaseline = 'middle'` and drawing at `SCORE_CY` instead, which is font-metric-aware.
+
+**7. `deduplicateToolsForIcons` normalizes `copilot-cli` to `copilot`, but `TOOL_ICON_URLS` still has a `copilot-cli` entry**
+
+After deduplication, the tools array will only contain `'copilot'` (never `'copilot-cli'`). The `'copilot-cli': copilotUrl` entry in `TOOL_ICON_URLS` is dead code — it can never be looked up after deduplication runs. Harmless but confusing for future readers.
+
+**8. `computePQScores` defaults missing dimensions to 0 instead of excluding them**
+
+When a dimension has zero data points, it gets score `0` in the returned object. On the dashboard, a dimension with no data will render as a tiny 20px bar (the `MIN_FILL_W` minimum). This could be misleading — a user might think they scored 0 on "correction quality" when really they just had no corrections to evaluate. Consider using `null` for missing dimensions and rendering them differently (e.g., no fill + a "no data" indicator), or document why 0 is the right default.
+
+---
+
+### BLUE — NOTE (informational)
+
+**9. Token query uses `total_input_tokens + total_output_tokens`**
+
+The token sum query at `shared-aggregation.ts` line ~436 sums `total_input_tokens + total_output_tokens`. If either column is NULL for a session (e.g., older sessions before token tracking), the `+` will produce NULL for that row and `SUM` will skip it. This is correct SQLite behavior — just noting it as a silent data exclusion for older sessions.
+
+**10. `loadToolIcons` has no timeout**
+
+If a tool icon URL is unreachable (e.g., Vite dev server hiccup, ad blocker), the `Image()` load will hang until the browser's native timeout fires. The `onerror` fallback handles actual failures, but a slow-loading image could make the share card download feel sluggish. Not blocking since these are local static assets, but worth awareness.
+
+**11. Score color tiers: 60-79 and 80-100 use the same arc colors**
+
+`scoreColors()` returns the same `arcStart`/`arcEnd` values (`#a78bfa`/`#818cf8`) for both the 60-79 and 80+ tiers. The only visual difference between these tiers is the number text brightness (`#e2e8f0` vs `#f1f5f9`). This may be intentional (subtle differentiation), but makes the arc ring look identical for scores of 65 and 95.
+
+**12. Icon file sizes are large for a share card**
+
+`codex.png` is 354KB, `cursor.png` is 232KB, `Google-Antigravity-Logo-Icon-PNG.png` is 218KB. These are rendered at 18x18px circles. Consider optimizing (resize to ~64x64px source, compress) to reduce the static asset footprint. Not blocking since they're local assets, but ~800KB of PNGs for 18px circles is excessive.
+
+---
+
+### Summary
+
+Two blocking issues (dead icon files at repo root + unreferenced Google logo PNG). Several quality suggestions around Canvas state management and type safety. The core architecture — async icon preload, Canvas 2D rendering, server-side dimension score computation — is sound and well-structured.
+</teammate-message>
+
+<teammate-message teammate_id="outsider-reviewer" color="purple" summary="Outsider review of PR #213 complete">
+## Outsider Review — PR #213: Share Card V3
+
+**Reviewer:** Outsider (Round 1)
+**Scope:** Security, best practices, logic bugs, performance, accessibility, library misuse
+
+---
+
+### Findings
+
+#### 🔴 FIX NOW (blocking)
+
+**1. Duplicate `icons/` directory at repo root — unreferenced assets committed**
+
+Files added at both `dashboard/public/icons/` (correct — served by Vite) AND `icons/` at the repo root (incorrect — never referenced, never served). The root `icons/` directory contains exact duplicates of all 5 assets:
+- `icons/Claude_Code.svg`
+- `icons/Google-Antigravity-Logo-Icon-PNG.png`
+- `icons/codex.png`
+- `icons/cursor.png`
+- `icons/github-copilot-icon.png`
+
+These bloat the repo with binary files that serve no purpose. **Remove the entire `icons/` directory at the repo root.**
+
+**2. Unreferenced `Google-Antigravity-Logo-Icon-PNG.png` asset in `dashboard/public/icons/`**
+
+This file is committed in both locations but is never referenced in any code — not in `TOOL_ICON_URLS`, not in any component. It appears to be a Google/Gemini logo placeholder that was added but never wired up. Shipping unreferenced brand assets (especially third-party logos) is unnecessary weight and a potential trademark concern. **Remove it from `dashboard/public/icons/` as well**, or wire it up if it's intended for a source tool.
+
+---
+
+#### 🟡 SUGGESTION (recommended)
+
+**3. `ctx.fillStyle = 'none'` is invalid Canvas 2D API usage** (`share-card-icons.ts:116`)
+
+`'none'` is an SVG/CSS concept, not a valid Canvas 2D fill style. On Canvas, this is silently ignored (since only `ctx.stroke()` is called, never `ctx.fill()`), so it doesn't cause visible bugs today. But it's a latent trap — if anyone adds a `ctx.fill()` call later, it would produce unexpected black fills on some browsers. Change to `ctx.fillStyle = 'transparent'` or simply remove the line since fill is never called.
+
+**4. Variable shadowing: `score` declared twice in `drawShareCard`** (`share-card-utils.ts`)
+
+- Line 181: `const score = props.dimensionScores?.overall ?? null;` (outer scope — hero circle)
+- Line 257: `const score = props.dimensionScores ? ... : 0;` (inner `for` loop — fingerprint bars)
+
+Both are block-scoped so this compiles, but it's confusing. Rename the inner one to `dimScore` or `barScore` for clarity.
+
+**5. `loadToolIcons` silently swallows image load errors** (`share-card-icons.ts:187-189`)
+
+```ts
+img.onerror = () => resolve(); // skip broken icons gracefully
+```
+
+While graceful degradation is good, there's no logging at all. If an icon path is wrong or the server is down, this fails completely silently. Consider adding a `console.warn` for development visibility, similar to the `[pq-monitor]` and `[cot-monitor]` patterns used elsewhere in this codebase.
+
+**6. `computePQScores` defaults missing dimensions to 0 instead of excluding them** (`shared-aggregation.ts:564`)
+
+```ts
+DIMENSION_KEYS.map(k => [k, counts[k] > 0 ? Math.round(sums[k] / counts[k]) : 0])
+```
+
+If a dimension has zero data points, it gets score `0` rather than `null`. This means the fingerprint bars will show a tiny 20px minimum fill for dimensions with no data — potentially misleading. Consider whether `null` per-dimension (with the bar showing empty track only) would be more honest. This is a product decision, but worth flagging.
+
+**7. `ICON_GIT_BRANCH` path data looks incorrect for the "ORCHESTRATION" dimension** (`share-card-icons.ts:60-72`)
+
+The GitBranch icon has a `polylines: ['18 21 6 15']` which would draw a line from (18,21) to (6,15). The actual Lucide `git-branch` icon uses a `path` element `M18 9a3 3 0 1 0 0-6 3 3 0 1 0 0 6Z` etc., not polylines. The hand-extracted path data may not match the actual Lucide icon rendering. Recommend verifying visually against the real Lucide GitBranch icon.
+
+---
+
+#### 🔵 NOTE (informational)
+
+**8. `PQDimensionScores` interface duplicated in server and dashboard**
+
+The interface is defined identically in both `server/src/routes/shared-aggregation.ts` and `dashboard/src/lib/api.ts`. This is consistent with existing patterns in this codebase (e.g., `RateLimitInfo`, `FacetAggregation`) where dashboard types mirror server types. Not a problem, just noting that a shared types package would eliminate this class of drift. Low priority given the project's architecture.
+
+**9. `abbreviateTokens` could produce "0 tokens" for sessions with no token tracking**
+
+If `totalTokens` is 0 (e.g., older sessions before V7 schema), the evidence line will show "0 tokens". This is technically correct but may look odd. The `totalSessions > 0 || dimensionScores` guard on line 303 means this line renders even when there are 0 tokens. Minor visual concern only.
+
+**10. No `aria-label` or alt text considerations for the share card**
+
+The card is a Canvas-rendered PNG export — inherently not accessible. This is fine for a downloadable image, but worth noting that the download button trigger in `WeekAtAGlanceStrip` should have appropriate `aria-label` (which it already does via the button text). No action needed.
+
+**11. `lineCap = 'round'` set in `drawIcon` but persists to subsequent canvas operations**
+
+The `ctx.save()`/`ctx.restore()` pair in `drawIcon` correctly sandboxes this. No issue — just confirming it was checked.
+
+---
+
+### Summary
+
+The core implementation is solid — clean Canvas 2D rendering, proper async image preloading, correct arc math, and good separation of icon definitions from drawing logic. The server-side `computePQScores` refactor is straightforward and the `buildWhereClause('all', ...)` for lifetime sessions correctly inherits project/source scoping while removing the date filter.
+
+**Blocking items:** Remove the duplicate `icons/` directory at repo root and the unreferenced `Google-Antigravity-Logo-Icon-PNG.png`. These are committed binary assets that add repo weight for no reason.
+
+**No security issues found.** Canvas 2D `fillText`/`drawImage` are inherently safe against injection. No DOM manipulation, no `innerHTML`, no user-controlled URLs.
+</teammate-message>
+
+<teammate-message teammate_id="wildcard-reviewer" color="orange">
+{"type":"idle_notification","from":"wildcard-reviewer","timestamp":"2026-03-19T12:25:28.255Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="outsider-reviewer" color="purple">
+{"type":"idle_notification","from":"outsider-reviewer","timestamp":"2026-03-19T12:25:33.124Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-synthesizer" color="pink" summary="PR #213 synthesis posted — 5 FIX NOW items">
+Phase 2 synthesis for PR #213 is complete and posted as a PR comment: https://github.com/melagiri/code-insights/pull/213#issuecomment-4089796701
+
+**Verdict: CHANGES REQUIRED** — 5 FIX NOW items before merge:
+
+1. **Remove duplicate `icons/` at repo root** — 5 orphan files that are correctly placed in `dashboard/public/icons/`
+2. **Remove unreferenced `Google-Antigravity-Logo-Icon-PNG.png`** from `dashboard/public/icons/` — zero code references
+3. **Fix `ctx.fillStyle = 'none'`** in `drawIcon()` — invalid Canvas 2D value, change to `'transparent'` or remove
+4. **Fix `lineCap = 'round'` state leak** in score arc drawing — wrap in `save()`/`restore()`
+5. **Fix `computePQScores` returning 0 for unmeasured dimensions** — should return `null` per-dimension, update type to `number | null`, and handle in bar drawing
+
+3 NOT APPLICABLE findings (outsider/wild card items that were technically incorrect or matched existing patterns). 3 non-blocking SUGGESTIONS at dev's discretion.
+
+Item 5 is the most impactful — a 0-score bar is misleading UX when a dimension was never measured. Requires type change across `shared-aggregation.ts`, `api.ts`, and `share-card-utils.ts`.
+
+Dev agent can proceed with fixes.
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"idle_notification","from":"ta-synthesizer","timestamp":"2026-03-19T12:29:29.724Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:33:06.730Z","idleReason":"available","summary":"[to pm-agent] All 5 review fixes pushed to PR #213"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T12:33:39.213Z","idleReason":"available","summary":"[to orchestrator] PR #213 V3 share card ready for founder merge"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-round2" color="cyan" summary="Round 2 targeted review: all 5 fixes verified, PASS">
+## Round 2 Targeted Review: PR #213
+
+### Fix Verification
+
+**1. Duplicate `icons/` at repo root removed — FIXED**
+The diff contains NO files under a root-level `icons/` directory. All icon files are correctly scoped to `dashboard/public/icons/` only: `Claude_Code.svg`, `codex.png`, `cursor.png`, `github-copilot-icon.png`. Verified by filtering diff headers for non-dashboard paths — only `server/src/routes/shared-aggregation.ts` appears outside dashboard.
+
+**2. `Google-Antigravity-Logo-Icon-PNG.png` removed from `dashboard/public/icons/` — FIXED**
+Grep for "Google-Antigravity" across the entire diff returns zero matches. The file is no longer added anywhere.
+
+**3. `ctx.fillStyle = 'none'` fixed in `share-card-icons.ts` — FIXED**
+The new `share-card-icons.ts` file (lines 127-344 of diff) does NOT contain `fillStyle = 'none'` anywhere. The `drawIcon()` function correctly uses only `ctx.strokeStyle = color` for Lucide outline icons, with no fill operations on icon paths/circles. The function is properly sandboxed with `ctx.save()`/`ctx.restore()` (diff lines 235 and 276).
+
+**4. `lineCap = 'round'` state leak fixed in `share-card-utils.ts` — FIXED**
+The score arc drawing block (around diff line 609-633) is now properly wrapped:
+- `ctx.save()` before setting `lineCap = 'round'` (diff line 609)
+- `ctx.restore()` after `ctx.stroke()` (diff line 633)
+This prevents the round lineCap from leaking into subsequent canvas operations (fingerprint bars, evidence lines, footer).
+
+**5. `computePQScores` returns `null` for unmeasured dimensions — FIXED**
+All three aspects verified:
+- **`shared-aggregation.ts`**: `computePQScores` builds dimension scores via `counts[k] > 0 ? Math.round(sums[k] / counts[k]) : null` (diff line 1125). Dimensions with 0 data points correctly return `null`, not `0`.
+- **`PQDimensionScores` type**: Defined in BOTH `shared-aggregation.ts` (diff lines 1034-1041) and `api.ts` (diff lines 99-106) with each dimension typed as `number | null`. Types are aligned across both files.
+- **`share-card-utils.ts`**: Bar drawing checks `if (dimScore !== null)` before drawing fill (diff line 759). When null, only the empty track is rendered (no fill bar).
+
+### New Issues Introduced
+
+None. The fixes are clean and surgical:
+- No new dependencies added
+- No unrelated code changes
+- Canvas state management follows save/restore best practices consistently
+- Type contracts are aligned across server and dashboard layers
+- Latest commit message confirms these are targeted fixes: "fix: address Round 1 review findings (5 FIX NOW items)"
+
+### Final Verdict: PASS
+
+All 5 FIX NOW items from Round 1 have been properly resolved. No new issues introduced. PR #213 is ready for merge from the architecture perspective.
+</teammate-message>
+
+<teammate-message teammate_id="ta-round2" color="cyan">
+{"type":"idle_notification","from":"ta-round2","timestamp":"2026-03-19T12:37:44.105Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+1. the pixel resolution is still very bad.. the overall card size could be smaller.. 
+2. code-insights app logo is incorrect, should be using @../code-insights/dashboard/public/favicon.svg 
+3. Text alignment isn't uniform for the categories
+4. The session and tools stats can be expanded as we have more space.. Can be made bigger with labels for tools not just icons
+5. Also, add effective patterns as text tags shown with tag background...
+
+---
+
+[Image: source: /Users/melagiri/Downloads/code-insights-ai-fluency.png]
+
+---
+
+[Request interrupted by user]
+
+---
+
+1. the pixel resolution is still very bad.. the overall card size could be smaller.. 
+2. code-insights app logo is incorrect, should be using @../code-insights/dashboard/public/favicon.svg 
+3. Text alignment isn't uniform for the categories
+4. The session and tools stats can be expanded as we have more space.. Can be made bigger with labels for tools not just icons
+5. Also, add effective patterns as text tags shown with tag background...
+6. Instead of "What's yours?" - we could use the place to give away the single command npx @code-insights/cli to know understand AI fluency - kind of callout
+
+---
+
+add my review comments to the gh pr as well.. and then another comment after addressing them
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T12:55:58.206Z","idleReason":"available","summary":"[to pm-agent] All 6 founder refinements done, PR #213 updated"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-03-19T12:56:10.043Z","idleReason":"available","summary":"[to orchestrator] PR #213 ready for founder merge — all refinements done"}
+</teammate-message>
+
+---
+
+things look good from content perspective.. but the size is still too big.. 
+1. i want to half the dimension - both width and length
+2. instead of the word "lifetime", can we use something better? "Total Sessions" or "Overall"? and then subtle mention of current score is based on the 19 sessions in last 4 weeks or something to state the timeline/sample considered for scoring..
+
+---
+
+[Image: source: /Users/melagiri/Downloads/code-insights-ai-fluency (1).png]
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="Round 2 refinements done, PR #213 updated">
+Both founder round-2 refinements are done, pushed (commit 3618c07), and addressed on PR #213.
+
+1. **Export size → 600×315**: Draw canvas stays 2400×1260 internal; a second 600×315 export canvas receives the scaled result via `drawImage`. No coord/font changes needed — purely an export-time scale-down. Gives 4× pixel density relative to output.
+
+2. **Evidence labels**:
+   - Line 1: `Score from N sessions · XK tokens · last 4 weeks`
+   - Line 2: `N total sessions · Claude Code · GitHub Copilot ...`
+
+Build ✓ · Tests ✓ (790 tests). PR #213 ready for review/merge.
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-03-19T14:51:45.995Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+back to the resolution bug.. the worst AI session and experience in last 1 month
+
+---
+
+[Image: source: /Users/melagiri/Downloads/code-insights-ai-fluency (2).png]
+
+---
+
+Much better.. but can we change the colour scheme? this is the standard colours used by every AI generated codebase
+
+---
+
+[Image: source: /Users/melagiri/Downloads/code-insights-ai-fluency (3).png]
+
+---
+
+Go with Option C
+
+---
+
+What do you think?
+
+---
+
+[Image: source: /Users/melagiri/Downloads/code-insights-ai-fluency (5).png]
+
+---
+
+the first point you mentioned.. i agree, all colours look similar. not sure if that is a good thing.. WHat does @"ux-engineer (agent)" have to say about it?
+
+---
+
+<teammate-message teammate_id="ux-reviewer" color="red" summary="Color palette UX assessment with recommended Cosmic Spectrum palette">
+## Share Card Color Palette — UX Assessment
+
+### Verdict: The monochrome similarity HURTS shareability. Recommend spreading the hue range.
+
+**The core problem:** The current palette spans ~40 degrees of hue across 5 bars (~10 degrees per step). At thumbnail size (~200px wide in a social feed), adjacent bars need ~30+ degrees of hue separation to read as distinct. Bars 1-3 (indigo/violet/purple) will merge into a purple blob, destroying the "fingerprint" metaphor — the whole point is that each bar is visually distinct so the *pattern of lengths* creates the memorable shape.
+
+**The brand identity comes from the dark background, the fingerprint metaphor, and the overall composition — not from every bar being purple.**
+
+---
+
+### Recommended Palette: "Cosmic Spectrum"
+
+Anchored in purple/violet but fans out ~160 degrees. Center of gravity stays in the purple family.
+
+| Bar | Dimension | Color | Hex | Hue |
+|-----|-----------|-------|-----|-----|
+| 1 | CONTEXT | Electric cyan | `#22d3ee` | 188° |
+| 2 | CLARITY | Bright indigo | `#818cf8` | 235° |
+| 3 | FOCUS | Vivid violet | `#a855f7` | 271° |
+| 4 | TIMING | Hot fuchsia | `#e040a0` | 325° |
+| 5 | ORCHESTRATION | Warm rose | `#fb7185` | 350° |
+
+**Why this works:**
+
+1. **~30-40 degree gaps between adjacent bars** — distinguishable even at thumbnail size
+2. **Purple core preserved** — bars 2-3 are the original brand zone, palette reads cool-to-warm not rainbow
+3. **All high saturation, similar lightness** — feels cohesive, no bar dominates or recedes
+4. **Skips green and yellow entirely** — avoids generic Tailwind rainbow feel, stays in the premium/tech zone
+5. **Cyan top + rose bottom** creates a visual story across the fingerprint; the gradient itself is memorable
+6. **On dark background (#0c0c18)** all 5 glow with similar intensity
+
+**How the fingerprint reads:** When bar lengths vary, color coding lets the eye instantly parse "the cyan one is long, the violet is short, the rose is medium." That's the shareability moment — someone sees it and thinks "mine would look different." With the current palette, they'd just see "some bars are longer" because color doesn't help differentiate.
+
+---
+
+### Conservative Fallback (if Cosmic feels too far)
+
+Keep bars 2-4 as-is, only shift the endpoints:
+
+| Bar | Dimension | Hex |
+|-----|-----------|-----|
+| 1 | CONTEXT | `#38bdf8` (sky blue) |
+| 2 | CLARITY | `#818cf8` (indigo) |
+| 3 | FOCUS | `#a855f7` (violet — unchanged) |
+| 4 | TIMING | `#d946ef` (fuchsia — unchanged) |
+| 5 | ORCHESTRATION | `#fb7185` (rose) |
+
+Tradeoff: bars 2-3-4 are still somewhat close (~35° gaps), but the blue and rose bookends create enough visual anchoring.
+
+**Strong recommendation: go with the full Cosmic Spectrum.** The fingerprint metaphor demands distinguishability.
+</teammate-message>
+
+<teammate-message teammate_id="ux-reviewer" color="red">
+{"type":"idle_notification","from":"ux-reviewer","timestamp":"2026-03-19T15:15:31.722Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+go with conservative one
+
+---
+
+Merged the PR
+
+---
+
+update all open gh issues as well
+
+---
+
+comment and close if addressed in v3 or superseeded by v3
+
+---
+
+# /release — Automated Release Workflow
+
+**Arguments**: minor
+
+You are executing the release workflow for `@code-insights/cli`. Parse `minor` to extract:
+- **type** (required): `patch`, `minor`, or `major`
+- **description** (optional): A one-liner for the release title
+
+If type is missing or not one of `patch`/`minor`/`major`, ask the user to provide it.
+
+---
+
+## Step 1: Pre-flight Checks
+
+Run ALL of these checks. If any fail, STOP and tell the user what to fix.
+
+```bash
+# Must be on master
+git branch --show-current  # Must output "master"
+
+# Must have clean working tree
+git status --porcelain     # Must be empty
+
+# Pull latest
+git pull origin master
+```
+
+Read the current version from `cli/package.json` (the `"version"` field).
+
+Compute the new version:
+- `patch`: increment the third number (3.6.1 → 3.6.2)
+- `minor`: increment the second number, reset third to 0 (3.6.1 → 3.7.0)
+- `major`: increment the first number, reset second and third to 0 (3.6.1 → 4.0.0)
+
+**Resume detection**: Run `npm view @code-insights/cli version` to get the currently published version. If the version in `package.json` is ALREADY GREATER than the npm version, this is a **resumed release** — skip to Step 6.
+
+---
+
+## Step 2: Analyze Changes
+
+Find the last git tag and analyze what changed:
+
+```bash
+# Find latest tag
+git describe --tags --abbrev=0
+
+# Commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Full diff since last tag
+git diff $(git describe --tags --abbrev=0)..HEAD --stat
+```
+
+Read the full diff and commit messages. Then:
+
+1. **Generate a CHANGELOG entry** in the existing format (see `cli/CHANGELOG.md` for style). Group changes under `### Added`, `### Changed`, `### Fixed`, `### Improved` as appropriate. Match the existing tone — concise but descriptive, with bold lead-ins.
+
+2. **Generate a release title** — a short phrase summarizing the release (e.g., "LLM-Powered Export Page", "PostHog custom domain"). Use the user's description if provided, otherwise derive from the changes.
+
+3. **For minor/major releases**: Assess which docs need updating:
+   - `docs/ROADMAP.md` — if new milestones were completed
+   - `docs/PRODUCT.md` — if product capabilities changed
+   - `docs/VISION.md` — for major releases, if the vision expanded
+   - `README.md` — if user-facing features or setup changed
+
+---
+
+## GATE 1: Review Changelog
+
+**STOP and present to the user:**
+
+```
+Release: vX.Y.Z — {title}
+Type: {patch|minor|major}
+
+Proposed CHANGELOG entry:
+─────────────────────────
+{the generated changelog entry}
+─────────────────────────
+
+Files to modify:
+  - cli/package.json (version bump)
+  - cli/CHANGELOG.md (new entry)
+  {- docs/ROADMAP.md (if applicable)}
+  {- docs/PRODUCT.md (if applicable)}
+  {- docs/VISION.md (if applicable)}
+
+Approve, or tell me what to change?
+```
+
+Wait for user approval. If they provide edits, incorporate them.
+
+---
+
+## Step 3: Apply Version Bump
+
+After approval, make the changes:
+
+1. **`cli/package.json`** — Update the `"version"` field to the new version
+2. **`cli/CHANGELOG.md`** — Prepend the new entry at the top (after the header, before the previous version entry). Format: `## [X.Y.Z] - YYYY-MM-DD`
+3. **Docs** (if approved at Gate 1) — Make the specific updates discussed
+
+---
+
+## Step 4: Build & Test
+
+Run the full build and test suite:
+
+```bash
+# Full workspace build (this is what prepublishOnly does)
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+
+# Run tests
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && pnpm test
+```
+
+**If build fails → STOP.** Show the error. Do not continue.
+**If tests fail → STOP.** Show the error. Do not continue.
+
+---
+
+## GATE 2: Confirm Publish
+
+**STOP and present to the user:**
+
+Show the full `git diff` of all changes made, then:
+
+```
+Build: PASSED
+Tests: PASSED
+
+Ready to:
+  1. Commit changes to master
+  2. Push to origin
+  3. Publish v{X.Y.Z} to npm
+  4. Create GitHub release
+
+Proceed?
+```
+
+Wait for explicit user approval before continuing.
+
+---
+
+## Step 5: Commit & Push
+
+Commit with specific files only (never `git add .`):
+
+```bash
+# Add only the files we changed
+git add cli/package.json cli/CHANGELOG.md
+# Add any docs files that were modified (if applicable)
+# git add docs/ROADMAP.md docs/PRODUCT.md docs/VISION.md README.md
+
+git commit -m "$(cat <<'EOF'
+chore: bump version to vX.Y.Z
+
+{one-line summary of what changed}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+git push origin master
+```
+
+---
+
+## Step 6: Publish to npm
+
+```bash
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && npm publish
+```
+
+The `prepublishOnly` script in `package.json` handles building all packages and copying dashboard/server dist files automatically.
+
+Verify the publish succeeded:
+
+```bash
+npm view @code-insights/cli version
+```
+
+If publish fails, show the error and STOP. The commit is already pushed — tell the user to fix the issue and re-run `/release` (resume detection will skip to this step).
+
+---
+
+## Step 7: GitHub Release
+
+Create the GitHub release using the changelog entry as the body:
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — {release title}" \
+  --notes "$(cat <<'EOF'
+{changelog entry content, formatted for GitHub}
+
+**Full Changelog**: https://github.com/melagiri/code-insights/compare/{previous_tag}...vX.Y.Z
+EOF
+)"
+```
+
+---
+
+## GATE 3: Verify
+
+**STOP and present to the user:**
+
+```
+Release vX.Y.Z complete!
+
+  npm: @code-insights/cli@X.Y.Z ✓
+  GitHub: {release URL}
+  Commit: {commit hash}
+
+Everything look correct?
+```
+
+---
+
+## Step 8: Done
+
+Summarize the release:
+
+```
+Released @code-insights/cli vX.Y.Z
+
+  Changes: {brief summary}
+  npm: https://www.npmjs.com/package/@code-insights/cli
+  GitHub: {release URL}
+  Files modified: {list}
+```
+
+---
+
+## Important Rules
+
+- **NEVER skip the gates** — always pause for user confirmation
+- **NEVER use `git add .` or `git add -A`** — add specific files only
+- **If build or tests fail, STOP** — do not try to fix and continue
+- **Commit message format**: `chore: bump version to vX.Y.Z` (matches existing pattern)
+- **Resume is safe** — if re-run after a partial release, it picks up where it left off
+
+---
+
+you are missing out on readme files everytime. Check what needs to be updated in @README.md and @../README.md
+
+---
+
+approved
+
+---
+
+yes
