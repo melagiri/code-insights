@@ -130,19 +130,19 @@ function abbreviateTokens(n: number): string {
 /** Score color tiers — arc gradient start/end and number color. */
 function scoreColors(score: number | null): { numberColor: string; arcStart: string; arcEnd: string } {
   if (score === null) return { numberColor: '#64748b', arcStart: '#64748b', arcEnd: '#475569' };
-  if (score >= 80) return { numberColor: '#f1f5f9', arcStart: '#a78bfa', arcEnd: '#818cf8' };
-  if (score >= 60) return { numberColor: '#e2e8f0', arcStart: '#a78bfa', arcEnd: '#818cf8' };
+  if (score >= 80) return { numberColor: '#f1f5f9', arcStart: '#6366f1', arcEnd: '#d946ef' };
+  if (score >= 60) return { numberColor: '#e2e8f0', arcStart: '#6366f1', arcEnd: '#a855f7' };
   if (score >= 40) return { numberColor: '#cbd5e1', arcStart: '#f59e0b', arcEnd: '#eab308' };
   return { numberColor: '#94a3b8', arcStart: '#64748b', arcEnd: '#475569' };
 }
 
 // Fingerprint bar definitions — order matches V3 spec
 const FINGERPRINT_BARS = [
-  { label: 'CONTEXT',       field: 'context_provision',   color: '#60a5fa', icon: ICON_BOOK_OPEN,   yCentre: 252 },
-  { label: 'CLARITY',       field: 'request_specificity', color: '#a78bfa', icon: ICON_TARGET,      yCentre: 284 },
-  { label: 'FOCUS',         field: 'scope_management',    color: '#34d399', icon: ICON_EYE,         yCentre: 316 },
-  { label: 'TIMING',        field: 'information_timing',  color: '#fbbf24', icon: ICON_CLOCK,       yCentre: 348 },
-  { label: 'ORCHESTRATION', field: 'correction_quality',  color: '#f472b6', icon: ICON_GIT_BRANCH,  yCentre: 380 },
+  { label: 'CONTEXT',       field: 'context_provision',   color: '#6366f1', icon: ICON_BOOK_OPEN,   yCentre: 252 },
+  { label: 'CLARITY',       field: 'request_specificity', color: '#8b5cf6', icon: ICON_TARGET,      yCentre: 284 },
+  { label: 'FOCUS',         field: 'scope_management',    color: '#a855f7', icon: ICON_EYE,         yCentre: 316 },
+  { label: 'TIMING',        field: 'information_timing',  color: '#d946ef', icon: ICON_CLOCK,       yCentre: 348 },
+  { label: 'ORCHESTRATION', field: 'correction_quality',  color: '#ec4899', icon: ICON_GIT_BRANCH,  yCentre: 380 },
 ] as const;
 
 // Effective pattern pill colors — cycle through these for top 3 patterns
