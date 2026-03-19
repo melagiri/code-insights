@@ -84,7 +84,7 @@ export function computeMilestones(
 
 /**
  * Capture the given DOM element as a JPEG and trigger a browser download.
- * Uses 2x pixel ratio for crisp output (480px → 960px exported — retina-crisp, reasonable file size).
+ * Card is built at 960×560px (native export resolution) — exported at pixelRatio: 1 (no upscaling).
  * JPEG at quality 0.92 compresses gradient-heavy cards 3-5x smaller than PNG.
  *
  * html-to-image cannot capture elements positioned far off-screen (left: -9999px)
@@ -104,9 +104,9 @@ export async function downloadShareCard(element: HTMLElement): Promise<void> {
   let dataUrl: string;
   try {
     dataUrl = await toJpeg(element, {
-      pixelRatio: 2,
-      width: 480,
-      height: 280,
+      pixelRatio: 1,
+      width: 960,
+      height: 560,
       quality: 0.92,
       backgroundColor: '#0f0f23',
     });
