@@ -35,7 +35,7 @@ export interface MilestonePill {
 
 /**
  * Compute milestone pills from session stats.
- * Returns at most 4 pills, priority-ordered.
+ * Returns at most 3 pills, priority-ordered (compact card constraint).
  */
 export function computeMilestones(
   totalSessions: number,
@@ -79,12 +79,12 @@ export function computeMilestones(
     milestones.push({ icon: '✓', label: '85%+ Success', iconColor: '#4ade80' });
   }
 
-  return milestones.slice(0, 4);
+  return milestones.slice(0, 3);
 }
 
 /**
  * Capture the given DOM element as a JPEG and trigger a browser download.
- * Uses 2x pixel ratio for crisp output (552px → 1104px exported — retina-crisp, reasonable file size).
+ * Uses 2x pixel ratio for crisp output (480px → 960px exported — retina-crisp, reasonable file size).
  * JPEG at quality 0.92 compresses gradient-heavy cards 3-5x smaller than PNG.
  *
  * html-to-image cannot capture elements positioned far off-screen (left: -9999px)
@@ -105,8 +105,8 @@ export async function downloadShareCard(element: HTMLElement): Promise<void> {
   try {
     dataUrl = await toJpeg(element, {
       pixelRatio: 2,
-      width: 552,
-      height: 290,
+      width: 480,
+      height: 280,
       quality: 0.92,
       backgroundColor: '#0f0f23',
     });

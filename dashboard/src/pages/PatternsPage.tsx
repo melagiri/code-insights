@@ -198,6 +198,7 @@ export default function PatternsPage() {
   const workingStyleResult = reflectResults?.['working-style'] as Record<string, unknown> | undefined;
 
   const tagline = workingStyleResult?.tagline as string | undefined;
+  const taglineSubtitle = workingStyleResult?.tagline_subtitle as string | undefined;
   const narrative = workingStyleResult?.narrative as string | undefined;
 
   // Derive working style highlights from aggregation data
@@ -349,6 +350,7 @@ export default function PatternsPage() {
       {/* Week hero card — richer summary with stats, character distribution, streak, and outcomes */}
       <WeekAtAGlanceStrip
         tagline={tagline}
+        taglineSubtitle={taglineSubtitle}
         totalSessions={aggregation?.totalSessions ?? 0}
         totalAllSessions={aggregation?.totalAllSessions ?? 0}
         outcomeDistribution={aggregation?.outcomeDistribution ?? {}}

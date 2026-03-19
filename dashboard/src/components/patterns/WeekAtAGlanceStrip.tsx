@@ -15,6 +15,7 @@ import { downloadShareCard } from '@/lib/share-card-utils';
 
 interface WeekAtAGlanceStripProps {
   tagline?: string;
+  taglineSubtitle?: string;
   totalSessions: number;
   totalAllSessions: number;
   outcomeDistribution: Record<string, number>;
@@ -47,6 +48,7 @@ const MAX_CHARACTER_BADGES = 3;
 
 export function WeekAtAGlanceStrip({
   tagline,
+  taglineSubtitle,
   totalSessions,
   totalAllSessions,
   outcomeDistribution,
@@ -241,6 +243,7 @@ export function WeekAtAGlanceStrip({
         <WorkingStyleShareCard
           ref={shareCardRef}
           tagline={displayTagline}
+          taglineSubtitle={taglineSubtitle}
           totalSessions={totalSessions}
           streak={streak ?? 0}
           sourceTools={sourceTools ?? []}
