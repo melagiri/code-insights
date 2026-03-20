@@ -97,6 +97,37 @@ export function deleteInsight(id: string) {
   return request<{ ok: boolean }>(`/insights/${id}`, { method: 'DELETE' });
 }
 
+// ── Search ────────────────────────────────────────────────────────────────────
+
+export interface SearchSessionResult {
+  id: string;
+  title: string;
+  project_name: string;
+  session_character: string | null;
+  started_at: string;
+  match_field: 'title' | 'summary';
+  snippet: string;
+}
+
+export interface SearchInsightResult {
+  id: string;
+  title: string;
+  type: string;
+  project_name: string;
+  session_id: string;
+  created_at: string;
+  snippet: string;
+}
+
+export function fetchSearch(params: { q: string; limit?: number }) {
+  const q = new URLSearchParams();
+  q.set('q', params.q);
+  if (params.limit !== undefined) q.set('limit', String(params.limit));
+  return request<{ sessions: SearchSessionResult[]; insights: SearchInsightResult[] }>(
+    `/search?${q.toString()}`
+  );
+}
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 export function fetchDashboardStats(range: '7d' | '30d' | '90d' | 'all' = '7d') {
