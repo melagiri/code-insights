@@ -361,7 +361,16 @@ function filterFilesToSync(files: string[], syncState: SyncState, force?: boolea
 
   return files.filter((filePath) => {
     const { realPath, sessionFragment } = splitVirtualPath(filePath);
-    const stat = fs.statSync(realPath);
+    let stat: ReturnType<typeof fs.statSync>;
+    try {
+      stat = fs.statSync(realPath);
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`[sync] skipping disappeared file: ${realPath}`);
+        return false;
+      }
+      throw err;
+    }
     const lastModified = stat.mtime.toISOString();
     const fileState = syncState.files[realPath];
 

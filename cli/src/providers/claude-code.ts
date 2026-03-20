@@ -45,7 +45,16 @@ function discoverJsonlFiles(baseDir: string, projectFilter?: string): string[] {
     if (projectDir.startsWith('.')) continue;
 
     const projectPath = path.join(baseDir, projectDir);
-    const stat = fs.statSync(projectPath);
+    let stat: ReturnType<typeof fs.statSync>;
+    try {
+      stat = fs.statSync(projectPath);
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`[claude-code] skipping disappeared path: ${projectPath}`);
+        continue;
+      }
+      throw err;
+    }
     if (!stat.isDirectory()) continue;
 
     // Apply project filter if specified

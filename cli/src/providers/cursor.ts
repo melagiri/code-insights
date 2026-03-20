@@ -379,7 +379,11 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
       ).get(`composerData:${composerId}`) as { value: string } | undefined;
 
       if (row?.value) {
-        composerData = JSON.parse(row.value) as Record<string, unknown>;
+        try {
+          composerData = JSON.parse(row.value) as Record<string, unknown>;
+        } catch {
+          console.warn(`[cursor] failed to parse cursorDiskKV composerData for composer ${composerId}`);
+        }
       }
     }
 
@@ -395,9 +399,13 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
         ).get() as { value: string } | undefined;
 
         if (row?.value) {
-          const allData = JSON.parse(row.value) as Record<string, unknown>;
-          const composers = (allData.allComposers || allData.composers || []) as Array<Record<string, unknown>>;
-          composerData = composers.find((c) => c.composerId === composerId) || null;
+          try {
+            const allData = JSON.parse(row.value) as Record<string, unknown>;
+            const composers = (allData.allComposers || allData.composers || []) as Array<Record<string, unknown>>;
+            composerData = composers.find((c) => c.composerId === composerId) || null;
+          } catch {
+            console.warn(`[cursor] failed to parse ItemTable composerData for composer ${composerId}`);
+          }
         }
       }
     }
@@ -422,7 +430,13 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
           ).get(`composerData:${composerId}`) as { value: string } | undefined;
 
           if (globalRow?.value) {
-            const globalComposerData = JSON.parse(globalRow.value) as Record<string, unknown>;
+            let globalComposerData: Record<string, unknown>;
+            try {
+              globalComposerData = JSON.parse(globalRow.value) as Record<string, unknown>;
+            } catch {
+              console.warn(`[cursor] failed to parse global cursorDiskKV composerData for composer ${composerId}`);
+              return null;
+            }
             [messages, rawBubbles] = extractMessages(globalComposerData, composerId, globalDb);
             // Prefer composerData from global DB for richer metadata
             if (messages.length > 0) {

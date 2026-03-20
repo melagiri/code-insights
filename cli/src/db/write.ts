@@ -196,7 +196,16 @@ function insertSessionWithProjectInternal(session: ParsedSession, isForce: boole
     }
   });
 
-  tx();
+  try {
+    tx();
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    if (code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED') {
+      // busy_timeout=5000 in client.ts already waited up to 5s — if still locked, surface clearly
+      throw new Error(`[write] DB locked while writing session ${session.id} — try again`);
+    }
+    throw err;
+  }
   return isNew;
 }
 
@@ -317,7 +326,15 @@ export function insertMessages(session: ParsedSession): void {
     }
   });
 
-  tx(session.messages);
+  try {
+    tx(session.messages);
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code;
+    if (code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED') {
+      throw new Error(`[write] DB locked while writing messages for session ${session.id} — try again`);
+    }
+    throw err;
+  }
 }
 
 /**

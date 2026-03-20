@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router';
 import { capturePageView, captureDashboardLoaded } from '@/lib/telemetry';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Layout } from '@/components/layout/Layout';
 import DashboardPage from '@/pages/DashboardPage';
 import SessionsPage from '@/pages/SessionsPage';
@@ -60,6 +61,7 @@ function RouteEffects() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <RouteEffects />
       <Routes>
@@ -78,5 +80,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
