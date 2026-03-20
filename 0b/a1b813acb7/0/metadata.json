@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "0ba1b813acb7",
+  "session_id": "ba07785b-93cd-448d-8019-8cba9e5975ee",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-20T02:45:31.441451Z",
+  "branch": "docs/phase-10-share-card-audit",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/ROADMAP.md",
+    "docs/VISION.md",
+    "docs/ARCHITECTURE.md",
+    "docs/PRODUCT.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "bd747818b654",
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 111064,
+    "cache_read_tokens": 1442094,
+    "output_tokens": 9659,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-20T02:45:31.198452Z",
+    "agent_lines": 0,
+    "human_added": 119,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 119,
+    "agent_percentage": 0
+  }
+}

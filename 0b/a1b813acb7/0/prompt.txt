@@ -1,0 +1,7 @@
+WHat next? We recently launched the Share card feature.. I am not sure how much of that is part of @docs/PRODUCT.md @docs/VISION.md @docs/ARCHITECTURE.md and @docs/ROADMAP.md 
+
+Run an audit to check for gaps and plan for updating them with latest impleementation details. For things that are already documented, what are we missing in implementation - gather this as well
+
+---
+
+Create a branch and update the documentation. Post that, create a PR and after i merge it, we can look at the implementation details that are documented but not done yet..
