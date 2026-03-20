@@ -504,3 +504,72 @@ describe('formatKnowledgeBase — edge cases', () => {
     expect(() => formatKnowledgeBase([session], [insight])).not.toThrow();
   });
 });
+
+// ──────────────────────────────────────────────────────
+// Fix 6: asString() helper — metadata type narrowing
+// Tests are via formatKnowledgeBase since asString is private
+// ──────────────────────────────────────────────────────
+
+describe('formatKnowledgeBase — asString metadata narrowing (Fix 6)', () => {
+  it('renders string metadata fields correctly', () => {
+    const session = makeSession();
+    const insight = makeInsight({
+      type: 'summary',
+      metadata: JSON.stringify({ outcome: 'Refactored the auth module' }),
+    });
+    const result = formatKnowledgeBase([session], [insight]);
+    expect(result).toContain('**Outcome:** Refactored the auth module');
+  });
+
+  it('omits metadata field when value is an object (prevents [object Object])', () => {
+    // LLM returned outcome as { value: "..." } instead of a plain string
+    const session = makeSession();
+    const insight = makeInsight({
+      type: 'summary',
+      metadata: JSON.stringify({ outcome: { value: 'Some outcome' } }),
+    });
+    const result = formatKnowledgeBase([session], [insight]);
+    // Must NOT render "[object Object]" in output
+    expect(result).not.toContain('[object Object]');
+    // The **Outcome:** line should be omitted entirely since asString returns undefined
+    expect(result).not.toContain('**Outcome:**');
+  });
+
+  it('omits metadata field when value is an array', () => {
+    const session = makeSession();
+    const insight = makeInsight({
+      type: 'decision',
+      metadata: JSON.stringify({ reasoning: ['step1', 'step2'] }),
+    });
+    const result = formatKnowledgeBase([session], [insight]);
+    expect(result).not.toContain('[object Object]');
+    expect(result).not.toContain('**Reasoning:**');
+  });
+
+  it('omits metadata field when value is a number', () => {
+    const session = makeSession();
+    const insight = makeInsight({
+      type: 'decision',
+      metadata: JSON.stringify({ situation: 42 }),
+    });
+    const result = formatKnowledgeBase([session], [insight]);
+    expect(result).not.toContain('**Situation:** 42');
+  });
+
+  it('does not throw when metadata has mixed correct and incorrect types', () => {
+    const session = makeSession();
+    const insight = makeInsight({
+      type: 'decision',
+      metadata: JSON.stringify({
+        situation: 'Valid string',
+        choice: { nested: 'object' },   // should be omitted
+        reasoning: 'Another valid string',
+      }),
+    });
+    expect(() => formatKnowledgeBase([session], [insight])).not.toThrow();
+    const result = formatKnowledgeBase([session], [insight]);
+    expect(result).toContain('**Situation:** Valid string');
+    expect(result).not.toContain('[object Object]');
+    expect(result).toContain('**Reasoning:** Another valid string');
+  });
+});

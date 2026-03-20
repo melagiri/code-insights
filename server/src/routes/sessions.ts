@@ -7,11 +7,29 @@ function escapeLike(s: string): string {
   return s.replace(/[%_\\]/g, '\\$&');
 }
 
+/** ISO 8601 date/datetime — accepts YYYY-MM-DD and YYYY-MM-DDTHH:MM:SSZ-style strings. */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]+)?$/;
+
+/** Allowlist of supported source tool identifiers. */
+const VALID_SOURCE_TOOLS = new Set(['claude-code', 'cursor', 'codex-cli', 'copilot-cli', 'copilot']);
+
 const app = new Hono();
 
 app.get('/', (c) => {
   const db = getDb();
   const { projectId, sourceTool, limit, offset, q, from, to } = c.req.query();
+
+  // Validate from/to are ISO 8601 date strings before passing to SQLite comparisons
+  if (from && !ISO_DATE_RE.test(from)) {
+    return c.json({ error: 'Invalid from: must be an ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)' }, 400);
+  }
+  if (to && !ISO_DATE_RE.test(to)) {
+    return c.json({ error: 'Invalid to: must be an ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)' }, 400);
+  }
+  // Validate sourceTool against known providers
+  if (sourceTool && !VALID_SOURCE_TOOLS.has(sourceTool)) {
+    return c.json({ error: `Invalid sourceTool: must be one of ${[...VALID_SOURCE_TOOLS].join(', ')}` }, 400);
+  }
 
   const conditions: string[] = [];
   const params: (string | number)[] = [];

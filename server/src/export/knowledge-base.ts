@@ -54,12 +54,21 @@ function parseMetadata(raw: string | null): Record<string, unknown> {
   }
 }
 
+/**
+ * Safely narrow an unknown metadata value to string.
+ * Returns undefined if the value is not a string (e.g., object, array, number).
+ * Prevents "[object Object]" leaking into exported markdown when LLM returns wrong type.
+ */
+function asString(val: unknown): string | undefined {
+  return typeof val === 'string' ? val : undefined;
+}
+
 function renderSummary(insight: InsightRow, lines: string[]) {
   const meta = parseMetadata(insight.metadata);
   const bullets = parseBullets(insight.bullets);
 
   lines.push('### Summary');
-  const outcome = meta.outcome as string | undefined;
+  const outcome = asString(meta.outcome);
   if (outcome) lines.push(`**Outcome:** ${outcome}`);
   if (insight.content) lines.push(insight.content);
   for (const bullet of bullets) lines.push(`- ${bullet}`);
@@ -71,11 +80,11 @@ function renderDecisions(insights: InsightRow[], lines: string[]) {
   for (const insight of insights) {
     const meta = parseMetadata(insight.metadata);
     lines.push(`#### ${insight.title}`);
-    const situation = meta.situation as string | undefined;
+    const situation = asString(meta.situation);
     if (situation) lines.push(`**Situation:** ${situation}`);
-    const choice = meta.choice as string | undefined;
+    const choice = asString(meta.choice);
     if (choice) lines.push(`**Choice:** ${choice}`);
-    const reasoning = meta.reasoning as string | undefined;
+    const reasoning = asString(meta.reasoning);
     if (reasoning) lines.push(`**Reasoning:** ${reasoning}`);
     const alternatives = meta.alternatives as Array<{ option?: string; rejected_because?: string } | string> | undefined;
     if (alternatives && alternatives.length > 0) {
@@ -90,9 +99,9 @@ function renderDecisions(insights: InsightRow[], lines: string[]) {
         }
       }
     }
-    const trade_offs = meta.trade_offs as string | undefined;
+    const trade_offs = asString(meta.trade_offs);
     if (trade_offs) lines.push(`**Trade-offs:** ${trade_offs}`);
-    const revisit_when = meta.revisit_when as string | undefined;
+    const revisit_when = asString(meta.revisit_when);
     if (revisit_when) lines.push(`**Revisit When:** ${revisit_when}`);
     // Fallback to raw content when no structured metadata is present
     if (!situation && !choice && !reasoning && insight.content) lines.push(insight.content);
@@ -106,13 +115,13 @@ function renderLearnings(insights: InsightRow[], lines: string[]) {
   for (const insight of insights) {
     const meta = parseMetadata(insight.metadata);
     lines.push(`#### ${insight.title}`);
-    const symptom = meta.symptom as string | undefined;
+    const symptom = asString(meta.symptom);
     if (symptom) lines.push(`**What Happened:** ${symptom}`);
-    const root_cause = meta.root_cause as string | undefined;
+    const root_cause = asString(meta.root_cause);
     if (root_cause) lines.push(`**Root Cause:** ${root_cause}`);
-    const takeaway = meta.takeaway as string | undefined;
+    const takeaway = asString(meta.takeaway);
     if (takeaway) lines.push(`**Takeaway:** ${takeaway}`);
-    const applies_when = meta.applies_when as string | undefined;
+    const applies_when = asString(meta.applies_when);
     if (applies_when) lines.push(`**Applies When:** ${applies_when}`);
     if (!symptom && !root_cause && !takeaway && insight.content) lines.push(insight.content);
     lines.push('');
@@ -125,9 +134,9 @@ function renderTechniques(insights: InsightRow[], lines: string[]) {
   for (const insight of insights) {
     const meta = parseMetadata(insight.metadata);
     lines.push(`#### ${insight.title}`);
-    const context = meta.context as string | undefined;
+    const context = asString(meta.context);
     if (context) lines.push(`**Context:** ${context}`);
-    const applicability = meta.applicability as string | undefined;
+    const applicability = asString(meta.applicability);
     if (applicability) lines.push(`**Applicability:** ${applicability}`);
     if (insight.content) lines.push(insight.content);
     lines.push('');

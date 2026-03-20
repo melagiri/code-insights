@@ -60,12 +60,12 @@ export interface Session {
   cache_creation_tokens: number | null;
   cache_read_tokens: number | null;
   estimated_cost_usd: number | null;
-  models_used: string | null;   // JSON-encoded string array from SQLite
+  models_used: string | null;   // JSON-encoded string[] — decode with parseJsonField<string[]>(x, [])
   primary_model: string | null;
   usage_source: string | null;
   compact_count: number;
   auto_compact_count: number;
-  slash_commands: string;       // JSON-encoded string array from SQLite
+  slash_commands: string;       // JSON-encoded string[] — decode with parseJsonField<string[]>(x, [])
 }
 
 export type InsightType = 'summary' | 'decision' | 'learning' | 'technique' | 'prompt_quality';
@@ -80,15 +80,15 @@ export interface Insight {
   title: string;
   content: string;
   summary: string;
-  bullets: string;              // JSON-encoded string array from SQLite
+  bullets: string;              // JSON-encoded string[] — decode with parseJsonField<string[]>(x, [])
   confidence: number;
   source: 'llm';
-  metadata: string;             // JSON-encoded object from SQLite
+  metadata: string;             // JSON-encoded Record<string,unknown> — decode with parseJsonField<T>(x, {})
   timestamp: string;            // ISO 8601
   created_at: string;           // ISO 8601
   scope: InsightScope;
   analysis_version: string;
-  linked_insight_ids: string | null;
+  linked_insight_ids: string | null; // JSON-encoded string[] | null — decode with parseJsonField<string[]>(x, [])
 }
 
 export interface ToolCall {
@@ -126,8 +126,17 @@ export interface DailyStats {
 }
 
 /**
- * Safely parse a JSON string field from the API.
+ * Safely parse a JSON-encoded string field from the SQLite API response.
  * Returns defaultValue if the field is null, empty, or invalid JSON.
+ *
+ * DECODE PATTERN for all JSON-encoded columns in this file:
+ *   Always use parseJsonField<T>(field, defaultValue) — never bare JSON.parse().
+ *   For array fields, pass [] as defaultValue and verify Array.isArray() at use site
+ *   if the consumer calls array methods (.map, .filter, etc.), since parseJsonField
+ *   trusts the type parameter and cannot verify shape at runtime.
+ *
+ * JSON-encoded columns in Session: models_used, slash_commands
+ * JSON-encoded columns in Insight: bullets, metadata, linked_insight_ids
  */
 export function parseJsonField<T>(value: string | null | undefined, defaultValue: T): T {
   if (!value) return defaultValue;

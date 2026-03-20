@@ -376,7 +376,14 @@ function parseMessage(msg: ClaudeMessage, sessionId: string): ParsedMessage | nu
 }
 
 /**
- * Extract text content from message content
+ * Extract text content from message content.
+ *
+ * Both branches of the `string | MessageContent[]` union are handled:
+ * - string: returned as-is
+ * - MessageContent[]: only 'text' blocks are joined; all-tool_use arrays
+ *   (where no 'text' blocks exist) intentionally produce '' (empty string).
+ *   This is the correct final state — such messages are kept if they carry
+ *   tool calls or thinking content (see parseMessage skip-guard above).
  */
 function extractTextContent(content: string | MessageContent[]): string {
   if (typeof content === 'string') {
