@@ -13,7 +13,7 @@ import {
   Clock,
   Zap,
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -200,6 +200,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         onKeyDown={handleKeyDown}
         aria-label="Command palette"
       >
+        <DialogTitle className="sr-only">Command palette</DialogTitle>
         {/* Search input */}
         <div className="flex items-center gap-2 px-4 border-b h-12">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />

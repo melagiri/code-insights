@@ -3,6 +3,11 @@ import { getDb } from '@code-insights/cli/db/client';
 import { randomUUID } from 'crypto';
 import { parseIntParam } from '../utils.js';
 
+/** Escape SQLite LIKE wildcard characters so user input is treated as literal text. */
+function escapeLike(s: string): string {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
+
 const app = new Hono();
 
 const VALID_TYPES = ['summary', 'decision', 'learning', 'technique', 'prompt_quality'] as const;
@@ -27,8 +32,8 @@ app.get('/', (c) => {
     params.push(type);
   }
   if (q) {
-    const likeParam = `%${q}%`;
-    conditions.push('(i.title LIKE ? OR i.content LIKE ? OR i.summary LIKE ?)');
+    const likeParam = `%${escapeLike(q)}%`;
+    conditions.push("(i.title LIKE ? ESCAPE '\\' OR i.content LIKE ? ESCAPE '\\' OR i.summary LIKE ? ESCAPE '\\')");
     params.push(likeParam, likeParam, likeParam);
   }
 

@@ -21,7 +21,7 @@ app.get('/', (c) => {
   }
 
   const searchTerm = q.trim();
-  const likeParam = `%${searchTerm}%`;
+  const likeParam = `%${escapeLike(searchTerm)}%`;
   const maxResults = parseIntParam(limit, 20);
 
   // Search sessions across: custom_title, generated_title, summary, project_name, git_branch
@@ -37,19 +37,19 @@ app.get('/', (c) => {
       summary,
       git_branch,
       CASE
-        WHEN custom_title LIKE ? THEN 'title'
-        WHEN generated_title LIKE ? THEN 'title'
-        WHEN summary LIKE ? THEN 'summary'
+        WHEN custom_title LIKE ? ESCAPE '\' THEN 'title'
+        WHEN generated_title LIKE ? ESCAPE '\' THEN 'title'
+        WHEN summary LIKE ? ESCAPE '\' THEN 'summary'
         ELSE 'title'
       END AS match_field
     FROM sessions
     WHERE deleted_at IS NULL
       AND (
-        custom_title LIKE ?
-        OR generated_title LIKE ?
-        OR summary LIKE ?
-        OR project_name LIKE ?
-        OR git_branch LIKE ?
+        custom_title LIKE ? ESCAPE '\'
+        OR generated_title LIKE ? ESCAPE '\'
+        OR summary LIKE ? ESCAPE '\'
+        OR project_name LIKE ? ESCAPE '\'
+        OR git_branch LIKE ? ESCAPE '\'
       )
     ORDER BY started_at DESC
     LIMIT ?
@@ -85,9 +85,9 @@ app.get('/', (c) => {
     JOIN sessions s ON i.session_id = s.id
     WHERE s.deleted_at IS NULL
       AND (
-        i.title LIKE ?
-        OR i.content LIKE ?
-        OR i.summary LIKE ?
+        i.title LIKE ? ESCAPE '\'
+        OR i.content LIKE ? ESCAPE '\'
+        OR i.summary LIKE ? ESCAPE '\'
       )
     ORDER BY i.created_at DESC
     LIMIT ?
@@ -138,6 +138,11 @@ app.get('/', (c) => {
 
   return c.json({ sessions: sessionResults, insights: insightResults });
 });
+
+/** Escape SQLite LIKE wildcard characters so user input is treated as literal text. */
+function escapeLike(s: string): string {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
 
 /**
  * Extract a ~maxLength character snippet centered around the first match of term.
