@@ -14,6 +14,39 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max - 20) + '\n... [truncated]';
 }
 
+// SQLite error codes surfaced by better-sqlite3
+const SQLITE_BUSY = 'SQLITE_BUSY';
+const SQLITE_LOCKED = 'SQLITE_LOCKED';
+const SQLITE_CONSTRAINT = 'SQLITE_CONSTRAINT';
+
+/**
+ * Run a SQLite transaction with one retry on BUSY/LOCKED errors (500ms wait).
+ * Constraint violations are logged and treated as non-fatal skips.
+ */
+function runWithRetry(fn: () => void, context: string): void {
+  const attempt = () => {
+    try {
+      fn();
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === SQLITE_BUSY || code === SQLITE_LOCKED) {
+        // One retry after a short synchronous wait
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500);
+        try {
+          fn();
+        } catch (retryErr: unknown) {
+          console.error(`[write] ${context}: DB still locked after retry —`, retryErr);
+        }
+      } else if (code?.startsWith(SQLITE_CONSTRAINT) ?? false) {
+        console.warn(`[write] ${context}: constraint violation, skipping —`, (err as Error).message);
+      } else {
+        throw err;
+      }
+    }
+  };
+  attempt();
+}
+
 // ──────────────────────────────────────────────────────
 // Module-level lazy-initialized prepared statements.
 //
@@ -196,7 +229,7 @@ function insertSessionWithProjectInternal(session: ParsedSession, isForce: boole
     }
   });
 
-  tx();
+  runWithRetry(() => tx(), `insertSession(${session.id})`);
   return isNew;
 }
 
@@ -317,7 +350,7 @@ export function insertMessages(session: ParsedSession): void {
     }
   });
 
-  tx(session.messages);
+  runWithRetry(() => tx(session.messages), `insertMessages(${session.id})`);
 }
 
 /**
