@@ -87,12 +87,15 @@ Effective pattern taxonomy upgraded with `driver` field (`user-driven`/`ai-drive
 ### Phase 9: Infrastructure & Reliability ✅
 Message classification V6 schema added `compact_count`, `auto_compact_count`, and `slash_commands` to sessions, with prompt alignment for V6 signals (PRs #151, #154). Prompt caching implemented using provider-native shared prefix caching for Anthropic (PR #180). LLM cost tracking V7 schema (`analysis_usage` table) captures per-session token counts, cache metrics, and estimated USD cost with a pricing calculator and dashboard cost UI (PR #181).
 
+### Phase 10: User Experience & Shareability ✅
+Zero-config first run: `code-insights` with no args auto-syncs and opens the dashboard — no `init` required (v4.1.0). Guided empty states for first-time users. Dashboard auto-sync before server start. Knowledge Journal page with chronological timeline of learnings and decisions by ISO week. Shareable AI Fluency Score card (v4.2.0–v4.3.0): 1200×630 PNG export with hero score (0–100 composite from 5 PQ dimensions), rainbow fingerprint bars, tool logos, effective pattern pills, and 4-week rolling scoring window.
+
 ### What's Next
 - Progress tracking: "Am I getting better?" — weekly snapshots comparing friction trends and pattern emergence, tracking user-actionable friction declining and new patterns solidifying
 - Friction-to-pattern affinity map (e.g., stale-assumptions friction → context-gathering pattern)
 - Test suite expansion (Vitest)
 - Session merging across tools (linking related sessions from different AI tools)
-- Gamification and shareable badges
+- Shareable badges Phase 2: stats card variant, milestone-specific cards
 
 ## Non-Goals
 

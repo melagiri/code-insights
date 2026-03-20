@@ -30,9 +30,16 @@ code-insights/
 ├── dashboard/              # Vite + React SPA
 │   └── src/
 │       ├── components/     # React components (shadcn/ui)
+│       │   ├── empty-states/  # Guided empty states (EmptyDashboard, EmptySessions, EmptyInsights)
+│       │   └── patterns/      # Patterns page components (WeekAtAGlanceStrip, WeekSelector)
 │       ├── hooks/          # React Query hooks
 │       ├── lib/            # LLM providers, utilities, telemetry
+│       │   ├── share-card-utils.ts   # Canvas 2D share card rendering (drawShareCard, downloadShareCard)
+│       │   ├── share-card-icons.ts   # Lucide icon + tool logo rendering for Canvas 2D
+│       │   └── prompt-quality-utils.ts  # PQ category labels, strength set detection
 │       └── App.tsx         # SPA entry point
+│   └── public/
+│       └── icons/          # Source tool logos (Claude Code SVG, Cursor PNG, Codex PNG, Copilot PNG)
 ├── server/                 # Hono API server
 │   └── src/
 │       ├── routes/         # REST API endpoints
@@ -113,7 +120,7 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 | `insights` | LLM-generated insights (5 types) | V1, V2 (index) |
 | `usage_stats` | Global usage aggregation | V1 |
 | `session_facets` | Cross-session facet data (friction, patterns, workflow) | V3 |
-| `reflect_snapshots` | Cached synthesis results, composite PK `(period, project_id)` | V4 |
+| `reflect_snapshots` | Cached synthesis results, composite PK `(period, project_id, source_tool)` | V4 |
 | `analysis_usage` | Per-session LLM analysis cost data, composite PK `(session_id, analysis_type)` | V7 |
 | `schema_version` | Migration tracking | V1 |
 
@@ -145,6 +152,7 @@ Dashboard (dashboard/src/)   -> Reads from Server API
 | `EffectivePattern` | Pattern with required `category`, `description`, `confidence`; optional `driver` field (`'user-driven' \| 'ai-driven' \| 'collaborative'`); CoT `_reasoning` scratchpad stored in JSON blob |
 | `SessionCharacter` | 7 classifications: deep_focus, bug_hunt, feature_build, exploration, refactor, learning, quick_task |
 | `ClaudeInsightConfig` | Config format |
+| `PQDimensionScores` | Per-dimension PQ averages (overall, context_provision, request_specificity, scope_management, information_timing, correction_quality); used by share card |
 | `SyncState` | File modification tracking for incremental sync |
 
 ### Friction & Pattern Normalization
@@ -253,5 +261,33 @@ Both friction points and effective patterns use canonical category taxonomies wi
 | Analytics | `/analytics` | Charts: cost, models, projects |
 | Patterns | `/patterns` | Cross-session synthesis (Friction & Wins, Rules & Skills, Working Style) |
 | Export | `/export` | LLM-powered export wizard (4 formats, 3 depths) |
-| Journal | `/journal` | Session journal/notes |
+| Journal | `/journal` | Chronological timeline of learnings and decisions by ISO week |
 | Settings | `/settings` | Configuration UI |
+
+---
+
+## Share Card Pipeline
+
+The share card generates a 1200×630 PNG (OG image standard) from Canvas 2D:
+
+```
+PatternsPage → useFacetAggregation(period) → WeekAtAGlanceStrip → "Share" button
+                                                                       ↓
+                                              downloadShareCard() → drawShareCard()
+                                                                       ↓
+                                              Canvas 2D (2400×1260 @ 2× DPR) → toBlob() → PNG download
+```
+
+**Data sources for the card:**
+- `computePQScores()` in `server/src/routes/shared-aggregation.ts` — 4-week rolling PQ dimension averages
+- Working-style tagline from Reflect LLM synthesis
+- Effective patterns from facet aggregation (top 3 by frequency)
+- Lifetime session count (all-time, no date filter)
+- Token sum from 4-week scoring window
+- Source tools from sessions in scope
+
+**Key files:**
+- `dashboard/src/lib/share-card-utils.ts` — Canvas 2D drawing logic (`drawShareCard()`, `downloadShareCard()`)
+- `dashboard/src/lib/share-card-icons.ts` — Lucide icon + tool logo rendering (`drawIcon()`, `drawToolIcon()`)
+- `dashboard/src/components/patterns/WeekAtAGlanceStrip.tsx` — UI component with download trigger
+- `dashboard/public/icons/` — Static tool logo assets (SVG/PNG)

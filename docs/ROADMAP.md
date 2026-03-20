@@ -167,6 +167,43 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 
 ---
 
+## Phase 10: User Experience & Shareability ✅
+
+**Goal:** Zero-friction first run, guided onboarding, and shareable AI Fluency Score card for PLG growth
+
+### Milestones
+
+- [x] **10.1 Zero-Config First Run** (v4.1.0) ✅
+  - `code-insights` with no args → auto-sync + open dashboard (no `init` required)
+  - Database and config auto-created on first run
+  - Dashboard auto-sync before server start (`--no-sync` to skip)
+  - Guided empty states with CLI command snippets (EmptyDashboard, EmptySessions, EmptyInsights)
+
+- [x] **10.2 Shareable Working Style Card** (v4.2.0) ✅
+  - 1200×630 PNG export (OG image standard) via Canvas 2D at 2× DPR
+  - Working style archetype tagline from LLM synthesis
+  - Session count, streak, character distribution visualization
+  - Computed milestones (session count, streak, multi-tool)
+  - Download from Patterns page WeekAtAGlanceStrip
+
+- [x] **10.3 AI Fluency Score Card V3** (v4.3.0) ✅
+  - Hero AI Fluency Score (0–100 composite from 5 PQ dimension averages)
+  - 5 rainbow fingerprint bars: Context, Clarity, Focus, Timing, Orchestration
+  - 4-week rolling scoring window (stable, representative scores)
+  - Lifetime session count + token sum in evidence lines
+  - Deduplicated source tool logos (Claude Code, Cursor, Codex CLI, GitHub Copilot)
+  - Effective pattern pills (top 3 by frequency)
+  - Conservative sky-blue-to-rose color palette
+  - `PQDimensionScores` type + `computePQScores()` server aggregation
+
+### Deliverables
+- ✅ Zero-config first run with guided empty states
+- ✅ Dashboard auto-sync
+- ✅ Shareable AI Fluency Score card (1200×630 PNG)
+- ✅ PQ dimension scores API and 4-week rolling aggregation
+
+---
+
 ## Version Milestones
 
 | Version | Phase | Key Features | Status |
@@ -187,12 +224,13 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 | 4.0.0 | 8–9 | Reflect & Patterns, taxonomy revisions, ISO weeks, prompt caching, cost tracking (Schema V7) | ✅ Done |
 | 4.1.0 | 10 | Zero-config first-run experience, dashboard auto-sync, guided empty states | ✅ Done |
 | 4.2.0 | 10 | Shareable working style card (1200×630 PNG export), computed milestones, streak fix | ✅ Done |
+| 4.3.0 | 10 | AI Fluency Score card V3, PQ dimension scores, conservative palette, tool logos | ✅ Done |
 
 ---
 
 ## What's Next
 
-- Progress tracking: weekly snapshots, friction-to-pattern affinity map (ships here, not in taxonomy PR), transformation detection, `driver`-based filtering for user growth signals
+- Progress tracking: weekly snapshots, friction-to-pattern affinity map, transformation detection, `driver`-based filtering for user growth signals
 - Test suite expansion (Vitest)
 - Session merging across tools (linking related sessions from different AI tools)
 - Shareable badges Phase 2: stats card variant, milestone-specific cards (see `docs/plans/2026-03-08-gamification-shareable-badges.md`)

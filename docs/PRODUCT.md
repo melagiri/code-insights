@@ -114,16 +114,57 @@ Cross-session pattern detection and synthesis, powered by session facets:
 
 **Upcoming:** Progress tracking — "Am I getting better?" Weekly snapshots comparing friction trends and pattern emergence over time, helping developers see how their AI collaboration skills evolve.
 
+### Share Card (AI Fluency Score)
+
+A shareable 1200×630 PNG image (OG standard for Twitter/X, LinkedIn, Slack, Discord) that visualizes a developer's AI coding fluency. Downloaded from the Patterns page.
+
+**What's on the card:**
+- **Archetype tagline** — LLM-generated identity label from working-style synthesis (e.g., "The Methodical Achiever")
+- **AI Fluency Score** — Composite 0–100 score derived from 5 Prompt Quality dimension averages, displayed as a hero circle with gradient arc
+- **Fingerprint bars** — 5 rainbow-colored dimension bars showing per-dimension PQ scores:
+  - Context (context_provision), Clarity (request_specificity), Focus (scope_management), Timing (information_timing), Orchestration (correction_quality)
+- **Evidence lines** — "Score from N sessions · XK tokens · last 4 weeks" + "N lifetime sessions · [tool logos]"
+- **Effective pattern pills** — Top 3 patterns by frequency (if data exists)
+- **Tool logos** — Deduplicated source tool icons (Claude Code, Cursor, Codex CLI, GitHub Copilot)
+- **CTA footer** — code-insights.app + `npx @code-insights/cli`
+
+**Scoring window:** 4-week rolling window (last 4 ISO weeks) for stable, representative scores. Lifetime session count is all-time.
+
+**Technical details:**
+- Canvas 2D rendering at 2× DPR (2400×1260 internal) exported as 1200×630 PNG
+- Dark gradient background with subtle radial glows
+- System font stack with monospace fallback for code elements
+- Tool logos loaded from `dashboard/public/icons/` static assets
+
+### Zero-Config First Run
+
+Running `code-insights` with no arguments works immediately — auto-creates the database, syncs sessions, and opens the dashboard. No `init` required. The dashboard includes guided empty states with CLI command snippets for first-time users.
+
+### Knowledge Journal
+
+The Journal page (`/journal`) provides a chronological view of learnings and decisions extracted from sessions:
+
+- **Timeline tab** — Weeks grouped by ISO week with visual timeline dots (yellow for learnings, blue for decisions). Week headers show learning/decision counts. Newest-first within each week.
+- **Patterns tab** — Links to LLM analysis workflow for pattern discovery across sessions.
+
+### Chat View Enhancements
+
+Session detail chat view includes system event rendering:
+- **Context break dividers** — Visual markers where conversation context was reset (compacts)
+- **Inline event chips** — Slash commands displayed as inline chips (e.g., `/grep`, `/read`)
+- **Raw message toggle** — Switch between filtered and full conversation view
+- **Agent message rendering** — Task notifications (amber) and teammate messages (colored border)
+
 ### Dashboard Views
 
 - **Dashboard** — Overview with activity charts
 - **Sessions** — Session list with source, project, date, character filters
-- **Session Detail** — Full session with analyze button for LLM insights
+- **Session Detail** — Full session with analyze button, cost tracking, chat view enhancements
 - **Insights** — Browse and search generated insights
 - **Analytics** — Charts showing effort distribution, cost, models, projects
-- **Patterns** — Cross-session pattern synthesis (Friction & Wins, Rules & Skills, Working Style)
+- **Patterns** — Cross-session pattern synthesis (Friction & Wins, Rules & Skills, Working Style) + Share Card download + Week-at-a-Glance strip with streak, session count, AI Fluency Score
 - **Export** — LLM-powered export wizard (4 formats, 3 depths)
-- **Journal** — Session journal/notes
+- **Journal** — Chronological timeline of learnings and decisions by ISO week
 - **Settings** — Configuration UI
 
 ### CLI Command Reference
@@ -151,7 +192,8 @@ code-insights uninstall-hook               # Remove auto-sync hook
 #### Dashboard & Browser
 
 ```bash
-code-insights dashboard                    # Start local server + open dashboard
+code-insights dashboard                    # Start local server + open dashboard (auto-syncs first)
+code-insights dashboard --no-sync          # Start server without syncing first
 code-insights dashboard --port 8080        # Custom port (default: 7890)
 code-insights dashboard --no-open          # Start server without opening browser
 code-insights open                         # Open dashboard in browser (without starting server)
