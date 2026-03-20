@@ -26,6 +26,10 @@ import { Sparkles, SearchX, X, FileText, GitCommit, BookOpen, Target } from 'luc
 import { getDateGroup, sortDateGroups } from '@/lib/utils';
 import { INSIGHT_TYPE_LABELS } from '@/lib/constants/colors';
 import type { Insight, InsightType } from '@/lib/types';
+import { InsightTypePills } from '@/components/filters/InsightTypePills';
+import { SaveFilterPopover } from '@/components/filters/SaveFilterPopover';
+import { SavedFiltersDropdown } from '@/components/filters/SavedFiltersDropdown';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
 
 const INSIGHT_TYPES: InsightType[] = ['summary', 'decision', 'learning', 'technique', 'prompt_quality'];
 
@@ -52,13 +56,25 @@ interface InsightGroup {
 }
 
 export default function InsightsPage() {
-  const [filters, setFilter, , clearFilters] = useFilterParams({
+  const [filters, setFilter, setFilters, clearFilters] = useFilterParams({
     q: '',
     project: 'all',
     type: 'all',
     view: 'timeline',
     pattern: '',
   });
+
+  const { savedFilters, saveFilter, deleteFilter } = useSavedFilters('insights');
+
+  // activeTypes is a comma-separated list, or empty = all
+  const activeTypes: InsightType[] = useMemo(() => {
+    if (!filters.type || filters.type === 'all') return [];
+    return filters.type.split(',').filter((t) => INSIGHT_TYPES.includes(t as InsightType)) as InsightType[];
+  }, [filters.type]);
+
+  function handleTypePillChange(types: InsightType[]) {
+    setFilter('type', types.length === 0 ? 'all' : types.join(','));
+  }
 
   const [searchParams] = useSearchParams();
   const highlightedInsightId = searchParams.get('insight') || null;
@@ -80,7 +96,8 @@ export default function InsightsPage() {
   const filtered = useMemo(() => {
     return insights.filter((i) => {
       if (patternInsightIds && !patternInsightIds.has(i.id)) return false;
-      if (filters.type !== 'all' && i.type !== filters.type) return false;
+      // Multi-type pill support: activeTypes empty = all; non-empty = must match one
+      if (activeTypes.length > 0 && !activeTypes.includes(i.type)) return false;
       if (filters.q) {
         const q = filters.q.toLowerCase();
         if (!i.title.toLowerCase().includes(q) && !i.content.toLowerCase().includes(q)) {
@@ -89,7 +106,7 @@ export default function InsightsPage() {
       }
       return true;
     });
-  }, [insights, filters.type, filters.q, patternInsightIds]);
+  }, [insights, activeTypes, filters.q, patternInsightIds]);
 
   const hasFilters = !!filters.q || filters.type !== 'all' || filters.project !== 'all' || !!filters.pattern;
 
@@ -198,54 +215,56 @@ export default function InsightsPage() {
 
         {/* Filters + View Mode */}
         <div className="flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Search insights..."
-          value={filters.q}
-          onChange={(e) => setFilter('q', e.target.value)}
-          className="max-w-xs"
-        />
+          <SavedFiltersDropdown
+            savedFilters={savedFilters}
+            onApply={(f) => setFilters(f as Parameters<typeof setFilters>[0])}
+            onDelete={deleteFilter}
+          />
 
-        <Select value={filters.project} onValueChange={(v) => setFilter('project', v)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="All Projects" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Projects</SelectItem>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Input
+            placeholder="Search insights..."
+            value={filters.q}
+            onChange={(e) => setFilter('q', e.target.value)}
+            className="max-w-xs"
+          />
 
-        <Select value={filters.type} onValueChange={(v) => setFilter('type', v)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {INSIGHT_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {INSIGHT_TYPE_LABELS[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={filters.project} onValueChange={(v) => setFilter('project', v)}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Tabs
-          value={filters.view}
-          onValueChange={(v) => setFilter('view', v)}
-          className="ml-auto"
-        >
-          <TabsList variant="default" className="h-9">
-            {VIEW_MODES.map((mode) => (
-              <TabsTrigger key={mode.value} value={mode.value} className="text-xs px-3">
-                {mode.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+          <Tabs
+            value={filters.view}
+            onValueChange={(v) => setFilter('view', v)}
+            className="ml-auto"
+          >
+            <TabsList variant="default" className="h-9">
+              {VIEW_MODES.map((mode) => (
+                <TabsTrigger key={mode.value} value={mode.value} className="text-xs px-3">
+                  {mode.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Type pills row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <InsightTypePills activeTypes={activeTypes} onChange={handleTypePillChange} />
+          <SaveFilterPopover
+            activeFilters={{ q: filters.q, project: filters.project, type: filters.type }}
+            defaultFilterValues={{ q: '', project: 'all', type: 'all' }}
+            onSave={saveFilter}
+          />
         </div>
       </div>
 
