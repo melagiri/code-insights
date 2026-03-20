@@ -6,6 +6,7 @@ import { relative, join } from 'path';
 import { openUrl } from '@code-insights/cli/utils/browser';
 import { shutdownTelemetry } from '@code-insights/cli/utils/telemetry';
 import projectsRouter from './routes/projects.js';
+import searchRouter from './routes/search.js';
 import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
 import insightsRouter from './routes/insights.js';
@@ -44,6 +45,7 @@ export function createApp(): Hono {
 
   // API routes — all under /api
   app.route('/api/projects', projectsRouter);
+  app.route('/api/search', searchRouter);
   app.route('/api/sessions', sessionsRouter);
   app.route('/api/messages', messagesRouter);
   app.route('/api/insights', insightsRouter);

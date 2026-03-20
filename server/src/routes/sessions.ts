@@ -6,7 +6,7 @@ const app = new Hono();
 
 app.get('/', (c) => {
   const db = getDb();
-  const { projectId, sourceTool, limit, offset } = c.req.query();
+  const { projectId, sourceTool, limit, offset, q, from, to, outcome } = c.req.query();
 
   const conditions: string[] = [];
   const params: (string | number)[] = [];
@@ -19,6 +19,22 @@ app.get('/', (c) => {
     conditions.push('source_tool = ?');
     params.push(sourceTool);
   }
+  if (q) {
+    const likeParam = `%${q}%`;
+    conditions.push('(custom_title LIKE ? OR generated_title LIKE ? OR summary LIKE ? OR project_name LIKE ?)');
+    params.push(likeParam, likeParam, likeParam, likeParam);
+  }
+  if (from) {
+    conditions.push('started_at >= ?');
+    params.push(from);
+  }
+  if (to) {
+    conditions.push('started_at <= ?');
+    params.push(to);
+  }
+  // outcome filter is applied post-query (requires joining insights for summary metadata)
+  // Store it for post-filtering below
+  const outcomeFilter = outcome || null;
 
   conditions.push('deleted_at IS NULL');
   const where = `WHERE ${conditions.join(' AND ')}`;

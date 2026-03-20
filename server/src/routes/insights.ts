@@ -9,7 +9,7 @@ const VALID_TYPES = ['summary', 'decision', 'learning', 'technique', 'prompt_qua
 
 app.get('/', (c) => {
   const db = getDb();
-  const { projectId, sessionId, type, limit, offset } = c.req.query();
+  const { projectId, sessionId, type, limit, offset, q } = c.req.query();
 
   const conditions: string[] = ['s.deleted_at IS NULL'];
   const params: (string | number)[] = [];
@@ -25,6 +25,11 @@ app.get('/', (c) => {
   if (type) {
     conditions.push('i.type = ?');
     params.push(type);
+  }
+  if (q) {
+    const likeParam = `%${q}%`;
+    conditions.push('(i.title LIKE ? OR i.content LIKE ? OR i.summary LIKE ?)');
+    params.push(likeParam, likeParam, likeParam);
   }
 
   const where = `WHERE ${conditions.join(' AND ')}`;
