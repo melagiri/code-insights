@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "25a0928becb5",
+  "session_id": "82607582-fd4e-4ef8-9db2-0335525cd48c",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-20T10:54:47.082062Z",
+  "branch": "fix/hook-enforcement",
+  "checkpoints_count": 8,
+  "files_touched": [
+    ".claude/hookify.block-local-merge-to-main.local.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "eaa8efd06fdf",
+  "token_usage": {
+    "input_tokens": 2703,
+    "cache_creation_tokens": 127918,
+    "cache_read_tokens": 3219622,
+    "output_tokens": 12318,
+    "api_call_count": 46
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-20T10:54:46.933771Z",
+    "agent_lines": 23,
+    "human_added": 21615,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 21639,
+    "agent_percentage": 0.10628956975830677
+  }
+}
