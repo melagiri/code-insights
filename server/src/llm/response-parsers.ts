@@ -58,8 +58,17 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
     };
   }
 
-  parsed.decisions = parsed.decisions || [];
-  parsed.learnings = parsed.learnings || [];
+  // Guard against LLM returning non-array values (e.g. "decisions": "none").
+  // || [] alone won't catch truthy non-arrays — Array.isArray is required.
+  parsed.decisions = Array.isArray(parsed.decisions) ? parsed.decisions : [];
+  parsed.learnings = Array.isArray(parsed.learnings) ? parsed.learnings : [];
+
+  // Normalize facet arrays before monitors access .some() — a non-array truthy value
+  // (e.g. LLM returns "friction_points": "none") would throw a TypeError on .some().
+  if (parsed.facets) {
+    if (!Array.isArray(parsed.facets.friction_points)) parsed.facets.friction_points = [];
+    if (!Array.isArray(parsed.facets.effective_patterns)) parsed.facets.effective_patterns = [];
+  }
 
   // Observability: warn when LLM still uses "tooling-limitation".
   // Monitors whether FRICTION_CLASSIFICATION_GUIDANCE is working.
