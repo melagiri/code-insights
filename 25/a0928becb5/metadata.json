@@ -3,7 +3,7 @@
   "checkpoint_id": "25a0928becb5",
   "strategy": "manual-commit",
   "branch": "fix/hook-enforcement",
-  "checkpoints_count": 21,
+  "checkpoints_count": 22,
   "files_touched": [
     ".claude/hookify.block-local-merge-to-main.local.md",
     ".claude/hookify.tdd-domain-check.local.md",
@@ -29,13 +29,20 @@
       "context": "/25/a0928becb5/1/context.md",
       "content_hash": "/25/a0928becb5/1/content_hash.txt",
       "prompt": "/25/a0928becb5/1/prompt.txt"
+    },
+    {
+      "metadata": "/25/a0928becb5/2/metadata.json",
+      "transcript": "/25/a0928becb5/2/full.jsonl",
+      "context": "/25/a0928becb5/2/context.md",
+      "content_hash": "/25/a0928becb5/2/content_hash.txt",
+      "prompt": "/25/a0928becb5/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 3765,
-    "cache_creation_tokens": 458212,
-    "cache_read_tokens": 10779446,
-    "output_tokens": 38426,
-    "api_call_count": 135
+    "input_tokens": 3842,
+    "cache_creation_tokens": 656316,
+    "cache_read_tokens": 15394836,
+    "output_tokens": 55788,
+    "api_call_count": 184
   }
 }
