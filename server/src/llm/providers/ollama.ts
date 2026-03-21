@@ -39,10 +39,12 @@ export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
         if (response.status === 401 || response.status === 403) {
-          throw new Error(`Invalid API key. Check your Ollama API key in \`code-insights config llm\`.${detail ? ` (${detail})` : ''}`);
+          // Ollama itself has no auth — this typically means a proxy or gateway in front of it requires credentials.
+          throw new Error(`Ollama returned HTTP ${response.status} — check if your Ollama endpoint requires authentication (proxy or gateway).${detail ? ` (${detail})` : ''}`);
         }
         if (response.status === 429) {
-          throw new Error(`Rate limited or quota exceeded. Check your Ollama server configuration.${detail ? ` (${detail})` : ''}`);
+          // Standard Ollama has no rate limits — 429 likely comes from a proxy or gateway.
+          throw new Error(`Ollama returned HTTP 429 — rate limited by a proxy or gateway in front of Ollama.${detail ? ` (${detail})` : ''}`);
         }
         if (response.status >= 500) {
           throw new Error(`Ollama service error (HTTP ${response.status}). Try again later.${detail ? ` (${detail})` : ''}`);
