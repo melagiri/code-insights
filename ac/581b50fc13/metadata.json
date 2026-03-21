@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "ac581b50fc13",
+  "strategy": "manual-commit",
+  "branch": "master",
+  "checkpoints_count": 42,
+  "files_touched": [
+    "docs/ARCHITECTURE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ac/581b50fc13/0/metadata.json",
+      "transcript": "/ac/581b50fc13/0/full.jsonl",
+      "context": "/ac/581b50fc13/0/context.md",
+      "content_hash": "/ac/581b50fc13/0/content_hash.txt",
+      "prompt": "/ac/581b50fc13/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 334,
+    "cache_creation_tokens": 797445,
+    "cache_read_tokens": 18187777,
+    "output_tokens": 33070,
+    "api_call_count": 136
+  }
+}
