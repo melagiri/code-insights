@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e1f14fe89892",
+  "session_id": "dcc57e68-db20-47f6-9e63-1abc795a8392",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-21T04:45:02.867388Z",
+  "branch": "fix/tooling-limitation-classification",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/llm/prompt-constants.ts",
+    "server/src/llm/response-parsers.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d9f40d09e77c",
+  "checkpoint_transcript_start": 184,
+  "transcript_lines_at_start": 184,
+  "token_usage": {
+    "input_tokens": 19,
+    "cache_creation_tokens": 20824,
+    "cache_read_tokens": 1131158,
+    "output_tokens": 8294,
+    "api_call_count": 13
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-21T04:45:02.680462Z",
+    "agent_lines": 0,
+    "human_added": 18,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 18,
+    "agent_percentage": 0
+  }
+}

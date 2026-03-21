@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e1f14fe89892",
+  "strategy": "manual-commit",
+  "branch": "fix/tooling-limitation-classification",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/llm/prompt-constants.ts",
+    "server/src/llm/response-parsers.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e1/f14fe89892/0/metadata.json",
+      "transcript": "/e1/f14fe89892/0/full.jsonl",
+      "context": "/e1/f14fe89892/0/context.md",
+      "content_hash": "/e1/f14fe89892/0/content_hash.txt",
+      "prompt": "/e1/f14fe89892/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 19,
+    "cache_creation_tokens": 20824,
+    "cache_read_tokens": 1131158,
+    "output_tokens": 8294,
+    "api_call_count": 13
+  }
+}
