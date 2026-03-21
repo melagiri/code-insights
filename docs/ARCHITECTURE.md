@@ -291,3 +291,15 @@ PatternsPage → useFacetAggregation(period) → WeekAtAGlanceStrip → "Share" 
 - `dashboard/src/lib/share-card-icons.ts` — Lucide icon + tool logo rendering (`drawIcon()`, `drawToolIcon()`)
 - `dashboard/src/components/patterns/WeekAtAGlanceStrip.tsx` — UI component with download trigger
 - `dashboard/public/icons/` — Static tool logo assets (SVG/PNG)
+
+---
+
+## Known Architectural Debt
+
+Items identified during the production-grade audit (2026-03-21) and intentionally deferred. Revisit when their trigger conditions are met.
+
+| Item | File | Trigger | Notes |
+|------|------|---------|-------|
+| Refactor `AnalysisContext` | `dashboard/src/components/analysis/AnalysisContext.tsx` (256 lines) | When parallel/concurrent analyses are needed | Currently mixes SSE streaming orchestration with React state management. Works correctly as a single-analysis state machine. Refactor into separate streaming hook + read-only context when concurrent analysis support is required. |
+| Split `route-helpers.ts` | `server/src/routes/route-helpers.ts` (353 lines) | When SSE protocol or middleware evolves independently | 3 cohesive concerns (DB loading, middleware, SSE) always co-imported. Split only if concerns diverge. |
+| Remaining `console.warn` monitors | `server/src/llm/response-parsers.ts` | After confirming classification quality is stable | 4 remaining monitors (`[friction-monitor]`, `[pattern-monitor]`) — add env toggle or remove once confident in LLM output quality. |
