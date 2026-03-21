@@ -80,9 +80,12 @@ export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelPr
   const [searchHighlightId, setSearchHighlightId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingAllMessages, setLoadingAllMessages] = useState(false);
-  const { state: analysisState } = useAnalysis();
+  const { getAnalysisState } = useAnalysis();
+  // Show cost indicator when either analysis type is actively running
+  const sessionAnalysisState = getAnalysisState(sessionId, 'session');
+  const pqAnalysisState = getAnalysisState(sessionId, 'prompt_quality');
   const isAnalyzingThisSession =
-    analysisState.status === 'analyzing' && analysisState.sessionId === sessionId;
+    sessionAnalysisState?.status === 'analyzing' || pqAnalysisState?.status === 'analyzing';
   const { data: missingFacetsData } = useMissingFacets();
   const backfillMutation = useBackfillFacets();
   const missingFacetIds = useMemo(

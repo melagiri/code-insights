@@ -22,25 +22,15 @@ interface AnalyzePromptQualityButtonProps {
 
 export function AnalyzePromptQualityButton({ session, hasExistingScore }: AnalyzePromptQualityButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const { state: analysisState, startAnalysis, cancelAnalysis } = useAnalysis();
+  const { getAnalysisState, startAnalysis, cancelAnalysis } = useAnalysis();
   const { data: llmConfig } = useLlmConfig();
 
   const configured = !!(llmConfig?.provider && llmConfig?.model);
 
-  const isAnalyzingThisSession =
-    analysisState.status === 'analyzing' &&
-    analysisState.sessionId === session.id &&
-    analysisState.type === 'prompt_quality';
-  const isAnalyzingOtherSession =
-    analysisState.status === 'analyzing' && analysisState.sessionId !== session.id;
-  const isAnalyzingThisSessionOtherType =
-    analysisState.status === 'analyzing' &&
-    analysisState.sessionId === session.id &&
-    analysisState.type !== 'prompt_quality';
+  const analysisState = getAnalysisState(session.id, 'prompt_quality');
+  const isAnalyzingThisSession = analysisState?.status === 'analyzing';
   const isCompleteForThisSession =
-    (analysisState.status === 'complete' || analysisState.status === 'error') &&
-    analysisState.sessionId === session.id &&
-    analysisState.type === 'prompt_quality';
+    analysisState?.status === 'complete' || analysisState?.status === 'error';
 
   const handleAnalyze = () => {
     startAnalysis(session, 'prompt_quality');
@@ -70,29 +60,18 @@ export function AnalyzePromptQualityButton({ session, hasExistingScore }: Analyz
         <div className="flex items-center gap-2">
           <Button disabled variant="outline" size="sm" className="gap-2">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            {analysisState.progress?.message || 'Analyzing prompts...'}
+            {analysisState?.progress?.message || 'Analyzing prompts...'}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="gap-1 text-muted-foreground hover:text-foreground"
-            onClick={cancelAnalysis}
+            onClick={() => cancelAnalysis(session.id, 'prompt_quality')}
           >
             <X className="h-3 w-3" />
             Cancel
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  if (isAnalyzingOtherSession || isAnalyzingThisSessionOtherType) {
-    return (
-      <div className="space-y-2">
-        <Button disabled variant="outline" size="sm" className="gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Analysis in progress...
-        </Button>
       </div>
     );
   }
@@ -124,10 +103,10 @@ export function AnalyzePromptQualityButton({ session, hasExistingScore }: Analyz
         </p>
       )}
 
-      {isCompleteForThisSession && !analysisState.result?.success && (
+      {isCompleteForThisSession && !analysisState?.result?.success && (
         <div className="flex items-start gap-2 text-sm text-red-500">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{analysisState.result?.error || 'Analysis failed'}</span>
+          <span>{analysisState?.result?.error || 'Analysis failed'}</span>
         </div>
       )}
 

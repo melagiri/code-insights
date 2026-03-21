@@ -7,12 +7,12 @@ import { Loader2, Target } from 'lucide-react';
 
 /** Minimal analyze button for the Prompt Quality empty state. */
 export function PromptQualityAnalyzeButton({ session }: { session: Session }) {
-  const { state: analysisState, startAnalysis } = useAnalysis();
+  const { getAnalysisState, startAnalysis } = useAnalysis();
   const { data: llmConfig } = useLlmConfig();
   const configured = !!(llmConfig?.provider && llmConfig?.model);
 
-  const isAnalyzing =
-    analysisState.status === 'analyzing' && analysisState.sessionId === session.id;
+  const analysisState = getAnalysisState(session.id, 'prompt_quality');
+  const isAnalyzing = analysisState?.status === 'analyzing';
 
   if (!configured) {
     return (

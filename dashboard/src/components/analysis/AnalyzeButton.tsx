@@ -24,19 +24,15 @@ interface AnalyzeButtonProps {
 
 export function AnalyzeButton({ session, hasExistingInsights, insightCount }: AnalyzeButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const { state: analysisState, startAnalysis, cancelAnalysis } = useAnalysis();
+  const { getAnalysisState, startAnalysis, cancelAnalysis } = useAnalysis();
   const { data: llmConfig } = useLlmConfig();
 
   const configured = !!(llmConfig?.provider && llmConfig?.model);
 
-  const isAnalyzingThisSession =
-    analysisState.status === 'analyzing' && analysisState.sessionId === session.id && analysisState.type === 'session';
-  const isAnalyzingOther =
-    analysisState.status === 'analyzing' && !isAnalyzingThisSession;
+  const analysisState = getAnalysisState(session.id, 'session');
+  const isAnalyzingThisSession = analysisState?.status === 'analyzing';
   const isCompleteForThisSession =
-    (analysisState.status === 'complete' || analysisState.status === 'error') &&
-    analysisState.sessionId === session.id &&
-    analysisState.type === 'session';
+    (analysisState?.status === 'complete' || analysisState?.status === 'error');
 
   const handleAnalyze = () => {
     startAnalysis(session, 'session');
@@ -73,34 +69,18 @@ export function AnalyzeButton({ session, hasExistingInsights, insightCount }: An
         <div className="flex items-center gap-3">
           <Button disabled variant="outline" className="gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            {analysisState.progress?.message || `Analyzing "${analysisState.sessionTitle}"...`}
+            {analysisState?.progress?.message || `Analyzing "${analysisState?.sessionTitle}"...`}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             className="gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={cancelAnalysis}
+            onClick={() => cancelAnalysis(session.id, 'session')}
           >
             <X className="h-3.5 w-3.5" />
             Cancel
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  if (isAnalyzingOther) {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Button disabled variant="outline" className="gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Analysis in progress...
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Waiting for &quot;{analysisState.sessionTitle}&quot; to finish
-        </p>
       </div>
     );
   }
@@ -139,7 +119,7 @@ export function AnalyzeButton({ session, hasExistingInsights, insightCount }: An
         </p>
       )}
 
-      {isCompleteForThisSession && analysisState.result?.success && (
+      {isCompleteForThisSession && analysisState?.result?.success && (
         <div className="text-sm text-green-600">
           {analysisState.result.insightCount != null
             ? `Analysis complete! ${analysisState.result.insightCount} insight${analysisState.result.insightCount !== 1 ? 's' : ''} saved.`
@@ -147,10 +127,10 @@ export function AnalyzeButton({ session, hasExistingInsights, insightCount }: An
         </div>
       )}
 
-      {isCompleteForThisSession && !analysisState.result?.success && (
+      {isCompleteForThisSession && !analysisState?.result?.success && (
         <div className="flex items-start gap-2 text-sm text-red-500">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{analysisState.result?.error || 'Analysis failed'}</span>
+          <span>{analysisState?.result?.error || 'Analysis failed'}</span>
         </div>
       )}
 

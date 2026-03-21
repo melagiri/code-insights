@@ -2,6 +2,9 @@
  * Analysis context for the embedded dashboard.
  * Consumes SSE streaming endpoints for real-time progress and cancellation.
  * Uses fetch() + ReadableStream (not EventSource) for AbortController support.
+ *
+ * State model: Map<analysisKey, AnalysisState> where analysisKey = `${sessionId}:${type}`.
+ * Each analysis entry owns its own AbortController — multiple analyses can run concurrently.
  */
 import {
   createContext,
@@ -16,8 +19,6 @@ import { getSessionTitle } from '@/lib/utils';
 import type { Session } from '@/lib/types';
 import { toast } from 'sonner';
 import { parseSSEStream } from '@/lib/sse';
-
-const ANALYSIS_TOAST_ID = 'analysis-toast';
 
 export interface AnalysisState {
   status: 'idle' | 'analyzing' | 'complete' | 'error';
@@ -41,24 +42,27 @@ export interface AnalysisState {
   } | null;
 }
 
-interface AnalysisContextValue {
-  state: AnalysisState;
-  startAnalysis: (session: Session, type: 'session' | 'prompt_quality') => Promise<void>;
-  cancelAnalysis: () => void;
-  clearResult: () => void;
+type AnalysisType = 'session' | 'prompt_quality';
+
+function makeKey(sessionId: string, type: AnalysisType): string {
+  return `${sessionId}:${type}`;
 }
 
-const IDLE_STATE: AnalysisState = {
-  status: 'idle',
-  sessionId: null,
-  sessionTitle: null,
-  type: 'session',
-  progress: null,
-  result: null,
-};
+function makeToastId(sessionId: string, type: AnalysisType): string {
+  return `analysis-${sessionId}-${type}`;
+}
+
+interface AnalysisContextValue {
+  analyses: Map<string, AnalysisState>;
+  getAnalysisState: (sessionId: string, type: AnalysisType) => AnalysisState | undefined;
+  startAnalysis: (session: Session, type: AnalysisType) => Promise<void>;
+  cancelAnalysis: (sessionId: string, type: AnalysisType) => void;
+  clearResult: (sessionId: string, type: AnalysisType) => void;
+}
 
 const AnalysisContext = createContext<AnalysisContextValue>({
-  state: IDLE_STATE,
+  analyses: new Map(),
+  getAnalysisState: () => undefined,
   startAnalysis: async () => {},
   cancelAnalysis: () => {},
   clearResult: () => {},
@@ -87,54 +91,70 @@ function buildToastMessage(
 }
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AnalysisState>(IDLE_STATE);
+  const [analyses, setAnalyses] = useState<Map<string, AnalysisState>>(new Map());
   const queryClient = useQueryClient();
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const isAnalyzingRef = useRef(false);
+  // Map of analysisKey → AbortController for concurrent cancellation
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
-  const cancelAnalysis = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    isAnalyzingRef.current = false;
-    setState(IDLE_STATE);
-    toast.info('Analysis cancelled', { id: ANALYSIS_TOAST_ID, duration: 2000 });
+  const getAnalysisState = useCallback(
+    (sessionId: string, type: AnalysisType): AnalysisState | undefined => {
+      return analyses.get(makeKey(sessionId, type));
+    },
+    [analyses]
+  );
+
+  const cancelAnalysis = useCallback((sessionId: string, type: AnalysisType) => {
+    const key = makeKey(sessionId, type);
+    abortControllersRef.current.get(key)?.abort();
+    abortControllersRef.current.delete(key);
+    setAnalyses((prev) => {
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
+    toast.info('Analysis cancelled', { id: makeToastId(sessionId, type), duration: 2000 });
   }, []);
 
-  const clearResult = useCallback(() => {
-    setState(IDLE_STATE);
+  const clearResult = useCallback((sessionId: string, type: AnalysisType) => {
+    const key = makeKey(sessionId, type);
+    setAnalyses((prev) => {
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
   }, []);
 
   const startAnalysis = useCallback(
-    async (session: Session, type: 'session' | 'prompt_quality') => {
-      if (isAnalyzingRef.current) {
-        toast.warning('Analysis already in progress. Please wait or cancel it first.');
-        return;
-      }
-      isAnalyzingRef.current = true;
-
+    async (session: Session, type: AnalysisType) => {
+      const key = makeKey(session.id, type);
+      const toastId = makeToastId(session.id, type);
       const sessionTitle = getSessionTitle(session);
       const controller = new AbortController();
-      abortControllerRef.current = controller;
 
-      setState({
-        status: 'analyzing',
-        sessionId: session.id,
-        sessionTitle,
-        type,
-        progress: {
-          phase: 'loading_messages',
-          message: 'Loading messages...',
-        },
-        result: null,
+      abortControllersRef.current.set(key, controller);
+
+      setAnalyses((prev) => {
+        const next = new Map(prev);
+        next.set(key, {
+          status: 'analyzing',
+          sessionId: session.id,
+          sessionTitle,
+          type,
+          progress: {
+            phase: 'loading_messages',
+            message: 'Loading messages...',
+          },
+          result: null,
+        });
+        return next;
       });
 
-      toast.loading(`Loading messages for "${sessionTitle}"...`, {
-        id: ANALYSIS_TOAST_ID,
-      });
+      toast.loading(`Loading messages for "${sessionTitle}"...`, { id: toastId });
 
-      const endpoint = type === 'session'
-        ? `/api/analysis/session/stream?sessionId=${encodeURIComponent(session.id)}`
-        : `/api/analysis/prompt-quality/stream?sessionId=${encodeURIComponent(session.id)}`;
+      const endpoint =
+        type === 'session'
+          ? `/api/analysis/session/stream?sessionId=${encodeURIComponent(session.id)}`
+          : `/api/analysis/prompt-quality/stream?sessionId=${encodeURIComponent(session.id)}`;
 
       try {
         const response = await fetch(endpoint, {
@@ -167,8 +187,13 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
                 progress.currentChunk,
                 progress.totalChunks
               );
-              setState((prev) => ({ ...prev, progress }));
-              toast.loading(toastMsg, { id: ANALYSIS_TOAST_ID });
+              setAnalyses((prev) => {
+                const next = new Map(prev);
+                const entry = next.get(key);
+                if (entry) next.set(key, { ...entry, progress });
+                return next;
+              });
+              toast.loading(toastMsg, { id: toastId });
             } else if (sseEvent.event === 'complete') {
               const result = JSON.parse(sseEvent.data) as {
                 success: boolean;
@@ -186,33 +211,41 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
               const successMsg = `${result.insightCount} insight${result.insightCount !== 1 ? 's' : ''} saved for "${sessionTitle}"`;
 
-              setState({
-                status: 'complete',
-                sessionId: session.id,
-                sessionTitle,
-                type,
-                progress: null,
-                result: {
-                  success: true,
-                  insightCount: result.insightCount,
-                  tokenUsage: result.tokenUsage,
-                  costUsd: result.costUsd,
-                  provider: result.provider,
-                  model: result.model,
-                },
+              setAnalyses((prev) => {
+                const next = new Map(prev);
+                next.set(key, {
+                  status: 'complete',
+                  sessionId: session.id,
+                  sessionTitle,
+                  type,
+                  progress: null,
+                  result: {
+                    success: true,
+                    insightCount: result.insightCount,
+                    tokenUsage: result.tokenUsage,
+                    costUsd: result.costUsd,
+                    provider: result.provider,
+                    model: result.model,
+                  },
+                });
+                return next;
               });
-              toast.success(successMsg, { id: ANALYSIS_TOAST_ID });
+              toast.success(successMsg, { id: toastId });
             } else if (sseEvent.event === 'error') {
               const errorData = JSON.parse(sseEvent.data) as { error: string };
-              setState({
-                status: 'error',
-                sessionId: session.id,
-                sessionTitle,
-                type,
-                progress: null,
-                result: { success: false, error: errorData.error },
+              setAnalyses((prev) => {
+                const next = new Map(prev);
+                next.set(key, {
+                  status: 'error',
+                  sessionId: session.id,
+                  sessionTitle,
+                  type,
+                  progress: null,
+                  result: { success: false, error: errorData.error },
+                });
+                return next;
               });
-              toast.error(`Analysis failed: ${errorData.error}`, { id: ANALYSIS_TOAST_ID });
+              toast.error(`Analysis failed: ${errorData.error}`, { id: toastId });
             }
           } catch {
             // Malformed SSE event data — skip and continue
@@ -222,15 +255,18 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 
         // Stream ended — if no terminal event was received, treat as unexpected close
         if (!controller.signal.aborted) {
-          setState((prev) => {
-            if (prev.status === 'analyzing') {
-              toast.error('Analysis connection closed unexpectedly', { id: ANALYSIS_TOAST_ID });
-              return {
-                ...prev,
+          setAnalyses((prev) => {
+            const entry = prev.get(key);
+            if (entry?.status === 'analyzing') {
+              toast.error('Analysis connection closed unexpectedly', { id: toastId });
+              const next = new Map(prev);
+              next.set(key, {
+                ...entry,
                 status: 'error',
                 progress: null,
                 result: { success: false, error: 'Connection closed unexpectedly' },
-              };
+              });
+              return next;
             }
             return prev;
           });
@@ -240,25 +276,28 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
           return;
         }
         const errorMsg = error instanceof Error ? error.message : 'Analysis failed';
-        setState({
-          status: 'error',
-          sessionId: session.id,
-          sessionTitle,
-          type,
-          progress: null,
-          result: { success: false, error: errorMsg },
+        setAnalyses((prev) => {
+          const next = new Map(prev);
+          next.set(key, {
+            status: 'error',
+            sessionId: session.id,
+            sessionTitle,
+            type,
+            progress: null,
+            result: { success: false, error: errorMsg },
+          });
+          return next;
         });
-        toast.error(`Analysis failed: ${errorMsg}`, { id: ANALYSIS_TOAST_ID });
+        toast.error(`Analysis failed: ${errorMsg}`, { id: toastId });
       } finally {
-        abortControllerRef.current = null;
-        isAnalyzingRef.current = false;
+        abortControllersRef.current.delete(key);
       }
     },
     [queryClient]
   );
 
   return (
-    <AnalysisContext.Provider value={{ state, startAnalysis, cancelAnalysis, clearResult }}>
+    <AnalysisContext.Provider value={{ analyses, getAnalysisState, startAnalysis, cancelAnalysis, clearResult }}>
       {children}
     </AnalysisContext.Provider>
   );

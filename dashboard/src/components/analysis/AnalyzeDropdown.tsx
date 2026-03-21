@@ -39,7 +39,7 @@ export function AnalyzeDropdown({
 }: AnalyzeDropdownProps) {
   const [confirmSessionOpen, setConfirmSessionOpen] = useState(false);
   const [confirmPromptOpen, setConfirmPromptOpen] = useState(false);
-  const { state: analysisState, startAnalysis, cancelAnalysis } = useAnalysis();
+  const { getAnalysisState, startAnalysis, cancelAnalysis } = useAnalysis();
   const { data: llmConfig } = useLlmConfig();
   const { data: costData } = useAnalysisCost(session.id);
 
@@ -65,14 +65,16 @@ export function AnalyzeDropdown({
 
   const inputTokensLabel = formatEstimatedInputTokens(session);
 
-  const isAnalyzingThisSession =
-    analysisState.status === 'analyzing' && analysisState.sessionId === session.id;
-  const isAnalyzingOther =
-    analysisState.status === 'analyzing' && analysisState.sessionId !== session.id;
+  const sessionAnalysisState = getAnalysisState(session.id, 'session');
+  const pqAnalysisState = getAnalysisState(session.id, 'prompt_quality');
+
+  const isAnalyzingSession = sessionAnalysisState?.status === 'analyzing';
+  const isAnalyzingPq = pqAnalysisState?.status === 'analyzing';
+  // Either analysis type is running on this session
+  const isAnalyzingThisSession = isAnalyzingSession || isAnalyzingPq;
+
   const isCompleteForSession =
-    analysisState.status === 'complete' &&
-    analysisState.sessionId === session.id &&
-    analysisState.type === 'session';
+    sessionAnalysisState?.status === 'complete';
 
   const handleSessionAnalyze = () => {
     startAnalysis(session, 'session');
@@ -91,10 +93,7 @@ export function AnalyzeDropdown({
   };
 
   const handlePromptClick = () => {
-    const isCompleteForPrompt =
-      analysisState.status === 'complete' &&
-      analysisState.sessionId === session.id &&
-      analysisState.type === 'prompt_quality';
+    const isCompleteForPrompt = pqAnalysisState?.status === 'complete';
 
     if (hasExistingPromptQuality && !isCompleteForPrompt) {
       setConfirmPromptOpen(true);
@@ -114,13 +113,16 @@ export function AnalyzeDropdown({
     );
   }
 
+  // Show spinner for whichever analysis is currently running on this session
   if (isAnalyzingThisSession) {
+    const activeState = isAnalyzingSession ? sessionAnalysisState : pqAnalysisState;
+    const activeType = isAnalyzingSession ? 'session' : 'prompt_quality';
     return (
       <div className="flex items-center gap-1.5">
         <Button disabled variant="outline" size="sm" className="h-8 gap-2">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span className="hidden sm:inline">
-            {analysisState.progress?.message || 'Analyzing...'}
+            {activeState?.progress?.message || 'Analyzing...'}
           </span>
           <span className="sm:hidden">Analyzing...</span>
         </Button>
@@ -128,25 +130,11 @@ export function AnalyzeDropdown({
           variant="ghost"
           size="sm"
           className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-          onClick={cancelAnalysis}
+          onClick={() => cancelAnalysis(session.id, activeType)}
         >
           <X className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only">Cancel</span>
         </Button>
-      </div>
-    );
-  }
-
-  if (isAnalyzingOther) {
-    return (
-      <div className="flex items-center gap-1.5">
-        <Button disabled variant="outline" size="sm" className="h-8 gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Analysis in progress...
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          Waiting for &quot;{analysisState.sessionTitle}&quot;
-        </span>
       </div>
     );
   }
