@@ -573,3 +573,9 @@ How do you want to address each? For example: Point 6 is around rate limits for 
 
 yes, now implement these changes
 
+### Prompt 68
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: Production-Grade Audit: Batch 4 — UX Resilience. 2 items: (1) Graceful LLM provider error handling — surface actionable error messages in dashboard when API key is wrong, quota exceeded (429), rate limited, or auth fails, instead of generic "Analysis failed". Cover all LLM endpoints: session analysis, PQ analysis, reflect generate, export generate. Parse provider-specific error messages from OpenAI/Anthropic/Gemini/Ollama re...
+
