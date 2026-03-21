@@ -13,22 +13,43 @@ export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
     model,
 
     async chat(messages: LLMMessage[], options?: ChatOptions): Promise<LLMResponse> {
-      const response = await fetch(`${url}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: options?.signal,
-        body: JSON.stringify({
-          model,
-          // flattenContent converts ContentBlock[] to string; strings pass through unchanged.
-          messages: messages.map(m => ({ role: m.role, content: flattenContent(m.content) })),
-          stream: false,
-          options: { temperature: 0.7 },
-        }),
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${url}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: options?.signal,
+          body: JSON.stringify({
+            model,
+            // flattenContent converts ContentBlock[] to string; strings pass through unchanged.
+            messages: messages.map(m => ({ role: m.role, content: flattenContent(m.content) })),
+            stream: false,
+            options: { temperature: 0.7 },
+          }),
+        });
+      } catch (err) {
+        // Network-level failure — Ollama is likely not running
+        const cause = (err as { cause?: { code?: string } })?.cause;
+        if (cause?.code === 'ECONNREFUSED' || (err instanceof TypeError && err.message.includes('fetch'))) {
+          throw new Error(`Cannot connect to Ollama at ${url} — is it running? Start it with: ollama serve`);
+        }
+        throw err;
+      }
 
       if (!response.ok) {
-        const error = await response.text().catch(() => '');
-        throw new Error(`Ollama API error: ${response.status}${error ? ` - ${error}` : ''}`);
+        const detail = await response.text().catch(() => '');
+        if (response.status === 401 || response.status === 403) {
+          // Ollama itself has no auth — this typically means a proxy or gateway in front of it requires credentials.
+          throw new Error(`Ollama returned HTTP ${response.status} — check if your Ollama endpoint requires authentication (proxy or gateway).${detail ? ` (${detail})` : ''}`);
+        }
+        if (response.status === 429) {
+          // Standard Ollama has no rate limits — 429 likely comes from a proxy or gateway.
+          throw new Error(`Ollama returned HTTP 429 — rate limited by a proxy or gateway in front of Ollama.${detail ? ` (${detail})` : ''}`);
+        }
+        if (response.status >= 500) {
+          throw new Error(`Ollama service error (HTTP ${response.status}). Try again later.${detail ? ` (${detail})` : ''}`);
+        }
+        throw new Error(`Ollama API error (HTTP ${response.status})${detail ? ` - ${detail}` : ''}`);
       }
 
       const data = await response.json() as {
