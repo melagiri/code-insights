@@ -131,6 +131,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   let totalErrorCount = 0;
   let totalUpdatedExisting = 0;
   const sessionsByProvider: Record<string, number> = {};
+  let totalDiscoveredFiles = 0;
 
   for (const provider of providers) {
     const providerName = provider.getProviderName();
@@ -142,7 +143,11 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
       // Discovery
       spinner.start(`Discovering ${providerName} sessions...`);
       const sessionFiles = await provider.discover({ projectFilter: options.project });
+      totalDiscoveredFiles += sessionFiles.length;
       spinner.succeed(`Found ${sessionFiles.length} ${providerName} session files`);
+      if (providers.length > 1 && totalDiscoveredFiles > 500) {
+        log(chalk.dim(`  ${totalDiscoveredFiles} total session files discovered across providers — sync may take a moment`));
+      }
 
       if (sessionFiles.length === 0) continue;
 
