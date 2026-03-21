@@ -93,7 +93,6 @@ describe('Analysis routes', () => {
       });
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.success).toBe(false);
       expect(body.error).toMatch(/LLM not configured/);
     });
 
@@ -187,7 +186,6 @@ describe('Analysis routes', () => {
       const res = await app.request('/api/analysis/session/stream?sessionId=some-id');
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.success).toBe(false);
       expect(body.error).toMatch(/LLM not configured/);
     });
 
@@ -212,7 +210,6 @@ describe('Analysis routes', () => {
       });
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.success).toBe(false);
       expect(body.error).toMatch(/LLM not configured/);
     });
 
@@ -290,7 +287,6 @@ describe('Analysis routes', () => {
       const res = await app.request('/api/analysis/prompt-quality/stream?sessionId=some-id');
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.success).toBe(false);
       expect(body.error).toMatch(/LLM not configured/);
     });
 
@@ -315,7 +311,6 @@ describe('Analysis routes', () => {
       });
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.success).toBe(false);
       expect(body.error).toMatch(/LLM not configured/);
     });
 

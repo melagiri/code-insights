@@ -46,7 +46,6 @@ export function requireLLM(): MiddlewareHandler {
   return async (c, next) => {
     if (!isLLMConfigured()) {
       return c.json({
-        success: false,
         error: 'LLM not configured. Run `code-insights config llm` to configure a provider.',
       }, 400);
     }

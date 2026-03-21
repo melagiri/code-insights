@@ -9,10 +9,11 @@ import {
   parsePromptQualityResponse,
 } from './response-parsers.js';
 import {
-  generateSessionAnalysisPrompt,
-  generatePromptQualityPrompt,
-  SESSION_ANALYSIS_SYSTEM_PROMPT,
-  PROMPT_QUALITY_SYSTEM_PROMPT,
+  SHARED_ANALYST_SYSTEM_PROMPT,
+  buildCacheableConversationBlock,
+  buildSessionAnalysisInstructions,
+  buildPromptQualityInstructions,
+  buildFacetOnlyInstructions,
 } from './prompts.js';
 import type { SQLiteMessageRow } from './prompt-types.js';
 
@@ -336,64 +337,88 @@ describe('formatMessagesForAnalysis', () => {
 });
 
 // ──────────────────────────────────────────────────────
-// generateSessionAnalysisPrompt
+// buildCacheableConversationBlock
 // ──────────────────────────────────────────────────────
 
-describe('generateSessionAnalysisPrompt', () => {
-  it('includes project name in the prompt', () => {
-    const result = generateSessionAnalysisPrompt('my-app', null, 'conversation text');
-    expect(result).toContain('Project: my-app');
+describe('buildCacheableConversationBlock', () => {
+  it('wraps formatted messages in conversation markers', () => {
+    const block = buildCacheableConversationBlock('### User#0:\nHello');
+    expect(block.text).toContain('--- CONVERSATION ---');
+    expect(block.text).toContain('--- END CONVERSATION ---');
+    expect(block.text).toContain('### User#0:\nHello');
   });
 
-  it('includes session summary when provided', () => {
-    const result = generateSessionAnalysisPrompt('my-app', 'Fixed a critical bug', 'conversation text');
-    expect(result).toContain('Session Summary: Fixed a critical bug');
+  it('sets cache_control to ephemeral', () => {
+    const block = buildCacheableConversationBlock('messages');
+    expect(block.cache_control).toEqual({ type: 'ephemeral' });
   });
 
-  it('omits session summary line when null', () => {
-    const result = generateSessionAnalysisPrompt('my-app', null, 'conversation text');
-    expect(result).not.toContain('Session Summary:');
+  it('returns type text block', () => {
+    const block = buildCacheableConversationBlock('messages');
+    expect(block.type).toBe('text');
   });
 
-  it('includes the formatted messages', () => {
-    const result = generateSessionAnalysisPrompt('my-app', null, '### User#0:\nHello');
-    expect(result).toContain('### User#0:\nHello');
+  it('ends with double newline to separate instruction block', () => {
+    const block = buildCacheableConversationBlock('messages');
+    expect(block.text.endsWith('\n\n')).toBe(true);
   });
 });
 
 // ──────────────────────────────────────────────────────
-// generatePromptQualityPrompt
+// buildSessionAnalysisInstructions
 // ──────────────────────────────────────────────────────
 
-describe('generatePromptQualityPrompt', () => {
+describe('buildSessionAnalysisInstructions', () => {
+  it('includes project name in the instructions', () => {
+    const result = buildSessionAnalysisInstructions('my-app', null);
+    expect(result).toContain('Project: my-app');
+  });
+
+  it('includes session summary when provided', () => {
+    const result = buildSessionAnalysisInstructions('my-app', 'Fixed a critical bug');
+    expect(result).toContain('Session Summary: Fixed a critical bug');
+  });
+
+  it('omits session summary line when null', () => {
+    const result = buildSessionAnalysisInstructions('my-app', null);
+    expect(result).not.toContain('Session Summary:');
+  });
+
+  it('contains the PART 1 and PART 2 section headers', () => {
+    const result = buildSessionAnalysisInstructions('my-app', null);
+    expect(result).toContain('=== PART 1: SESSION FACETS ===');
+    expect(result).toContain('=== PART 2: INSIGHTS ===');
+  });
+
+  it('ends with json tags instruction', () => {
+    const result = buildSessionAnalysisInstructions('proj', null);
+    expect(result).toContain('<json>...</json>');
+  });
+});
+
+// ──────────────────────────────────────────────────────
+// buildPromptQualityInstructions
+// ──────────────────────────────────────────────────────
+
+describe('buildPromptQualityInstructions', () => {
   const sessionMeta = {
     humanMessageCount: 8,
     assistantMessageCount: 12,
     toolExchangeCount: 31,
   };
 
-  it('includes project name in the prompt', () => {
-    const result = generatePromptQualityPrompt('my-app', 'conversation', sessionMeta);
+  it('includes project name in the instructions', () => {
+    const result = buildPromptQualityInstructions('my-app', sessionMeta);
     expect(result).toContain('Project: my-app');
   });
 
   it('formats session shape header with structured counts', () => {
-    const result = generatePromptQualityPrompt('my-app', 'conversation', sessionMeta);
+    const result = buildPromptQualityInstructions('my-app', sessionMeta);
     expect(result).toContain('Session shape: 8 user messages, 12 assistant messages, 31 tool exchanges');
   });
 
-  it('does NOT include "Total messages:" in output', () => {
-    const result = generatePromptQualityPrompt('my-app', 'conversation', sessionMeta);
-    expect(result).not.toContain('Total messages:');
-  });
-
-  it('includes the formatted conversation', () => {
-    const result = generatePromptQualityPrompt('my-app', '### User#0:\nHello', sessionMeta);
-    expect(result).toContain('### User#0:\nHello');
-  });
-
   it('handles zero tool exchanges', () => {
-    const result = generatePromptQualityPrompt('proj', 'conversation', {
+    const result = buildPromptQualityInstructions('proj', {
       humanMessageCount: 2,
       assistantMessageCount: 2,
       toolExchangeCount: 0,
@@ -402,12 +427,12 @@ describe('generatePromptQualityPrompt', () => {
   });
 
   it('omits Context signals line when meta is not provided', () => {
-    const result = generatePromptQualityPrompt('proj', 'conversation', sessionMeta);
+    const result = buildPromptQualityInstructions('proj', sessionMeta);
     expect(result).not.toContain('Context signals:');
   });
 
   it('includes Context signals line when meta with compactions is provided', () => {
-    const result = generatePromptQualityPrompt('proj', 'conversation', sessionMeta, {
+    const result = buildPromptQualityInstructions('proj', sessionMeta, {
       compactCount: 1,
       autoCompactCount: 2,
     });
@@ -416,10 +441,41 @@ describe('generatePromptQualityPrompt', () => {
   });
 
   it('includes slash commands in Context signals when meta has slash commands', () => {
-    const result = generatePromptQualityPrompt('proj', 'conversation', sessionMeta, {
+    const result = buildPromptQualityInstructions('proj', sessionMeta, {
       slashCommands: ['/review', '/test'],
     });
     expect(result).toContain('slash commands used: /review, /test');
+  });
+
+  it('ends with json tags instruction', () => {
+    const result = buildPromptQualityInstructions('proj', sessionMeta);
+    expect(result).toContain('<json>...</json>');
+  });
+});
+
+// ──────────────────────────────────────────────────────
+// buildFacetOnlyInstructions
+// ──────────────────────────────────────────────────────
+
+describe('buildFacetOnlyInstructions', () => {
+  it('includes project name', () => {
+    const result = buildFacetOnlyInstructions('my-app', null);
+    expect(result).toContain('Project: my-app');
+  });
+
+  it('includes session summary when provided', () => {
+    const result = buildFacetOnlyInstructions('my-app', 'Fixed auth bug');
+    expect(result).toContain('Session Summary: Fixed auth bug');
+  });
+
+  it('omits session summary when null', () => {
+    const result = buildFacetOnlyInstructions('my-app', null);
+    expect(result).not.toContain('Session Summary:');
+  });
+
+  it('ends with json tags instruction', () => {
+    const result = buildFacetOnlyInstructions('proj', null);
+    expect(result).toContain('<json>...</json>');
   });
 });
 
@@ -631,17 +687,16 @@ describe('parsePromptQualityResponse', () => {
 });
 
 // ──────────────────────────────────────────────────────
-// System prompt constants
+// SHARED_ANALYST_SYSTEM_PROMPT
 // ──────────────────────────────────────────────────────
 
-describe('System prompt constants', () => {
-  it('SESSION_ANALYSIS_SYSTEM_PROMPT is a non-empty string', () => {
-    expect(typeof SESSION_ANALYSIS_SYSTEM_PROMPT).toBe('string');
-    expect(SESSION_ANALYSIS_SYSTEM_PROMPT.length).toBeGreaterThan(0);
+describe('SHARED_ANALYST_SYSTEM_PROMPT', () => {
+  it('is a non-empty string', () => {
+    expect(typeof SHARED_ANALYST_SYSTEM_PROMPT).toBe('string');
+    expect(SHARED_ANALYST_SYSTEM_PROMPT.length).toBeGreaterThan(0);
   });
 
-  it('PROMPT_QUALITY_SYSTEM_PROMPT is a non-empty string', () => {
-    expect(typeof PROMPT_QUALITY_SYSTEM_PROMPT).toBe('string');
-    expect(PROMPT_QUALITY_SYSTEM_PROMPT.length).toBeGreaterThan(0);
+  it('instructs JSON output wrapped in json tags', () => {
+    expect(SHARED_ANALYST_SYSTEM_PROMPT).toContain('<json>');
   });
 });

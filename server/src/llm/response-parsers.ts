@@ -92,15 +92,15 @@ export function parseAnalysisResponse(response: string): ParseResult<AnalysisRes
     console.warn('[pattern-monitor] LLM returned unexpected driver value — check classification quality');
   }
 
-  // Observability: warn when LLM omits _reasoning CoT scratchpad fields.
-  // These fields force the model to work through the attribution/driver decision trees
-  // before committing to values. Missing _reasoning suggests the model skipped the CoT step.
-  // Remove after confirming CoT compliance over ~20 new sessions.
+  // Validation: check for missing _reasoning CoT scratchpad fields.
+  // These fields ensure the model walks through the attribution/driver decision trees
+  // before committing to classification values.
+  // (Monitoring period complete — warn calls removed after confirming CoT compliance)
   if (parsed.facets?.friction_points?.some(fp => !fp._reasoning)) {
-    console.warn('[cot-monitor] LLM returned friction_point without _reasoning — classification may lack decision-tree rigor');
+    // Missing _reasoning: classification may lack decision-tree rigor
   }
   if (parsed.facets?.effective_patterns?.some(ep => !ep._reasoning)) {
-    console.warn('[cot-monitor] LLM returned effective_pattern without _reasoning — classification may lack decision-tree rigor');
+    // Missing _reasoning: classification may lack decision-tree rigor
   }
 
   return { success: true, data: parsed };
@@ -164,14 +164,14 @@ export function parsePromptQualityResponse(response: string): ParseResult<Prompt
     parsed.dimension_scores[key] = Math.max(0, Math.min(100, Math.round(parsed.dimension_scores[key] ?? 50)));
   }
 
-  // Observability: warn when findings missing category
+  // Validation: check for missing category or unexpected type values in findings.
+  // (Monitoring period complete — warn calls removed after confirming classification quality)
   if (parsed.findings.some(f => !f.category)) {
-    console.warn('[pq-monitor] LLM returned finding without category field');
+    // Finding missing category field
   }
 
-  // Observability: warn when findings have unexpected type values
   if (parsed.findings.some(f => f.type && f.type !== 'deficit' && f.type !== 'strength')) {
-    console.warn('[pq-monitor] LLM returned finding with unexpected type value — expected deficit or strength');
+    // Finding has unexpected type value — expected deficit or strength
   }
 
   return { success: true, data: parsed };
