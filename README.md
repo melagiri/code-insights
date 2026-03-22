@@ -12,15 +12,82 @@
   <a href="https://socket.dev/npm/package/@code-insights/cli"><img src="https://badge.socket.dev/npm/package/@code-insights/cli" alt="Socket Badge" /></a>
 </p>
 
-Turn your AI coding sessions into knowledge.
+<p align="center">
+  <strong>Turn your AI coding sessions into knowledge.</strong><br/>
+  Extract decisions, learnings, and prompt quality scores. Detect patterns. Get better at working with AI.
+</p>
 
-Parses session history from Claude Code, Cursor, Codex CLI, Copilot CLI, and VS Code Copilot Chat. Stores structured data in a local SQLite database. Surfaces insights through terminal analytics and a built-in browser dashboard — with cross-session pattern detection and LLM-powered synthesis.
+```bash
+npx @code-insights/cli
+```
+
+<p align="center">
+  <img src="docs/assets/screenshots/patterns-light.png" alt="Patterns — friction points, effective patterns, prompt quality, working style" width="800" />
+</p>
+
+Analyzes your sessions from **Claude Code, Cursor, Codex CLI, Copilot CLI, and VS Code Copilot Chat** to extract structured insights — decisions with trade-offs, learnings with root causes, prompt quality with actionable feedback, and cross-session patterns that surface what's working and what's not. All stored locally in SQLite, browsable through terminal analytics and a built-in dashboard.
 
 **No accounts. No cloud. No data leaves your machine.**
 
+---
+
+## What You Get
+
+### Decisions, Learnings & Prompt Quality
+
+Each session is analyzed to extract structured insights — decisions with trade-offs and alternatives, learnings with root causes, and prompt quality scores across 5 dimensions with actionable before/after takeaways.
+
 <p align="center">
-  <img src="docs/assets/screenshots/dashboard-light.png" alt="Dashboard — activity chart, session stats, recent insights" width="800" />
+  <img src="docs/assets/screenshots/session-insight-light.png" alt="Session detail — insights, prompt quality, summary, decisions" width="800" />
 </p>
+
+### Cross-Session Patterns
+
+Weekly synthesis detects friction points, effective patterns, and prompt quality trends across all your sessions. Navigate week-by-week to see how your habits evolve — and export generated rules for your CLAUDE.md or .cursorrules.
+
+<p align="center">
+  <img src="docs/assets/screenshots/patterns-rules-light.png" alt="Patterns — friction points, effective patterns, generated rules" width="800" />
+</p>
+
+### AI Fluency Score
+
+All of the above rolls up into your AI Fluency Score — a shareable snapshot of your coding fingerprint, working style, and top patterns.
+
+<p align="center">
+  <img src="docs/assets/screenshots/code-insights-ai-fluency-score.png" alt="AI Fluency Score — your coding fingerprint" width="600" />
+</p>
+
+### Analytics & Cost Tracking
+
+Activity charts, cost breakdown by project and model, session types, and multi-tool usage — all in one dashboard.
+
+<p align="center">
+  <img src="docs/assets/screenshots/analytics-light.png" alt="Analytics — activity charts, model usage, cost breakdown, project table" width="800" />
+</p>
+
+### Terminal Analytics
+
+Don't need a browser? `code-insights stats` gives you the full picture from the terminal.
+
+<p align="center">
+  <img src="docs/assets/screenshots/stats.png" alt="Terminal stats — sessions, cost, activity chart, top projects" width="500" />
+</p>
+
+---
+
+## Supported AI Tools
+
+| Tool | Data Location |
+|------|---------------|
+| Claude Code | `~/.claude/projects/**/*.jsonl` |
+| Cursor | Workspace storage SQLite (macOS, Linux, Windows) |
+| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
+| Copilot CLI | `~/.copilot/session-state/{id}/events.jsonl` |
+| VS Code Copilot Chat | Platform-specific Copilot Chat storage |
+
+Sessions from all tools are discovered automatically during sync.
+
+---
 
 ## Quick Start
 
@@ -33,73 +100,25 @@ npm install -g @code-insights/cli
 code-insights                          # sync sessions + open dashboard
 ```
 
-### Individual commands
-
-```bash
-code-insights stats                    # terminal analytics (no dashboard needed)
-code-insights stats today              # today's sessions
-
-code-insights dashboard                # start dashboard server (auto-syncs first)
-code-insights dashboard --no-sync      # start dashboard without syncing
-code-insights sync                     # sync sessions only
-code-insights init                     # customize settings (optional)
-```
-
-## What It Does
-
-- **Multi-tool support** — parses sessions from Claude Code, Cursor, Codex CLI, Copilot CLI, and VS Code Copilot Chat
-- **Terminal analytics** — `code-insights stats` shows cost, usage, and activity breakdowns
-- **Built-in dashboard** — browser UI with global search (`Cmd+K`), session browsing, analytics, insights, patterns, and export
-- **Reflect & Patterns** — cross-session pattern detection with weekly synthesis: friction points (with attribution), effective patterns (with driver classification), prompt quality analysis, working style rules, and shareable AI Fluency Score card (downloadable 1200×630 PNG with score circle, fingerprint bars, and effective patterns)
-- **LLM analysis** — generates summaries, decisions, learnings, prompt quality (7 deficit + 3 strength categories), and session facets for pattern aggregation
-- **Export** — LLM-powered cross-session synthesis in 4 formats: Agent Rules, Knowledge Brief, Obsidian, and Notion
-- **Cost tracking** — per-session LLM analysis cost with provider, model, and token breakdown
-- **Session character** — each session is classified into one of 7 types (deep_focus, bug_hunt, feature_build, exploration, refactor, learning, quick_task)
-- **Auto-sync hook** — `install-hook` keeps your database up to date automatically
-- **PR link detection** — GitHub PR links referenced in sessions are automatically extracted and displayed
-
-## Supported AI Tools
-
-| Tool | Data Location |
-|------|---------------|
-| Claude Code | `~/.claude/projects/**/*.jsonl` |
-| Cursor | Workspace storage SQLite (macOS, Linux, Windows) |
-| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
-| Copilot CLI | `~/.copilot/session-state/{id}/events.jsonl` |
-| VS Code Copilot Chat | Platform-specific Copilot Chat storage |
-
-## CLI Reference
+### Common Commands
 
 ```bash
 code-insights                          # sync + open dashboard (zero-config)
-code-insights init                     # customize settings (optional)
-code-insights sync                     # Sync sessions to local database
-code-insights sync --force             # Re-sync all sessions
-code-insights sync --source cursor     # Sync only from a specific tool
-code-insights sync --dry-run           # Preview without making changes
-code-insights sync prune               # Soft-delete sessions with preview
-code-insights status                   # Show sync statistics
-code-insights dashboard                # Start dashboard server and open browser
-code-insights dashboard --no-sync      # Start dashboard without syncing
-code-insights dashboard --port 8080    # Custom port (default: 7890)
-code-insights stats                    # Terminal overview (last 7 days)
-code-insights stats cost               # Cost breakdown by project and model
-code-insights stats projects           # Per-project detail cards
-code-insights stats today              # Today's sessions
-code-insights stats models             # Model usage distribution
-code-insights stats patterns           # Cross-session patterns summary
-code-insights reflect                  # Cross-session LLM synthesis
-code-insights reflect --week 2026-W11  # Reflect on a specific ISO week
-code-insights reflect backfill         # Backfill facets for legacy sessions
-code-insights config                   # Show configuration
-code-insights config llm               # Configure LLM provider (interactive)
-code-insights install-hook             # Auto-sync when Claude Code sessions end
-code-insights reset --confirm          # Delete all local data
+code-insights stats                    # terminal analytics (last 7 days)
+code-insights stats today              # today's sessions
+code-insights stats cost               # cost breakdown by project and model
+code-insights dashboard                # start dashboard server
+code-insights sync                     # sync sessions only
+code-insights sync --source cursor     # sync from a specific tool
+code-insights reflect                  # cross-session pattern synthesis
+code-insights reflect --week 2026-W11  # reflect on a specific week
+code-insights config llm               # configure LLM provider
+code-insights install-hook             # auto-sync when sessions end
 ```
 
-<p align="center">
-  <img src="docs/assets/screenshots/stats.png" alt="Terminal stats — sessions, cost, activity chart, top projects" width="500" />
-</p>
+See [`cli/README.md`](cli/README.md) for the full CLI reference.
+
+---
 
 ## Architecture
 
