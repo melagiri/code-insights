@@ -4,25 +4,13 @@
 
 <h1 align="center">Code Insights CLI</h1>
 
-Analyze AI coding sessions from the terminal. Parses session history from Claude Code, Cursor, Codex CLI, Copilot CLI, and VS Code Copilot Chat — stores everything in a local SQLite database — and serves a built-in browser dashboard with cross-session pattern detection.
+Extract decisions, learnings, and prompt quality scores from your AI coding sessions. Detect cross-session patterns. Get better at working with AI. Stores structured data in a local SQLite database and serves a built-in browser dashboard with LLM-powered synthesis.
 
 **Local-first. No accounts. No cloud. No data leaves your machine.**
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/dashboard-light.png" alt="Dashboard — activity chart, session stats, recent insights" width="800" />
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/code-insights-ai-fluency-score.png" alt="AI Fluency Score — your coding fingerprint across tools" width="600" />
 </p>
-
-## Install
-
-```bash
-npm install -g @code-insights/cli
-```
-
-Verify:
-
-```bash
-code-insights --version
-```
 
 ## Quick Start
 
@@ -30,7 +18,8 @@ code-insights --version
 # Try instantly (no install needed)
 npx @code-insights/cli
 
-# Or after installing globally:
+# Or install globally
+npm install -g @code-insights/cli
 code-insights                          # sync sessions + open dashboard
 ```
 
@@ -80,7 +69,7 @@ Opens the built-in React dashboard at `http://localhost:7890`. The dashboard pro
 - **Settings** — configure your LLM provider for analysis
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/insights-light.png" alt="Insights page — browse decisions, learnings, and prompt quality across all sessions" width="800" />
+  <img src="https://raw.githubusercontent.com/melagiri/code-insights/master/docs/assets/screenshots/patterns-light.png" alt="Patterns — friction points, effective patterns, working style profile" width="800" />
 </p>
 
 <p align="center">
