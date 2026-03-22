@@ -56,12 +56,13 @@ export function ProfilePromptDialog({
 
   const canSave = name.trim().length > 0 && normalizedUsername.length > 0;
 
-  function handleSave() {
+  async function handleSave() {
     if (!canSave) return;
-    saveProfile(name, githubUsername);
-    // Pass the saved profile directly so the caller can use it immediately
-    // without waiting for a React re-render (avoids stale closure on triggerDownload)
-    onSave({ name: name.trim(), githubUsername: normalizeGithubUsername(githubUsername) });
+    // Await saveProfile — it fetches and caches the avatar as base64
+    const saved = await saveProfile(name, githubUsername);
+    // Pass the saved profile (with cached avatar) directly to the caller
+    // to avoid stale closure on triggerDownload
+    onSave(saved);
   }
 
   function handleSkip() {
@@ -89,7 +90,6 @@ export function ProfilePromptDialog({
                   className="h-full w-full object-cover"
                   onError={() => setAvatarError(true)}
                   onLoad={() => setAvatarError(false)}
-                  crossOrigin="anonymous"
                 />
               ) : (
                 <span className="text-xl text-muted-foreground select-none">

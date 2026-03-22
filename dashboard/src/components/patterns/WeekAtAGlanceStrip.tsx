@@ -115,7 +115,7 @@ export function WeekAtAGlanceStrip({
     try {
       const activeProfile = profileOverride ?? profile;
       const userProfile = activeProfile && isProfileComplete(activeProfile)
-        ? { name: activeProfile.name, avatarUrl: `https://github.com/${activeProfile.githubUsername}.png` }
+        ? { name: activeProfile.name, avatarUrl: activeProfile.avatarDataUrl ?? '' }
         : undefined;
       await downloadShareCard({
         tagline: displayTagline,

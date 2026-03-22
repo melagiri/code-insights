@@ -156,16 +156,25 @@ const PATTERN_PILL_COLORS = [
 /**
  * Load the user's GitHub avatar for use in the share card footer.
  * Returns null if the URL is empty or the image fails to load (CORS or 404).
- * crossOrigin must be set before src to avoid canvas taint.
+ *
+ * github.com/{user}.png returns a 302 redirect to avatars.githubusercontent.com,
+ * but the redirect response lacks CORS headers — so `crossOrigin = 'anonymous'`
+ * on an <img> fails. We resolve the redirect via fetch() first (which follows
+ * redirects and gets a CORS-safe response from the CDN), convert to a blob URL,
+ * then load that blob URL into the Image element (same-origin, no taint).
  */
-async function loadAvatarImage(avatarUrl: string): Promise<HTMLImageElement | null> {
-  if (!avatarUrl) return null;
+/**
+ * Load an avatar image from a base64 data URL (cached in localStorage).
+ * Since data URLs are same-origin, there are no CORS or canvas taint issues.
+ * Returns null if the URL is empty or the image fails to load.
+ */
+async function loadAvatarImage(dataUrl: string): Promise<HTMLImageElement | null> {
+  if (!dataUrl) return null;
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous'; // must be set before src
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = avatarUrl;
+    img.src = dataUrl;
   });
 }
 
@@ -549,21 +558,30 @@ export function drawShareCard(
   const FOOTER_LOGO_SIZE = 22;
 
   if (props.userProfile && avatarImage) {
-    // Draw circular avatar clipped to circle
-    const AVATAR_R = FOOTER_LOGO_SIZE / 2; // 11px radius
+    // Draw circular avatar — larger than the logo for visibility
+    const AVATAR_SIZE = 36;
+    const AVATAR_R = AVATAR_SIZE / 2; // 18px radius
     const avatarCX = PAD + AVATAR_R;
-    const avatarCY = FOOTER_Y - AVATAR_R + 4;
+    const avatarCY = FOOTER_Y - AVATAR_R + 6;
 
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(avatarImage, avatarCX - AVATAR_R, avatarCY - AVATAR_R, FOOTER_LOGO_SIZE, FOOTER_LOGO_SIZE);
+    ctx.drawImage(avatarImage, avatarCX - AVATAR_R, avatarCY - AVATAR_R, AVATAR_SIZE, AVATAR_SIZE);
     ctx.restore();
 
-    ctx.font = `400 15px ${FONT_STACK}`;
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(props.userProfile.name, PAD + FOOTER_LOGO_SIZE + 10, FOOTER_Y);
+    // Draw subtle ring around avatar
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(avatarCX, avatarCY, AVATAR_R, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Name text — prominent enough to read
+    ctx.font = `500 16px ${FONT_STACK}`;
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(props.userProfile.name, PAD + AVATAR_SIZE + 12, FOOTER_Y);
   } else {
     // Fallback: current layout (logo + site URL)
     drawLogo(ctx, PAD, FOOTER_Y - FOOTER_LOGO_SIZE + 4, FOOTER_LOGO_SIZE);

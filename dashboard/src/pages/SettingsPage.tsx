@@ -98,8 +98,8 @@ export default function SettingsPage() {
     ? `https://github.com/${profileNormalizedUsername}.png`
     : '';
 
-  const handleSaveProfile = () => {
-    saveProfile(profileName, profileGithubUsername);
+  const handleSaveProfile = async () => {
+    await saveProfile(profileName, profileGithubUsername);
     toast.success('Profile saved');
   };
 
@@ -274,7 +274,6 @@ export default function SettingsPage() {
                   className="h-full w-full object-cover"
                   onError={() => setProfileAvatarError(true)}
                   onLoad={() => setProfileAvatarError(false)}
-                  crossOrigin="anonymous"
                 />
               ) : (
                 <span className="text-xl text-muted-foreground select-none">

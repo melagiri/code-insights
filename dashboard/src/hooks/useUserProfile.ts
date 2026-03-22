@@ -5,6 +5,7 @@ const STORAGE_KEY = 'code-insights:user-profile';
 export interface UserProfile {
   name: string;
   githubUsername: string;
+  avatarDataUrl?: string; // base64-cached avatar for Canvas export (no CORS issues)
 }
 
 function readStorage(): UserProfile | null {
@@ -38,7 +39,32 @@ export function normalizeGithubUsername(raw: string): string {
 }
 
 /**
- * localStorage-backed user profile (name + GitHub username).
+ * Fetch a GitHub avatar and return it as a base64 data URL for Canvas use.
+ * Uses avatars.githubusercontent.com directly (supports CORS) instead of
+ * github.com/{user}.png (which redirects and strips CORS headers).
+ * Returns undefined if the fetch fails (invalid username, network error).
+ */
+export async function fetchAvatarAsDataUrl(username: string): Promise<string | undefined> {
+  if (!username) return undefined;
+  try {
+    const res = await fetch(`https://avatars.githubusercontent.com/${username}?size=128`, {
+      redirect: 'follow',
+    });
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * localStorage-backed user profile (name + GitHub username + cached avatar).
  * Returns current profile and a save function.
  * Uses a version counter to trigger re-renders after writes (same pattern as useSavedFilters).
  */
@@ -49,12 +75,18 @@ export function useUserProfile() {
   const profile = readStorage();
 
   const saveProfile = useCallback(
-    (name: string, githubUsername: string) => {
-      writeStorage({
+    async (name: string, githubUsername: string): Promise<UserProfile> => {
+      const normalized = normalizeGithubUsername(githubUsername);
+      // Fetch and cache avatar as base64 — updates localStorage when done
+      const avatarDataUrl = await fetchAvatarAsDataUrl(normalized);
+      const saved: UserProfile = {
         name: name.trim(),
-        githubUsername: normalizeGithubUsername(githubUsername),
-      });
+        githubUsername: normalized,
+        avatarDataUrl,
+      };
+      writeStorage(saved);
       forceUpdate();
+      return saved;
     },
     [forceUpdate]
   );
