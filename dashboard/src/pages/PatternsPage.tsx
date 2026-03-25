@@ -20,6 +20,7 @@ import { frictionBarColor, getDominantDriver } from '@/lib/constants/patterns';
 import {
   AlertTriangle, Sparkles, Shield, Brain, Copy, Check, Loader2,
 } from 'lucide-react';
+import { LlmNudgeBanner } from '@/components/LlmNudgeBanner';
 
 export default function PatternsPage() {
   const [currentWeek, setCurrentWeek] = useState<string>(() => getCurrentIsoWeek());
@@ -227,6 +228,7 @@ export default function PatternsPage() {
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
+      <LlmNudgeBanner context="patterns" />
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>

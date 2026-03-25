@@ -30,6 +30,7 @@ import { InsightTypePills } from '@/components/filters/InsightTypePills';
 import { SaveFilterPopover } from '@/components/filters/SaveFilterPopover';
 import { SavedFiltersDropdown } from '@/components/filters/SavedFiltersDropdown';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
+import { LlmNudgeBanner } from '@/components/LlmNudgeBanner';
 
 const INSIGHT_TYPES: InsightType[] = ['summary', 'decision', 'learning', 'technique', 'prompt_quality'];
 
@@ -270,6 +271,7 @@ export default function InsightsPage() {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <LlmNudgeBanner context="insights" />
       {isError && !isLoading ? (
         <ErrorCard message="Failed to load insights" onRetry={refetch} />
       ) : isLoading ? (
