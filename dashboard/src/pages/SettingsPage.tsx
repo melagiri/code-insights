@@ -72,6 +72,7 @@ const PROVIDERS: ProviderInfo[] = [
       { id: 'llama3.3', name: 'Llama 3.3' },
       { id: 'qwen3:14b', name: 'Qwen3 14B' },
       { id: 'mistral', name: 'Mistral' },
+      { id: 'qwen2.5-coder', name: 'Qwen 2.5 Coder' },
     ],
   },
 ];

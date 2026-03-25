@@ -57,6 +57,11 @@ export async function dashboardCommand(options: DashboardOptions): Promise<void>
       console.warn(chalk.yellow(`  Sync warning: ${err instanceof Error ? err.message : String(err)}`));
       console.warn(chalk.dim('  Use --no-sync to skip sync, or run `code-insights sync` separately.'));
     }
+  } else {
+    // --no-sync: runSync is skipped so auto-detect doesn't run through that path.
+    // Still probe Ollama here so first-time users get configured even without syncing.
+    const { autoDetectOllama } = await import('../utils/ollama-detect.js');
+    await autoDetectOllama();
   }
 
   const port = parseInt(options.port, 10);

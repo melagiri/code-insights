@@ -43,9 +43,9 @@ export const PROVIDERS: ProviderInfo[] = [
     name: 'Ollama (Local)',
     requiresApiKey: false,
     models: [
-      { id: 'llama3.2', name: 'Llama 3.2', description: 'Local, free' },
+      { id: 'llama3.3', name: 'Llama 3.3', description: 'Local, free' },
+      { id: 'qwen3:14b', name: 'Qwen3 14B', description: 'Code-focused, free' },
       { id: 'mistral', name: 'Mistral', description: 'Local, free' },
-      { id: 'codellama', name: 'Code Llama', description: 'Code-focused, free' },
       { id: 'qwen2.5-coder', name: 'Qwen 2.5 Coder', description: 'Code-focused, free' },
     ],
   },
