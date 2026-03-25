@@ -22,7 +22,7 @@ const COPY: Record<LlmNudgeBannerProps['context'], { title: string; description:
 };
 
 function localStorageKey(context: LlmNudgeBannerProps['context']): string {
-  return `llm-nudge-dismissed-${context}`;
+  return `code-insights:llm-nudge-dismissed-${context}`;
 }
 
 export function LlmNudgeBanner({ context }: LlmNudgeBannerProps) {
@@ -54,7 +54,7 @@ export function LlmNudgeBanner({ context }: LlmNudgeBannerProps) {
   const { title, description } = COPY[context];
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+    <div role="status" className="flex items-start gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
       <Sparkles className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
       <div className="flex-1 min-w-0">
         <p className="font-medium">{title}</p>
