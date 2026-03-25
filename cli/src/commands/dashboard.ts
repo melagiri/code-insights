@@ -7,6 +7,7 @@ import net from 'net';
 import { trackEvent, identifyUser, captureError, classifyError } from '../utils/telemetry.js';
 import { printBanner } from '../utils/banner.js';
 import { runSync } from './sync.js';
+import { autoDetectOllama } from '../utils/ollama-detect.js';
 
 interface DashboardOptions {
   port: string;

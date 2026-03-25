@@ -3,6 +3,7 @@ import * as path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
 import { loadSyncState, saveSyncState } from '../utils/config.js';
+import { autoDetectOllama } from '../utils/ollama-detect.js';
 import { trackEvent, identifyUser, captureError, classifyError } from '../utils/telemetry.js';
 import { insertSessionWithProjectAndReturnIsNew, insertMessages, recalculateUsageStats } from '../db/write.js';
 import { getDb, getMigrationResult } from '../db/client.js';
@@ -61,6 +62,11 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   } catch (error) {
     spinner.fail('Failed to initialize database');
     throw new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  // Auto-detect Ollama if no LLM is configured (silent if not running)
+  if (!options.quiet) {
+    await autoDetectOllama();
   }
 
   // Check if V6 migration was just applied — triggers auto force-sync for interactive sessions
