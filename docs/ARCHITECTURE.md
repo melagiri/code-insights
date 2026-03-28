@@ -19,8 +19,9 @@ Source tool session files -> Provider (discover + parse) -> SQLite -> Dashboard 
 code-insights/
 ├── cli/                    # Node.js CLI (Commander.js, SQLite, providers)
 │   └── src/
-│       ├── commands/       # CLI commands (init, sync, status, stats, dashboard, config)
+│       ├── commands/       # CLI commands (init, sync, status, stats, dashboard, config, insights)
 │       ├── commands/stats/ # Stats command suite (4-layer architecture)
+│       ├── analysis/       # Prompt builders, response parsers, normalizers, runner interface (shared by CLI + server)
 │       ├── providers/      # Source tool providers (claude-code, cursor, codex, copilot, copilot-cli)
 │       ├── parser/         # JSONL parsing, title generation
 │       ├── db/             # SQLite schema, migrations, queries
@@ -43,7 +44,7 @@ code-insights/
 ├── server/                 # Hono API server
 │   └── src/
 │       ├── routes/         # REST API endpoints
-│       ├── llm/            # LLM client: session analysis, reflect synthesis, export, normalization, cost tracking; analysis prompts use provider-native caching for the shared conversation prefix
+│       ├── llm/            # LLM client, reflect synthesis, export, cost tracking; prompt builders re-exported from cli/src/analysis/
 │       └── index.ts        # Server entry point
 ├── docs/                   # Product docs, plans, roadmap
 │   └── plans/              # Design plans (pending implementation only)
@@ -54,7 +55,7 @@ code-insights/
 
 ### CLI Directory Detail (`/cli/src/`)
 
-- `commands/` — CLI commands (init, sync, status, dashboard, reset, install-hook, config, reflect, telemetry)
+- `commands/` — CLI commands (init, sync, status, dashboard, reset, install-hook, config, reflect, telemetry, insights)
 - `commands/stats/` — Stats command suite (4-layer architecture):
   - `data/types.ts` — `StatsDataSource` interface, `SessionRow`, error classes
   - `data/source.ts` — Data source factory
