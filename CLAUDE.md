@@ -91,8 +91,9 @@ code-insights status                   # Show sync statistics
 code-insights open                     # Open dashboard in browser (no server start)
 code-insights dashboard                # Start server + open dashboard (auto-syncs first)
 code-insights dashboard --no-sync      # Start server + open dashboard without syncing
-code-insights install-hook             # Auto-sync on session end
-code-insights uninstall-hook           # Remove auto-sync hook
+code-insights install-hook             # Auto-sync + auto-analysis on session end
+code-insights install-hook --sync-only # Install sync hook only (no analysis)
+code-insights uninstall-hook           # Remove all Code Insights hooks
 code-insights config                   # Show current configuration
 code-insights config llm               # Configure LLM provider interactively
 code-insights reset --confirm          # Delete all local data
@@ -103,6 +104,12 @@ code-insights sync prune               # Soft-delete trivial sessions (≤2 mess
 code-insights telemetry                # Show telemetry status
 code-insights telemetry disable        # Opt out of anonymous telemetry
 code-insights telemetry enable         # Opt back in
+
+# Insights — session analysis
+code-insights insights <session_id>              # Analyze using configured LLM
+code-insights insights <session_id> --native     # Analyze using claude -p (no API key needed)
+code-insights insights --hook --native -q        # Hook mode (reads stdin, used by SessionEnd hook)
+code-insights insights check                     # Check for unanalyzed sessions (last 7 days)
 
 # Stats — terminal analytics
 code-insights stats                    # Dashboard overview (last 7 days)
@@ -125,7 +132,7 @@ code-insights stats patterns           # Cross-session patterns summary
 
 - **Runtime**: Node.js (ES2022, ES Modules)
 - **CLI Framework**: Commander.js
-- **Database**: SQLite (better-sqlite3) — WAL mode, local at `~/.code-insights/data.db`, Schema V7
+- **Database**: SQLite (better-sqlite3) — WAL mode, local at `~/.code-insights/data.db`, Schema V7 (V8 planned)
 - **Dashboard**: Vite + React 19 SPA
 - **Server**: Hono
 - **UI**: Tailwind CSS 4 + shadcn/ui (New York), Lucide icons
