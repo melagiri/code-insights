@@ -15,7 +15,16 @@
     "./utils/browser": "./dist/utils/browser.js",
     "./constants/llm-providers": "./dist/constants/llm-providers.js",
     "./utils/pricing": "./dist/utils/pricing.js",
-    "./utils/telemetry": "./dist/utils/telemetry.js"
+    "./utils/telemetry": "./dist/utils/telemetry.js",
+    "./analysis/prompts": "./dist/analysis/prompts.js",
+    "./analysis/prompt-types": "./dist/analysis/prompt-types.js",
+    "./analysis/prompt-constants": "./dist/analysis/prompt-constants.js",
+    "./analysis/message-format": "./dist/analysis/message-format.js",
+    "./analysis/response-parsers": "./dist/analysis/response-parsers.js",
+    "./analysis/normalize-utils": "./dist/analysis/normalize-utils.js",
+    "./analysis/friction-normalize": "./dist/analysis/friction-normalize.js",
+    "./analysis/pattern-normalize": "./dist/analysis/pattern-normalize.js",
+    "./analysis/prompt-quality-normalize": "./dist/analysis/prompt-quality-normalize.js"
   },
   "bin": {
     "code-insights": "./dist/index.js"
