@@ -4,6 +4,7 @@ import { SCHEMA_SQL, CURRENT_SCHEMA_VERSION } from './schema.js';
 export interface MigrationResult {
   v6Applied: boolean;
   v7Applied: boolean;
+  v8Applied: boolean;
 }
 
 /**
@@ -17,6 +18,7 @@ export interface MigrationResult {
  * Version 5: Add deleted_at column to sessions for soft-delete (user-initiated hide)
  * Version 6: Add compact_count, auto_compact_count, slash_commands columns to sessions
  * Version 7: Add analysis_usage table for tracking LLM analysis costs per session
+ * Version 8: Add session_message_count to analysis_usage for resume detection
  */
 export function runMigrations(db: Database.Database): MigrationResult {
   // Create schema_version table first if it doesn't exist.
@@ -62,7 +64,13 @@ export function runMigrations(db: Database.Database): MigrationResult {
     v7Applied = true;
   }
 
-  return { v6Applied, v7Applied };
+  let v8Applied = false;
+  if (currentVersion < 8) {
+    applyV8(db);
+    v8Applied = true;
+  }
+
+  return { v6Applied, v7Applied, v8Applied };
 }
 
 function getCurrentVersion(db: Database.Database): number {
@@ -131,6 +139,12 @@ function applyV6(db: Database.Database): void {
   db.exec(`ALTER TABLE sessions ADD COLUMN auto_compact_count INTEGER NOT NULL DEFAULT 0`);
   db.exec(`ALTER TABLE sessions ADD COLUMN slash_commands TEXT NOT NULL DEFAULT '[]'`);
   db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(6);
+}
+
+
+function applyV8(db: Database.Database): void {
+  db.exec(`ALTER TABLE analysis_usage ADD COLUMN session_message_count INTEGER`);
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(8);
 }
 
 function applyV7(db: Database.Database): void {
