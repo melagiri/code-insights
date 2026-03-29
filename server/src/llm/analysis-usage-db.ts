@@ -41,17 +41,28 @@ export interface SaveAnalysisUsageData {
 
 /**
  * Persist analysis token usage to SQLite.
- * Uses INSERT OR REPLACE — re-analysis overwrites the previous row (latest cost only).
- * The composite PK (session_id, analysis_type) enforces one row per type per session.
+ * Uses INSERT ... ON CONFLICT DO UPDATE — preserves columns not in this write
+ * (e.g. session_message_count written by the CLI insights command).
+ * INSERT OR REPLACE would DELETE+INSERT, clobbering those columns.
  */
 export function saveAnalysisUsage(data: SaveAnalysisUsageData): void {
   const db = getDb();
   db.prepare(`
-    INSERT OR REPLACE INTO analysis_usage
+    INSERT INTO analysis_usage
       (session_id, analysis_type, provider, model,
        input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens,
        estimated_cost_usd, duration_ms, chunk_count)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(session_id, analysis_type) DO UPDATE SET
+      provider = excluded.provider,
+      model = excluded.model,
+      input_tokens = excluded.input_tokens,
+      output_tokens = excluded.output_tokens,
+      cache_creation_tokens = excluded.cache_creation_tokens,
+      cache_read_tokens = excluded.cache_read_tokens,
+      estimated_cost_usd = excluded.estimated_cost_usd,
+      duration_ms = excluded.duration_ms,
+      chunk_count = excluded.chunk_count
   `).run(
     data.session_id,
     data.analysis_type,

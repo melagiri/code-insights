@@ -13,6 +13,7 @@ import { statsCommand } from './commands/stats/index.js';
 import { configCommand } from './commands/config.js';
 import { telemetryCommand } from './commands/telemetry.js';
 import { reflectCommand } from './commands/reflect.js';
+import { insightsCommand, insightsCheckCommand } from './commands/insights.js';
 import { showTelemetryNoticeIfNeeded } from './utils/telemetry.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -115,6 +116,29 @@ program.addCommand(statsCommand);
 program.addCommand(configCommand);
 program.addCommand(telemetryCommand);
 program.addCommand(reflectCommand);
+
+
+// insights command — analyze a session using native claude -p or configured LLM
+const insightsCmd = program
+  .command('insights [session_id]')
+  .description('Analyze a session with AI — extracts insights and prompt quality score')
+  .option('--native', 'Use claude -p (your Claude subscription, no API key required)')
+  .option('--hook', 'Read session context from stdin (for Claude Code SessionEnd hook)')
+  .option('-s, --source <tool>', 'Source tool identifier (default: claude-code)')
+  .option('--force', 'Re-analyze even if already analyzed at this session length')
+  .option('-q, --quiet', 'Suppress output')
+  .action(async (sessionId: string | undefined, opts) => {
+    await insightsCommand(sessionId, opts);
+  });
+
+insightsCmd
+  .command('check')
+  .description('Check for unanalyzed sessions in the last N days')
+  .option('--days <n>', 'Lookback window in days', '7')
+  .option('-q, --quiet', 'Machine-readable output (just count)')
+  .action((opts) => {
+    insightsCheckCommand({ days: opts.days ? parseInt(opts.days, 10) : 7, quiet: opts.quiet });
+  });
 
 // Default action: running `code-insights` with no arguments opens the dashboard.
 // Dashboard auto-syncs sessions first, giving "1 command to value" on first run.
