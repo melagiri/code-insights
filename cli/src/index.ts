@@ -89,12 +89,14 @@ program
 
 program
   .command('install-hook')
-  .description('Install Claude Code hook for automatic sync')
-  .action(installHookCommand);
+  .description('Install Claude Code hooks for automatic sync and session analysis')
+  .option('--sync-only', 'Install only the Stop (sync) hook')
+  .option('--analysis-only', 'Install only the SessionEnd (analysis) hook')
+  .action((opts) => installHookCommand({ syncOnly: opts.syncOnly, analysisOnly: opts.analysisOnly }));
 
 program
   .command('uninstall-hook')
-  .description('Remove Claude Code hook')
+  .description('Remove Claude Code hooks (sync and analysis)')
   .action(uninstallHookCommand);
 
 program
