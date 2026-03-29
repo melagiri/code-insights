@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionAnalysisResponse",
+  "description": "Hand-maintained JSON schema for claude -p --json-schema. Derived from AnalysisResponse in prompt-types.ts. Keep in sync when prompt-types.ts changes.",
+  "type": "object",
+  "required": ["facets", "summary", "decisions", "learnings"],
+  "properties": {
+    "facets": {
+      "type": "object",
+      "required": [
+        "outcome_satisfaction",
+        "workflow_pattern",
+        "had_course_correction",
+        "course_correction_reason",
+        "iteration_count",
+        "friction_points",
+        "effective_patterns"
+      ],
+      "properties": {
+        "outcome_satisfaction": {
+          "type": "string",
+          "description": "Session outcome satisfaction level"
+        },
+        "workflow_pattern": {
+          "type": ["string", "null"],
+          "description": "Primary workflow pattern observed"
+        },
+        "had_course_correction": {
+          "type": "boolean",
+          "description": "Whether the session had a significant course correction"
+        },
+        "course_correction_reason": {
+          "type": ["string", "null"],
+          "description": "Reason for course correction if it occurred"
+        },
+        "iteration_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of meaningful iterations in the session"
+        },
+        "friction_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["category", "description", "severity", "resolution"],
+            "properties": {
+              "_reasoning": {
+                "type": "string",
+                "description": "CoT scratchpad — saved for prompt tuning"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "wrong-approach",
+                  "knowledge-gap",
+                  "stale-assumptions",
+                  "incomplete-requirements",
+                  "context-loss",
+                  "scope-creep",
+                  "repeated-mistakes",
+                  "documentation-gap",
+                  "tooling-limitation"
+                ]
+              },
+              "attribution": {
+                "type": "string",
+                "enum": ["user-actionable", "ai-capability", "environmental"]
+              },
+              "description": { "type": "string" },
+              "severity": {
+                "type": "string",
+                "enum": ["high", "medium", "low"]
+              },
+              "resolution": { "type": "string" }
+            }
+          }
+        },
+        "effective_patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["category", "description", "confidence"],
+            "properties": {
+              "_reasoning": {
+                "type": "string",
+                "description": "CoT scratchpad — saved for prompt tuning"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "structured-planning",
+                  "incremental-implementation",
+                  "verification-workflow",
+                  "systematic-debugging",
+                  "self-correction",
+                  "context-gathering",
+                  "domain-expertise",
+                  "effective-tooling"
+                ]
+              },
+              "description": { "type": "string" },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "driver": {
+                "type": "string",
+                "enum": ["user-driven", "ai-driven", "collaborative"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["title", "content", "bullets"],
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "outcome": {
+          "type": "string",
+          "enum": ["success", "partial", "abandoned", "blocked"]
+        },
+        "bullets": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "reasoning"],
+        "properties": {
+          "title": { "type": "string" },
+          "situation": { "type": "string" },
+          "choice": { "type": "string" },
+          "reasoning": { "type": "string" },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["option", "rejected_because"],
+              "properties": {
+                "option": { "type": "string" },
+                "rejected_because": { "type": "string" }
+              }
+            }
+          },
+          "trade_offs": { "type": "string" },
+          "revisit_when": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "learnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string" },
+          "symptom": { "type": "string" },
+          "root_cause": { "type": "string" },
+          "takeaway": { "type": "string" },
+          "applies_when": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

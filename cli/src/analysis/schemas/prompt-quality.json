@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PromptQualityResponse",
+  "description": "Hand-maintained JSON schema for claude -p --json-schema. Derived from PromptQualityResponse in prompt-types.ts. Keep in sync when prompt-types.ts changes.",
+  "type": "object",
+  "required": [
+    "efficiency_score",
+    "message_overhead",
+    "assessment",
+    "takeaways",
+    "findings",
+    "dimension_scores"
+  ],
+  "properties": {
+    "efficiency_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Overall prompt quality score (0-100)"
+    },
+    "message_overhead": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Estimated message overhead (wasted turns)"
+    },
+    "assessment": {
+      "type": "string",
+      "description": "Short narrative summary of prompt quality"
+    },
+    "takeaways": {
+      "type": "array",
+      "description": "User-facing before/after examples shown on Insights page",
+      "items": {
+        "type": "object",
+        "required": ["type", "category", "label", "message_ref"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["improve", "reinforce"]
+          },
+          "category": { "type": "string" },
+          "label": { "type": "string" },
+          "message_ref": { "type": "string" },
+          "original": { "type": "string" },
+          "better_prompt": { "type": "string" },
+          "why": { "type": "string" },
+          "what_worked": { "type": "string" },
+          "why_effective": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "Categorized findings for Reflect aggregation",
+      "items": {
+        "type": "object",
+        "required": ["category", "type", "description", "message_ref", "impact", "confidence"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "vague-request",
+              "missing-context",
+              "late-constraint",
+              "unclear-correction",
+              "scope-drift",
+              "missing-acceptance-criteria",
+              "assumption-not-surfaced",
+              "precise-request",
+              "effective-context",
+              "productive-correction"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": ["deficit", "strength"]
+          },
+          "description": { "type": "string" },
+          "message_ref": { "type": "string" },
+          "impact": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "suggested_improvement": { "type": "string" }
+        }
+      }
+    },
+    "dimension_scores": {
+      "type": "object",
+      "description": "Five-axis scores (0-100) for prompt quality dimensions",
+      "required": [
+        "context_provision",
+        "request_specificity",
+        "scope_management",
+        "information_timing",
+        "correction_quality"
+      ],
+      "properties": {
+        "context_provision": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "request_specificity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "scope_management": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "information_timing": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "correction_quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}
