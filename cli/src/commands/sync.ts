@@ -366,6 +366,24 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
   }
 }
 
+
+/**
+ * Sync a single session file to SQLite.
+ * Used by the insights --hook path to guarantee fresh data before analysis.
+ * Much faster than full sync (no directory scanning, no other providers).
+ */
+export async function syncSingleFile(options: {
+  filePath: string;
+  sourceTool?: string;
+  quiet?: boolean;
+}): Promise<void> {
+  const provider = getProvider(options.sourceTool ?? 'claude-code');
+  const session = await provider.parse(options.filePath);
+  if (!session) return;
+  insertSessionWithProjectAndReturnIsNew(session, false);
+  insertMessages(session);
+}
+
 /**
  * Filter files to only those that need syncing
  */
