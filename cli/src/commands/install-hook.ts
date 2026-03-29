@@ -48,6 +48,11 @@ function hookAlreadyInstalled(hookList: HookConfig[]): boolean {
 export async function installHookCommand(options: InstallHookOptions = {}): Promise<void> {
   const { syncOnly = false, analysisOnly = false } = options;
 
+  if (syncOnly && analysisOnly) {
+    console.log(chalk.red('Cannot use --sync-only and --analysis-only together. Use neither flag to install both hooks.'));
+    return;
+  }
+
   const installSync = !analysisOnly;
   const installAnalysis = !syncOnly;
 

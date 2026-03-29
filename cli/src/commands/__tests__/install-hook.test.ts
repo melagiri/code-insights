@@ -138,6 +138,18 @@ describe('installHookCommand', () => {
     });
   });
 
+  describe('--sync-only + --analysis-only mutual exclusion', () => {
+    it('returns early with error message when both flags are set', async () => {
+      if (fs.existsSync(HOOKS_FILE)) fs.unlinkSync(HOOKS_FILE);
+
+      const { installHookCommand } = await import('../install-hook.js');
+      await installHookCommand({ syncOnly: true, analysisOnly: true });
+
+      // No hooks file should have been written
+      expect(fs.existsSync(HOOKS_FILE)).toBe(false);
+    });
+  });
+
   describe('--sync-only flag', () => {
     it('installs only Stop hook when --sync-only is set', async () => {
       if (fs.existsSync(HOOKS_FILE)) fs.unlinkSync(HOOKS_FILE);
