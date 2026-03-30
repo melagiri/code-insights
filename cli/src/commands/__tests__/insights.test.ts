@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { runMigrations } from '../../db/migrate.js';
 
@@ -419,5 +419,220 @@ describe('syncSingleFile', () => {
 
     expect(mockInsertSession).not.toHaveBeenCalled();
     expect(mockInsertMessages).not.toHaveBeenCalled();
+  });
+});
+
+// ── insightsCheckCommand tests ────────────────────────────────────────────────
+
+describe('insightsCheckCommand — count-based behavior', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockDb = new Database(':memory:');
+    runMigrations(mockDb);
+    mockRunAnalysis.mockReset();
+    mockValidate.mockReset();
+    mockFromConfig.mockReset();
+    mockProviderRunAnalysis.mockReset();
+    stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    consoleSpy.mockRestore();
+  });
+
+  function seedSessions(db: Database.Database, count: number, analyzedCount = 0): void {
+    db.exec(`INSERT OR IGNORE INTO projects (id, name, path, last_activity) VALUES ('pc1', 'proj', '/p', datetime('now'));`);
+    for (let i = 0; i < count; i++) {
+      const sid = `chk-sess-${i}`;
+      db.exec(`INSERT OR IGNORE INTO sessions (id, project_id, project_name, project_path, started_at, ended_at, message_count) VALUES ('${sid}', 'pc1', 'proj', '/p', datetime('now', '-${i} minutes'), datetime('now', '-${i} minutes'), 10);`);
+      if (i < analyzedCount) {
+        db.exec(`INSERT OR IGNORE INTO analysis_usage (session_id, analysis_type, provider, model) VALUES ('${sid}', 'session', 'openai', 'gpt-4');`);
+      }
+    }
+  }
+
+  it('exits silently when 0 unanalyzed sessions', async () => {
+    seedSessions(mockDb, 2, 2);
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false });
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('--quiet outputs just the count for unanalyzed sessions', async () => {
+    seedSessions(mockDb, 5, 0);
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: true });
+    const written = (stdoutSpy.mock.calls as Array<[unknown]>).map(c => String(c[0])).join('');
+    expect(written.trim()).toBe('5');
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  it('--quiet exits silently when 0 unanalyzed sessions', async () => {
+    seedSessions(mockDb, 3, 3);
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: true });
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('prints count and suggest --analyze for 3-10 unanalyzed sessions', async () => {
+    seedSessions(mockDb, 5, 0);
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false });
+    const output = (consoleSpy.mock.calls as Array<unknown[]>).map(c => String(c[0])).join('\n');
+    expect(output).toContain('5');
+    expect(output).toMatch(/insights check --analyze/i);
+    // No time estimate for < 11 sessions
+    expect(output).not.toMatch(/~\d+ min/i);
+  });
+
+  it('prints count + time estimate for 11+ unanalyzed sessions', async () => {
+    seedSessions(mockDb, 12, 0);
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false });
+    const output = (consoleSpy.mock.calls as Array<unknown[]>).map(c => String(c[0])).join('\n');
+    expect(output).toContain('12');
+    expect(output).toMatch(/insights check --analyze/i);
+    // Should have time estimate (~X min)
+    expect(output).toMatch(/~\d/);
+  });
+
+  it('respects --days lookback window', async () => {
+    mockDb.exec(`INSERT OR IGNORE INTO projects (id, name, path, last_activity) VALUES ('pd1', 'proj', '/p', datetime('now'));`);
+    mockDb.exec(`INSERT OR IGNORE INTO sessions (id, project_id, project_name, project_path, started_at, ended_at, message_count) VALUES ('old-s', 'pd1', 'proj', '/p', datetime('now', '-8 days'), datetime('now', '-8 days'), 10);`);
+    mockDb.exec(`INSERT OR IGNORE INTO sessions (id, project_id, project_name, project_path, started_at, ended_at, message_count) VALUES ('new-s', 'pd1', 'proj', '/p', datetime('now', '-1 days'), datetime('now', '-1 days'), 10);`);
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: true });
+    const written = (stdoutSpy.mock.calls as Array<[unknown]>).map(c => String(c[0])).join('');
+    expect(written.trim()).toBe('1');
+  });
+});
+
+describe('insightsCheckCommand — auto-analyze (1-2 sessions)', () => {
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockDb = new Database(':memory:');
+    runMigrations(mockDb);
+    mockRunAnalysis.mockReset();
+    mockValidate.mockReset();
+    mockProviderRunAnalysis.mockReset();
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+    consoleErrSpy.mockRestore();
+  });
+
+  function seedOne(db: Database.Database, id: string): void {
+    db.exec(`INSERT OR IGNORE INTO projects (id, name, path, last_activity) VALUES ('pa1', 'proj', '/p', datetime('now'));`);
+    db.exec(`INSERT OR IGNORE INTO sessions (id, project_id, project_name, project_path, started_at, ended_at, message_count) VALUES ('${id}', 'pa1', 'proj', '/p', datetime('now'), datetime('now'), 10);`);
+  }
+
+  it('auto-analyzes 1 unanalyzed session using native runner', async () => {
+    seedOne(mockDb, 'auto-1');
+    mockRunAnalysis
+      .mockResolvedValueOnce({ rawJson: makeAnalysisResponse(), durationMs: 500, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makePQResponse(), durationMs: 400, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' });
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false });
+    expect(mockValidate).toHaveBeenCalledTimes(1);
+    expect(mockRunAnalysis).toHaveBeenCalledTimes(2);
+  });
+
+  it('auto-analyzes 2 unanalyzed sessions using native runner', async () => {
+    seedOne(mockDb, 'auto-2a');
+    seedOne(mockDb, 'auto-2b');
+    mockRunAnalysis
+      .mockResolvedValueOnce({ rawJson: makeAnalysisResponse(), durationMs: 500, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makePQResponse(), durationMs: 400, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makeAnalysisResponse(), durationMs: 500, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makePQResponse(), durationMs: 400, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' });
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false });
+    expect(mockValidate).toHaveBeenCalled();
+    expect(mockRunAnalysis).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('insightsCheckCommand — --analyze flag', () => {
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrSpy: ReturnType<typeof vi.spyOn>;
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockDb = new Database(':memory:');
+    runMigrations(mockDb);
+    mockRunAnalysis.mockReset();
+    mockValidate.mockReset();
+    mockProviderRunAnalysis.mockReset();
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+    consoleErrSpy.mockRestore();
+    stdoutSpy.mockRestore();
+  });
+
+  function seedSessions(db: Database.Database, count: number): void {
+    db.exec(`INSERT OR IGNORE INTO projects (id, name, path, last_activity) VALUES ('pb1', 'proj', '/p', datetime('now'));`);
+    for (let i = 0; i < count; i++) {
+      db.exec(`INSERT OR IGNORE INTO sessions (id, project_id, project_name, project_path, started_at, ended_at, message_count) VALUES ('an-sess-${i}', 'pb1', 'proj', '/p', datetime('now', '-${i} minutes'), datetime('now', '-${i} minutes'), 10);`);
+    }
+  }
+
+  it('processes all sessions with --analyze and shows [N/total] progress', async () => {
+    seedSessions(mockDb, 3);
+    for (let i = 0; i < 3; i++) {
+      mockRunAnalysis
+        .mockResolvedValueOnce({ rawJson: makeAnalysisResponse(), durationMs: 1000, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+        .mockResolvedValueOnce({ rawJson: makePQResponse(), durationMs: 800, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' });
+    }
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false, analyze: true });
+    // Progress lines go to process.stdout.write
+    const stdoutOutput = (stdoutSpy.mock.calls as Array<[unknown]>).map(c => String(c[0])).join('');
+    expect(stdoutOutput).toMatch(/\[1\/3\]/);
+    expect(stdoutOutput).toMatch(/\[2\/3\]/);
+    expect(stdoutOutput).toMatch(/\[3\/3\]/);
+    // Summary line goes to console.log
+    const logOutput = (consoleSpy.mock.calls as Array<unknown[]>).map(c => String(c[0])).join('\n');
+    expect(logOutput).toMatch(/Analyzed 3 session/i);
+  });
+
+  it('continues processing after one session fails', async () => {
+    seedSessions(mockDb, 3);
+    mockRunAnalysis
+      .mockRejectedValueOnce(new Error('fail on session 0'))
+      .mockResolvedValueOnce({ rawJson: makeAnalysisResponse(), durationMs: 1000, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makePQResponse(), durationMs: 800, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makeAnalysisResponse(), durationMs: 1000, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' })
+      .mockResolvedValueOnce({ rawJson: makePQResponse(), durationMs: 800, inputTokens: 0, outputTokens: 0, model: 'claude-native', provider: 'claude-code-native' });
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false, analyze: true });
+    const stdoutOutput = (stdoutSpy.mock.calls as Array<[unknown]>).map(c => String(c[0])).join('');
+    const errOutput = (consoleErrSpy.mock.calls as Array<unknown[]>).map(c => String(c[0])).join('\n');
+    const logOutput = (consoleSpy.mock.calls as Array<unknown[]>).map(c => String(c[0])).join('\n');
+    expect(stdoutOutput).toMatch(/\[1\/3\]/);
+    expect(errOutput).toMatch(/fail on session 0/i);
+    expect(logOutput).toMatch(/Analyzed 2 session/i);
+  });
+
+  it('exits silently with --analyze when 0 unanalyzed sessions', async () => {
+    const { insightsCheckCommand } = await import('../insights.js');
+    await insightsCheckCommand({ days: 7, quiet: false, analyze: true });
+    expect(mockRunAnalysis).not.toHaveBeenCalled();
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
   });
 });

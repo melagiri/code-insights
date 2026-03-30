@@ -97,6 +97,8 @@ export interface InsightsCommandOptions {
   force?: boolean;
   quiet?: boolean;
   source?: string;
+  /** Pre-built runner to reuse across batch calls. Skips runner construction and validate(). */
+  _runner?: AnalysisRunner;
 }
 
 // ── Core logic ────────────────────────────────────────────────────────────────
@@ -109,9 +111,11 @@ export interface InsightsCommandOptions {
 export async function runInsightsCommand(options: InsightsCommandOptions): Promise<void> {
   const log = options.quiet ? () => {} : console.log.bind(console);
 
-  // 1. Build the runner
+  // 1. Build the runner (or reuse a pre-built one from batch callers)
   let runner: AnalysisRunner;
-  if (options.native) {
+  if (options._runner) {
+    runner = options._runner;
+  } else if (options.native) {
     ClaudeNativeRunner.validate();
     runner = new ClaudeNativeRunner();
   } else {
@@ -320,9 +324,17 @@ export async function insightsCommand(
 
 // ── Subcommand: insights check ────────────────────────────────────────────────
 
-export function insightsCheckCommand(opts: { days?: number; quiet?: boolean }): void {
+// Seconds per session estimate (15-30s each; use 22s as mid-range)
+const SECONDS_PER_SESSION = 22;
+
+export async function insightsCheckCommand(opts: {
+  days?: number;
+  quiet?: boolean;
+  analyze?: boolean;
+}): Promise<void> {
   const days = opts.days ?? 7;
   const quiet = opts.quiet ?? false;
+  const analyze = opts.analyze ?? false;
   const log = quiet ? () => {} : console.log.bind(console);
 
   try {
@@ -330,14 +342,14 @@ export function insightsCheckCommand(opts: { days?: number; quiet?: boolean }): 
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
     const rows = db.prepare(`
-      SELECT s.id
+      SELECT s.id, s.generated_title, s.custom_title, s.started_at, s.message_count
       FROM sessions s
       LEFT JOIN analysis_usage au ON au.session_id = s.id AND au.analysis_type = 'session'
       WHERE s.started_at >= ?
         AND s.deleted_at IS NULL
-        AND au.analysis_type IS NULL
+        AND au.session_id IS NULL
       ORDER BY s.started_at DESC
-    `).all(cutoff) as Array<{ id: string }>;
+    `).all(cutoff) as Array<{ id: string; generated_title: string | null; custom_title: string | null; started_at: string; message_count: number }>;
 
     const count = rows.length;
 
@@ -351,8 +363,61 @@ export function insightsCheckCommand(opts: { days?: number; quiet?: boolean }): 
       return;
     }
 
+    // --analyze: process all found sessions with progress output
+    if (analyze) {
+      ClaudeNativeRunner.validate();
+      const runner = new ClaudeNativeRunner();
+      let successCount = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const label = row.custom_title ?? row.generated_title ?? row.id;
+        const position = `[${i + 1}/${count}]`;
+        process.stdout.write(`${position} ${label} ... `);
+        const start = Date.now();
+        try {
+          await runInsightsCommand({ sessionId: row.id, native: true, quiet: true, _runner: runner });
+          const elapsed = Math.round((Date.now() - start) / 1000);
+          process.stdout.write(`done (${elapsed}s)\n`);
+          successCount++;
+        } catch (err) {
+          process.stdout.write('failed\n');
+          console.error(chalk.red(`  [Code Insights] ${err instanceof Error ? err.message : 'Analysis failed'}`));
+        }
+      }
+
+      log(chalk.green(`Analyzed ${successCount} session${successCount !== 1 ? 's' : ''}.`));
+      return;
+    }
+
+    // Auto-analyze silently when 1-2 unanalyzed sessions
+    if (count <= 2) {
+      ClaudeNativeRunner.validate();
+      const runner = new ClaudeNativeRunner();
+      for (const row of rows) {
+        try {
+          await runInsightsCommand({ sessionId: row.id, native: true, quiet: true, _runner: runner });
+        } catch {
+          // Silently ignore auto-analyze errors for 1-2 sessions
+        }
+      }
+      return;
+    }
+
+    // 3-10: print count + suggestion
+    if (count <= 10) {
+      log(chalk.yellow(`[Code Insights] ${count} unanalyzed session${count > 1 ? 's' : ''} in the last ${days} days.`));
+      log(chalk.dim(`  Run: code-insights insights check --analyze to process them`));
+      return;
+    }
+
+    // 11+: print count + time estimate
+    const estimateSecs = count * SECONDS_PER_SESSION;
+    const estimateMins = Math.round(estimateSecs / 60);
+    const timeLabel = estimateMins < 2 ? `~${estimateSecs}s` : `~${estimateMins} min`;
     log(chalk.yellow(`[Code Insights] ${count} unanalyzed session${count > 1 ? 's' : ''} in the last ${days} days.`));
-    log(chalk.dim(`  Run: code-insights insights --native to analyze the most recent session.`));
+    log(chalk.dim(`  Estimated time: ${timeLabel} (~${SECONDS_PER_SESSION}s each)`));
+    log(chalk.dim(`  Run: code-insights insights check --analyze to process them`));
   } catch (error) {
     if (!quiet) {
       console.error(chalk.red(`[Code Insights] ${error instanceof Error ? error.message : 'Check failed'}`));

@@ -138,8 +138,13 @@ insightsCmd
   .description('Check for unanalyzed sessions in the last N days')
   .option('--days <n>', 'Lookback window in days', '7')
   .option('-q, --quiet', 'Machine-readable output (just count)')
-  .action((opts) => {
-    insightsCheckCommand({ days: opts.days ? parseInt(opts.days, 10) : 7, quiet: opts.quiet });
+  .option('--analyze', 'Process all found sessions sequentially')
+  .action(async (opts) => {
+    await insightsCheckCommand({
+      days: opts.days ? parseInt(opts.days, 10) : 7,
+      quiet: opts.quiet,
+      analyze: opts.analyze,
+    });
   });
 
 // Default action: running `code-insights` with no arguments opens the dashboard.
