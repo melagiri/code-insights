@@ -143,10 +143,13 @@ describe('installHookCommand', () => {
       if (fs.existsSync(HOOKS_FILE)) fs.unlinkSync(HOOKS_FILE);
 
       const { installHookCommand } = await import('../install-hook.js');
+      const consoleSpy = vi.spyOn(console, 'log');
       await installHookCommand({ syncOnly: true, analysisOnly: true });
 
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot use'));
       // No hooks file should have been written
       expect(fs.existsSync(HOOKS_FILE)).toBe(false);
+      consoleSpy.mockRestore();
     });
   });
 
@@ -208,12 +211,22 @@ describe('installHookCommand', () => {
       expect(hooks.SessionEnd).toHaveLength(1);
     });
 
-    it('reports already-installed when both hooks exist on default install', async () => {
+    it('shows consolidated already-installed message when both hooks exist on default install', async () => {
       if (fs.existsSync(HOOKS_FILE)) fs.unlinkSync(HOOKS_FILE);
 
       const { installHookCommand } = await import('../install-hook.js');
       await installHookCommand({});
+
+      const consoleSpy = vi.spyOn(console, 'log');
       await installHookCommand({});
+
+      // Consolidated single message, not two separate messages
+      const alreadyInstalledCalls = consoleSpy.mock.calls.filter(
+        (args) => typeof args[0] === 'string' && String(args[0]).includes('already installed')
+      );
+      expect(alreadyInstalledCalls).toHaveLength(1);
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('sync + analysis'));
+      consoleSpy.mockRestore();
 
       const settings = readSettings();
       const hooks = settings.hooks as Record<string, unknown[]>;

@@ -95,9 +95,7 @@ export async function installHookCommand(options: InstallHookOptions = {}): Prom
     // Install Stop hook (sync)
     if (installSync) {
       const existingStopHooks = settings.hooks.Stop || [];
-      if (hookAlreadyInstalled(existingStopHooks)) {
-        console.log(chalk.yellow('Stop hook already installed.'));
-      } else {
+      if (!hookAlreadyInstalled(existingStopHooks)) {
         const stopHook: HookConfig = {
           hooks: [{ type: 'command', command: syncCommand }],
         };
@@ -109,9 +107,7 @@ export async function installHookCommand(options: InstallHookOptions = {}): Prom
     // Install SessionEnd hook (analysis)
     if (installAnalysis) {
       const existingSessionEndHooks = settings.hooks.SessionEnd || [];
-      if (hookAlreadyInstalled(existingSessionEndHooks)) {
-        console.log(chalk.yellow('SessionEnd hook already installed.'));
-      } else {
+      if (!hookAlreadyInstalled(existingSessionEndHooks)) {
         const sessionEndHook: HookConfig = {
           hooks: [{ type: 'command', command: analysisCommand, timeout: 120000 }],
         };
@@ -121,7 +117,9 @@ export async function installHookCommand(options: InstallHookOptions = {}): Prom
     }
 
     if (!syncInstalled && !analysisInstalled) {
-      console.log(chalk.yellow('Code Insights hooks already installed.'));
+      // Both requested hooks were already present — show a single consolidated message
+      const label = installSync && installAnalysis ? 'sync + analysis' : installSync ? 'sync' : 'analysis';
+      console.log(chalk.yellow(`Code Insights hooks already installed (${label}).`));
       console.log(chalk.gray('To reinstall, first run `code-insights uninstall-hook`'));
       return;
     }
