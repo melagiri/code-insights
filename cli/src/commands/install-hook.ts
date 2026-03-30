@@ -1,11 +1,16 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { trackEvent, captureError, classifyError } from '../utils/telemetry.js';
 
 const CLAUDE_SETTINGS_DIR = path.join(os.homedir(), '.claude');
 const HOOKS_FILE = path.join(CLAUDE_SETTINGS_DIR, 'settings.json');
+
+// Stable path to the CLI entry point — works across npm link, global install, and npx.
+// process.argv[1] is unstable (npx uses a cache path that changes per invocation).
+const CLI_ENTRY = path.resolve(fileURLToPath(import.meta.url), '../../index.js');
 
 interface ClaudeSettings {
   hooks?: {
@@ -59,9 +64,8 @@ export async function installHookCommand(options: InstallHookOptions = {}): Prom
   console.log(chalk.cyan('\nInstall Code Insights Hooks\n'));
 
   try {
-    const cliPath = process.argv[1];
-    const syncCommand = `node ${cliPath} sync -q`;
-    const analysisCommand = `node ${cliPath} insights --hook --native -q`;
+    const syncCommand = `node ${CLI_ENTRY} sync -q`;
+    const analysisCommand = `node ${CLI_ENTRY} insights --hook --native -q`;
 
     if (!syncOnly && !analysisOnly) {
       console.log(chalk.gray('This will add two Claude Code hooks:\n'));
