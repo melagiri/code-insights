@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "7cef8a6f52f9",
+  "strategy": "manual-commit",
+  "branch": "fix/hook-detach-analysis",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "cli/src/commands/insights.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/7c/ef8a6f52f9/0/metadata.json",
+      "transcript": "/7c/ef8a6f52f9/0/full.jsonl",
+      "context": "/7c/ef8a6f52f9/0/context.md",
+      "content_hash": "/7c/ef8a6f52f9/0/content_hash.txt",
+      "prompt": "/7c/ef8a6f52f9/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 3909,
+    "cache_creation_tokens": 3216490,
+    "cache_read_tokens": 68878440,
+    "output_tokens": 108259,
+    "api_call_count": 433
+  }
+}
