@@ -103,7 +103,6 @@ export class ClaudeNativeRunner implements AnalysisRunner {
         '-p',
         '--output-format', 'json',
         '--append-system-prompt-file', promptFile,
-        '--bare',
       ];
       if (schemaFile) {
         args.push('--json-schema', schemaFile);
@@ -112,7 +111,7 @@ export class ClaudeNativeRunner implements AnalysisRunner {
       const rawOutput = execFileSync('claude', args, {
         input: params.userPrompt,
         encoding: 'utf-8',
-        timeout: 120_000,    // 2-minute hard limit per analysis call
+        timeout: 300_000,    // 5-minute hard limit per analysis call
         maxBuffer: 10 * 1024 * 1024,  // 10 MB
       });
 

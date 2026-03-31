@@ -113,7 +113,7 @@ export async function installHookCommand(options: InstallHookOptions = {}): Prom
       const existingSessionEndHooks = settings.hooks.SessionEnd || [];
       if (!hookAlreadyInstalled(existingSessionEndHooks)) {
         const sessionEndHook: HookConfig = {
-          hooks: [{ type: 'command', command: analysisCommand, timeout: 120000 }],
+          hooks: [{ type: 'command', command: analysisCommand, timeout: 300000 }],
         };
         settings.hooks.SessionEnd = [...existingSessionEndHooks, sessionEndHook];
         analysisInstalled = true;

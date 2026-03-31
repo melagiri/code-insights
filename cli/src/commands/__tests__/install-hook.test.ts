@@ -89,7 +89,7 @@ describe('installHookCommand', () => {
       expect(stopCmd.command).toMatch(/^node .+index\.js sync -q$/);
     });
 
-    it('SessionEnd hook contains insights command with 120s timeout', async () => {
+    it('SessionEnd hook contains insights command with 300s timeout', async () => {
       const { installHookCommand } = await import('../install-hook.js');
       await installHookCommand({});
 
@@ -100,7 +100,7 @@ describe('installHookCommand', () => {
       expect(sessionEndCmd.type).toBe('command');
       expect(sessionEndCmd.command).toContain('insights --hook --native -q');
       expect(sessionEndCmd.command).toMatch(/^node .+index\.js insights --hook --native -q$/);
-      expect(sessionEndCmd.timeout).toBe(120000);
+      expect(sessionEndCmd.timeout).toBe(300000);
     });
 
     it('preserves existing settings.json content', async () => {
@@ -219,7 +219,7 @@ describe('uninstallHookCommand', () => {
     writeSettings({
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'node /usr/local/lib/node_modules/@code-insights/cli/dist/index.js sync -q' }] }],
-        SessionEnd: [{ hooks: [{ type: 'command', command: 'node /usr/local/lib/node_modules/@code-insights/cli/dist/index.js insights --hook --native -q', timeout: 120000 }] }],
+        SessionEnd: [{ hooks: [{ type: 'command', command: 'node /usr/local/lib/node_modules/@code-insights/cli/dist/index.js insights --hook --native -q', timeout: 300000 }] }],
       },
     });
 
@@ -256,7 +256,7 @@ describe('uninstallHookCommand', () => {
       hooks: {
         SessionEnd: [
           { hooks: [{ type: 'command', command: 'other-tool end-session' }] },
-          { hooks: [{ type: 'command', command: 'node /path/code-insights insights --hook --native -q', timeout: 120000 }] },
+          { hooks: [{ type: 'command', command: 'node /path/code-insights insights --hook --native -q', timeout: 300000 }] },
         ],
       },
     });
@@ -280,7 +280,7 @@ describe('uninstallHookCommand', () => {
     writeSettings({
       hooks: {
         Stop: [{ hooks: [{ type: 'command', command: 'node /path/code-insights sync -q' }] }],
-        SessionEnd: [{ hooks: [{ type: 'command', command: 'node /path/code-insights insights --hook --native -q', timeout: 120000 }] }],
+        SessionEnd: [{ hooks: [{ type: 'command', command: 'node /path/code-insights insights --hook --native -q', timeout: 300000 }] }],
       },
     });
 

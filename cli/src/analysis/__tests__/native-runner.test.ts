@@ -70,11 +70,11 @@ describe('ClaudeNativeRunner.runAnalysis()', () => {
 
     expect(mockExecFileSync).toHaveBeenCalledWith(
       'claude',
-      expect.arrayContaining(['-p', '--output-format', 'json', '--append-system-prompt-file', expect.stringContaining('ci-prompt-'), '--bare']),
+      expect.arrayContaining(['-p', '--output-format', 'json', '--append-system-prompt-file', expect.stringContaining('ci-prompt-')]),
       expect.objectContaining({
         input: 'Analyze this session.',
         encoding: 'utf-8',
-        timeout: 120_000,
+        timeout: 300_000,
         maxBuffer: 10 * 1024 * 1024,
       })
     );
