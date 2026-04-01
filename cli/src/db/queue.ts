@@ -59,7 +59,9 @@ export function enqueue(sessionId: string, runnerType = 'native'): void {
  */
 export function claimNext(): QueueItem | null {
   const db = getDb();
-  const stmt = db.prepare(
+  // RETURNING * makes the claim and fetch a single atomic operation,
+  // eliminating the UPDATE + SELECT timing window.
+  return db.prepare(
     `UPDATE analysis_queue
      SET status = 'processing', started_at = datetime('now')
      WHERE session_id = (
@@ -67,14 +69,8 @@ export function claimNext(): QueueItem | null {
        WHERE status = 'pending'
        ORDER BY enqueued_at ASC
        LIMIT 1
-     )`
-  );
-  const result = stmt.run();
-  if (result.changes === 0) return null;
-
-  // Fetch the row we just claimed
-  return db.prepare(
-    `SELECT * FROM analysis_queue WHERE status = 'processing' ORDER BY started_at DESC LIMIT 1`
+     )
+     RETURNING *`
   ).get() as QueueItem | null;
 }
 

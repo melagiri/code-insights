@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAnalysisQueue } from '@/lib/api';
 import type { AnalysisQueueStatus } from '@/lib/api';
@@ -31,10 +32,12 @@ export function useAnalysisQueue() {
  */
 export function useQueuedSessionIds(): Set<string> {
   const { data } = useAnalysisQueue();
-  if (!data) return new Set();
-  return new Set(
-    data.items
-      .filter(item => item.status === 'pending' || item.status === 'processing')
-      .map(item => item.session_id)
-  );
+  return useMemo(() => {
+    if (!data) return new Set<string>();
+    return new Set(
+      data.items
+        .filter(item => item.status === 'pending' || item.status === 'processing')
+        .map(item => item.session_id)
+    );
+  }, [data]);
 }

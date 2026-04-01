@@ -73,11 +73,11 @@ export async function sessionEndCommand(options: SessionEndOptions = {}): Promis
     try {
       await syncSingleFile({ filePath: parsed.transcript_path, sourceTool: options.source, quiet });
     } catch {
-      // Sync failure is non-fatal: we still enqueue for the next opportunity
+      // Sync failure is non-fatal: session may already be in DB from a previous sync.
+      // Fall through to enqueue anyway so analysis still runs if the session is present.
       if (!quiet) {
-        console.error(chalk.yellow('[Code Insights] session-end: sync failed, will retry on next session'));
+        console.error(chalk.yellow('[Code Insights] session-end: sync failed, enqueuing anyway'));
       }
-      return;
     }
   }
 

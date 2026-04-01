@@ -117,6 +117,19 @@ describe('installHookCommand', () => {
       // Should have 2 SessionEnd hooks: the existing one + our new one
       expect(hooks.SessionEnd).toHaveLength(2);
     });
+
+    it('does not duplicate hook when installed twice', async () => {
+      const { installHookCommand } = await import('../install-hook.js');
+      await installHookCommand();
+      vi.resetModules();
+      const { installHookCommand: installHookCommand2 } = await import('../install-hook.js');
+      await installHookCommand2();
+
+      const settings = readSettings();
+      const hooks = settings.hooks as Record<string, unknown[]>;
+      // Second install must be idempotent — still exactly one code-insights hook
+      expect(hooks.SessionEnd).toHaveLength(1);
+    });
   });
 
   describe('v4.8.x migration', () => {

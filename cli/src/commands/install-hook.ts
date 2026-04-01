@@ -96,16 +96,18 @@ export async function installHookCommand(): Promise<void> {
       console.log(chalk.dim('  Removed legacy Stop hook from v4.8.x'));
     }
 
-    // Install the new unified SessionEnd hook
+    // Install the new unified SessionEnd hook (skip if already installed)
     if (!settings.hooks.SessionEnd) {
       settings.hooks.SessionEnd = [];
     }
 
-    const newHook: HookConfig = {
-      // timeout: 10s is enough — session-end exits immediately after spawn
-      hooks: [{ type: 'command', command: sessionEndCommand, timeout: 10000 }],
-    };
-    settings.hooks.SessionEnd.push(newHook);
+    if (!hookAlreadyInstalled(settings.hooks.SessionEnd)) {
+      const newHook: HookConfig = {
+        // timeout: 10s is enough — session-end exits immediately after spawn
+        hooks: [{ type: 'command', command: sessionEndCommand, timeout: 10000 }],
+      };
+      settings.hooks.SessionEnd.push(newHook);
+    }
 
     // Write settings
     fs.mkdirSync(CLAUDE_SETTINGS_DIR, { recursive: true });
