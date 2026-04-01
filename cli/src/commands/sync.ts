@@ -475,7 +475,7 @@ interface TrivialSession {
 export function getTrivialSessions(): TrivialSession[] {
   const db = getDb();
   return db.prepare(`
-    SELECT id, title, project_name, message_count
+    SELECT id, COALESCE(custom_title, generated_title) as title, project_name, message_count
     FROM sessions
     WHERE message_count <= 2 AND deleted_at IS NULL
     ORDER BY started_at DESC
