@@ -450,3 +450,29 @@ export async function reflectGenerateStream(
   return res;
 }
 
+// ── Analysis Queue ────────────────────────────────────────────────────────────
+
+export interface AnalysisQueueItem {
+  session_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  runner_type: string;
+  enqueued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  attempt_count: number;
+  max_attempts: number;
+}
+
+export interface AnalysisQueueStatus {
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+  items: AnalysisQueueItem[];
+}
+
+export function fetchAnalysisQueue() {
+  return request<AnalysisQueueStatus>('/analysis/queue');
+}
+

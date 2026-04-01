@@ -39,6 +39,7 @@ import { AnalyzeDropdown } from '@/components/analysis/AnalyzeDropdown';
 import { AnalyzeButton } from '@/components/analysis/AnalyzeButton';
 import { useAnalysis } from '@/components/analysis/AnalysisContext';
 import { useMissingFacets, useBackfillFacets } from '@/hooks/useFacets';
+import { useQueuedSessionIds } from '@/hooks/useAnalysisQueue';
 import { exportSession } from '@/lib/export-session';
 import { CollapsibleInsightItem } from '@/components/sessions/CollapsibleInsightItem';
 import { PromptQualityAnalyzeButton } from '@/components/sessions/PromptQualityAnalyzeButton';
@@ -86,6 +87,8 @@ export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelPr
   const pqAnalysisState = getAnalysisState(sessionId, 'prompt_quality');
   const isAnalyzingThisSession =
     sessionAnalysisState?.status === 'analyzing' || pqAnalysisState?.status === 'analyzing';
+  const queuedSessionIds = useQueuedSessionIds();
+  const isQueuedForAnalysis = queuedSessionIds.has(sessionId);
   const { data: missingFacetsData } = useMissingFacets();
   const backfillMutation = useBackfillFacets();
   const missingFacetIds = useMemo(
@@ -408,6 +411,16 @@ export function SessionDetailPanel({ sessionId, onDelete }: SessionDetailPanelPr
         {/* Tab 1: Insights */}
         <TabsContent value="insights" className="flex-1 overflow-y-auto mt-0 p-5 space-y-4">
           <VitalsStrip session={session} />
+
+          {/* Queue in-progress indicator — shown when session is awaiting background analysis */}
+          {isQueuedForAnalysis && !isAnalyzingThisSession && (
+            <div className="flex items-center gap-2 rounded-md border border-blue-500/30 bg-blue-500/5 px-4 py-2.5">
+              <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Analysis in progress — results will appear shortly
+              </p>
+            </div>
+          )}
 
           {/* Analysis cost indicator — only shown when analysis has been run or is running */}
           {(insights.length > 0 || isAnalyzingThisSession) && (

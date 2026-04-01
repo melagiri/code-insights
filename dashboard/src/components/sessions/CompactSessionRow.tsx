@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { SESSION_CHARACTER_COLORS, OUTCOME_DOT } from '@/lib/constants/colors';
 import { formatDuration, getSessionTitle, cn } from '@/lib/utils';
-import { Sparkles, Target } from 'lucide-react';
+import { Sparkles, Target, Loader2 } from 'lucide-react';
 import type { Session } from '@/lib/types';
 import { getScoreTier } from '@/lib/score-utils';
 
@@ -29,6 +29,7 @@ interface CompactSessionRowProps {
   outcome?: string;
   promptQualityScore?: number;
   missingFacets?: boolean;
+  isQueued?: boolean;
   onClick: () => void;
 }
 
@@ -40,6 +41,7 @@ export function CompactSessionRow({
   outcome,
   promptQualityScore,
   missingFacets,
+  isQueued = false,
   onClick,
 }: CompactSessionRowProps) {
   const startedAt = new Date(session.started_at);
@@ -75,6 +77,12 @@ export function CompactSessionRow({
 
       {/* Badges */}
       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+        {isQueued && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-600 border-blue-300 gap-0.5">
+            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+            Analyzing...
+          </Badge>
+        )}
         {outcome && OUTCOME_DOT[outcome] && (
           <Tooltip>
             <TooltipTrigger asChild>
