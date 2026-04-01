@@ -290,6 +290,14 @@ export async function insightsCommand(
     let resolvedSessionId: string;
 
     if (opts.hook) {
+      // Guard: prevent infinite loop.
+      // The detached child runs `claude -p`, which creates a Claude Code session.
+      // When that session ends, Claude Code fires SessionEnd again, re-triggering
+      // this hook. The env var breaks the cycle.
+      if (process.env.CODE_INSIGHTS_HOOK_ACTIVE) {
+        return;
+      }
+
       // Hook mode: two-phase execution.
       //
       // Phase 1 (foreground): Read stdin, sync the session file to SQLite.
@@ -336,6 +344,7 @@ export async function insightsCommand(
       const child = spawn(process.execPath, args, {
         detached: true,
         stdio: ['ignore', logFd, logFd],
+        env: { ...process.env, CODE_INSIGHTS_HOOK_ACTIVE: '1' },
       });
       child.unref();
 
