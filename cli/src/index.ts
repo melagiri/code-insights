@@ -14,6 +14,8 @@ import { configCommand } from './commands/config.js';
 import { telemetryCommand } from './commands/telemetry.js';
 import { reflectCommand } from './commands/reflect.js';
 import { insightsCommand, insightsCheckCommand } from './commands/insights.js';
+import { sessionEndCommand } from './commands/session-end.js';
+import { buildQueueCommand } from './commands/queue.js';
 import { showTelemetryNoticeIfNeeded } from './utils/telemetry.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -89,10 +91,8 @@ program
 
 program
   .command('install-hook')
-  .description('Install Claude Code hooks for automatic sync and session analysis')
-  .option('--sync-only', 'Install only the Stop (sync) hook')
-  .option('--analysis-only', 'Install only the SessionEnd (analysis) hook')
-  .action((opts) => installHookCommand({ syncOnly: opts.syncOnly, analysisOnly: opts.analysisOnly }));
+  .description('Install Claude Code SessionEnd hook for automatic sync and analysis')
+  .action(() => installHookCommand());
 
 program
   .command('uninstall-hook')
@@ -119,6 +119,20 @@ program.addCommand(configCommand);
 program.addCommand(telemetryCommand);
 program.addCommand(reflectCommand);
 
+
+// session-end command — single SessionEnd hook entry point (sync + enqueue + spawn worker)
+program
+  .command('session-end')
+  .description('SessionEnd hook: sync session, enqueue for analysis, spawn background worker')
+  .option('--native', 'Use claude -p for analysis worker (default: true)')
+  .option('-s, --source <tool>', 'Source tool identifier (default: claude-code)')
+  .option('-q, --quiet', 'Suppress output')
+  .action(async (opts) => {
+    await sessionEndCommand({ native: opts.native ?? true, quiet: opts.quiet, source: opts.source });
+  });
+
+// queue command suite — manage the analysis_queue
+program.addCommand(buildQueueCommand());
 
 // insights command — analyze a session using native claude -p or configured LLM
 const insightsCmd = program
