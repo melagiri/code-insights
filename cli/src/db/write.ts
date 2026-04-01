@@ -104,7 +104,7 @@ function getStmts() {
         ?, ?, ?, ?
       )
       ON CONFLICT(id) DO UPDATE SET
-        generated_title         = excluded.generated_title,
+        generated_title         = COALESCE(sessions.generated_title, excluded.generated_title),
         title_source            = excluded.title_source,
         session_character       = excluded.session_character,
         ended_at                = excluded.ended_at,
