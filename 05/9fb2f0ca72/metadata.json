@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "059fb2f0ca72",
+  "strategy": "manual-commit",
+  "branch": "fix/apply-generated-title-from-cli",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cli/src/analysis/analysis-db.ts",
+    "cli/src/commands/insights.ts",
+    "server/src/routes/analysis.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/05/9fb2f0ca72/0/metadata.json",
+      "transcript": "/05/9fb2f0ca72/0/full.jsonl",
+      "context": "/05/9fb2f0ca72/0/context.md",
+      "content_hash": "/05/9fb2f0ca72/0/content_hash.txt",
+      "prompt": "/05/9fb2f0ca72/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
