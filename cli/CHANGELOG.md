@@ -2,6 +2,20 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.8.1] - 2026-04-01
+
+### Fixed
+
+- **Hook analysis detached execution** — `claude -p` spawned synchronously within a `SessionEnd` hook was cancelled by Claude Code's hook manager (process-tree containment). Analysis now runs in a detached background process: the hook syncs the session (foreground), then spawns `insights <id> --native -q` in its own process group. Background output logged to `~/.code-insights/hook-analysis.log`.
+
+- **Infinite hook loop prevention** — The detached `claude -p` process creates its own Claude Code session, which fires `SessionEnd` again, re-triggering the hook. Added `CODE_INSIGHTS_HOOK_ACTIVE` env guard to break the cycle.
+
+- **`claude -p` session isolation** — Native runner now sets `cwd: tmpdir()` so `claude -p` writes its session JSONL to `~/.claude/projects/-tmp/` instead of the user's project directory. Prevents the next full sync from picking up analysis sessions as real user sessions.
+
+- **Trivial session filter in `syncSingleFile`** — The hook-path sync was missing the ≤2 message data quality filter that the full sync has. Context restoration artifacts and `claude -p` artifacts could pollute the database.
+
+- **`sync prune` query fix** — `getTrivialSessions()` referenced a non-existent `title` column. Now uses `COALESCE(custom_title, generated_title)`.
+
 ## [4.8.0] - 2026-03-31
 
 ### Added
