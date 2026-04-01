@@ -4,7 +4,6 @@
  * Subcommands:
  *   status          Show queue state (pending/processing/completed/failed counts)
  *   process         Process next pending item (foreground)
- *     --immediate   Process immediately (used by worker spawn from session-end)
  *   retry [id]      Reset failed items to pending
  *     --all         Reset all failed items
  *   prune           Remove old completed/failed items
@@ -60,7 +59,7 @@ export async function queueStatusCommand(opts: { quiet?: boolean } = {}): Promis
 
 // ── queue process ─────────────────────────────────────────────────────────────
 
-export async function queueProcessCommand(opts: { quiet?: boolean; immediate?: boolean } = {}): Promise<void> {
+export async function queueProcessCommand(opts: { quiet?: boolean } = {}): Promise<void> {
   const { quiet = false } = opts;
   const log = quiet ? () => {} : console.log.bind(console);
 
@@ -131,9 +130,8 @@ export function buildQueueCommand(): Command {
   queueCmd
     .command('process')
     .description('Process pending queue items (foreground)')
-    .option('--immediate', 'Process immediately (used by session-end worker spawn)')
     .option('-q, --quiet', 'Suppress output')
-    .action((opts) => queueProcessCommand({ quiet: opts.quiet, immediate: opts.immediate }));
+    .action((opts) => queueProcessCommand({ quiet: opts.quiet }));
 
   queueCmd
     .command('retry [session_id]')

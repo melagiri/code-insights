@@ -17,7 +17,7 @@
 
 import chalk from 'chalk';
 import { spawn } from 'child_process';
-import { openSync, mkdirSync, existsSync } from 'fs';
+import { openSync, closeSync, mkdirSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { getConfigDir } from '../utils/config.js';
@@ -96,7 +96,7 @@ function spawnWorker(quiet: boolean): void {
     }
     const logFd = openSync(WORKER_LOG_PATH, 'a');
 
-    const args = [CLI_ENTRY, 'queue', 'process', '--immediate'];
+    const args = [CLI_ENTRY, 'queue', 'process'];
     if (quiet) args.push('-q');
 
     const child = spawn(process.execPath, args, {
@@ -105,6 +105,9 @@ function spawnWorker(quiet: boolean): void {
       env: { ...process.env, CODE_INSIGHTS_HOOK_ACTIVE: '1' },
     });
     child.unref();
+    // Close the fd in the parent — the child inherited it and keeps it open.
+    // Not closing here would leak the fd until the parent process exits.
+    closeSync(logFd);
   } catch {
     // Worker spawn failure is non-fatal — the item stays in the queue
     // and will be picked up by the next worker invocation.
