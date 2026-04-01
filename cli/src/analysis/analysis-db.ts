@@ -192,6 +192,18 @@ export function convertPQToInsightRow(response: PromptQualityResponse, session: 
 // --- DB writes ---
 
 /**
+ * Auto-apply an LLM-generated summary title as the session's generated_title.
+ * Called after saving insights so the session title reflects the analysis output.
+ */
+export function applyGeneratedTitle(sessionId: string, insights: Array<{ type: string; title?: string }>): void {
+  const summaryInsight = insights.find(i => i.type === 'summary');
+  if (!summaryInsight?.title) return;
+  const db = getDb();
+  db.prepare('UPDATE sessions SET generated_title = ? WHERE id = ? AND deleted_at IS NULL')
+    .run(summaryInsight.title.slice(0, 120), sessionId);
+}
+
+/**
  * Write insight rows to SQLite using prepared statements.
  */
 export function saveInsightsToDb(insights: InsightRow[]): void {

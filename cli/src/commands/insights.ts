@@ -38,6 +38,7 @@ import {
   saveFacetsToDb,
   convertToInsightRows,
   convertPQToInsightRow,
+  applyGeneratedTitle,
 } from '../analysis/analysis-db.js';
 import { saveAnalysisUsage } from '../analysis/analysis-usage-db.js';
 import type { AnalysisRunner } from '../analysis/runner-types.js';
@@ -194,6 +195,7 @@ export async function runInsightsCommand(options: InsightsCommandOptions): Promi
   // Save session insights (upsert: insert new, delete old)
   const sessionInsights = convertToInsightRows(parsedSession.data, sessionData);
   saveInsightsToDb(sessionInsights);
+  applyGeneratedTitle(session.id, sessionInsights);
   deleteSessionInsights(session.id, {
     excludeTypes: ['prompt_quality'],
     excludeIds: sessionInsights.map(i => i.id),

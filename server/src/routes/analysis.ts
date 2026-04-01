@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { getDb } from '@code-insights/cli/db/client';
 import { trackEvent } from '@code-insights/cli/utils/telemetry';
+import { applyGeneratedTitle } from '@code-insights/cli/analysis/analysis-db';
 import { parseIntParam } from '../utils.js';
 import { loadLLMConfig } from '../llm/client.js';
 import { analyzeSession, analyzePromptQuality, findRecurringInsights } from '../llm/analysis.js';
@@ -60,14 +61,6 @@ app.get('/usage', async (c) => {
   });
 });
 
-/** Auto-apply an LLM-generated summary title as the session's generated_title. */
-function applyGeneratedTitle(sessionId: string, insights: Array<{ type: string; title?: string }>) {
-  const summaryInsight = insights.find(i => i.type === 'summary');
-  if (!summaryInsight?.title) return;
-  const db = getDb();
-  db.prepare('UPDATE sessions SET generated_title = ? WHERE id = ? AND deleted_at IS NULL')
-    .run(summaryInsight.title.slice(0, 120), sessionId);
-}
 
 // POST /api/analysis/session
 // Body: { sessionId: string }
