@@ -5,6 +5,7 @@ export interface MigrationResult {
   v6Applied: boolean;
   v7Applied: boolean;
   v8Applied: boolean;
+  v9Applied: boolean;
 }
 
 /**
@@ -19,6 +20,7 @@ export interface MigrationResult {
  * Version 6: Add compact_count, auto_compact_count, slash_commands columns to sessions
  * Version 7: Add analysis_usage table for tracking LLM analysis costs per session
  * Version 8: Add session_message_count to analysis_usage for resume detection
+ * Version 9: Add analysis_queue table for async hook-triggered analysis
  */
 export function runMigrations(db: Database.Database): MigrationResult {
   // Create schema_version table first if it doesn't exist.
@@ -70,7 +72,13 @@ export function runMigrations(db: Database.Database): MigrationResult {
     v8Applied = true;
   }
 
-  return { v6Applied, v7Applied, v8Applied };
+  let v9Applied = false;
+  if (currentVersion < 9) {
+    applyV9(db);
+    v9Applied = true;
+  }
+
+  return { v6Applied, v7Applied, v8Applied, v9Applied };
 }
 
 function getCurrentVersion(db: Database.Database): number {
@@ -169,4 +177,29 @@ function applyV7(db: Database.Database): void {
 function applyV8(db: Database.Database): void {
   db.exec(`ALTER TABLE analysis_usage ADD COLUMN session_message_count INTEGER`);
   db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(8);
+}
+
+function applyV9(db: Database.Database): void {
+  // analysis_queue: tracks async hook-triggered analysis jobs
+  // One row per session (session_id is PK) — retries increment attempt_count in-place
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS analysis_queue (
+      session_id    TEXT PRIMARY KEY REFERENCES sessions(id),
+      status        TEXT NOT NULL DEFAULT 'pending',
+      runner_type   TEXT NOT NULL DEFAULT 'native',
+      enqueued_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      started_at    TEXT,
+      completed_at  TEXT,
+      error_message TEXT,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      max_attempts  INTEGER NOT NULL DEFAULT 3
+    )`
+  );
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_analysis_queue_status ON analysis_queue(status)`
+  );
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_analysis_queue_enqueued_at ON analysis_queue(enqueued_at ASC)`
+  );
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(9);
 }
