@@ -6,8 +6,8 @@
  *   (default)  Use configured LLM provider (OpenAI, Anthropic, Gemini, Ollama)
  *
  * Hook mode (--hook):
- *   Reads { session_id, transcript_path, cwd } from stdin JSON,
- *   calls syncSingleFile() to guarantee fresh data, then analyzes.
+ *   DEPRECATED. Delegates to the new session-end command.
+ *   Kept for backward compatibility with existing hook installations.
  *
  * Resume detection (hook mode only):
  *   Skips analysis if analysis_usage.session_message_count matches current
@@ -16,12 +16,7 @@
  */
 
 import chalk from 'chalk';
-import { spawn } from 'child_process';
-import { openSync, mkdirSync, existsSync } from 'fs';
-import { join, resolve } from 'path';
-import { fileURLToPath } from 'url';
 import { getDb } from '../db/client.js';
-import { getConfigDir } from '../utils/config.js';
 import { ClaudeNativeRunner } from '../analysis/native-runner.js';
 import { ProviderRunner } from '../analysis/provider-runner.js';
 import {
@@ -269,12 +264,6 @@ export async function runInsightsCommand(options: InsightsCommandOptions): Promi
 
 // ── CLI command entry point ───────────────────────────────────────────────────
 
-/** Resolve the CLI entry point for spawning child processes. */
-const CLI_ENTRY = resolve(fileURLToPath(import.meta.url), '../../index.js');
-
-/** Log file for background hook analysis. */
-const HOOK_LOG_PATH = join(getConfigDir(), 'hook-analysis.log');
-
 export async function insightsCommand(
   sessionId: string | undefined,
   opts: {
@@ -286,75 +275,24 @@ export async function insightsCommand(
   }
 ): Promise<void> {
   const quiet = opts.quiet ?? false;
-  const log = quiet ? () => {} : console.log.bind(console);
 
   try {
     let resolvedSessionId: string;
 
     if (opts.hook) {
-      // Guard: prevent infinite loop.
-      // The detached child runs `claude -p`, which creates a Claude Code session.
-      // When that session ends, Claude Code fires SessionEnd again, re-triggering
-      // this hook. The env var breaks the cycle.
-      if (process.env.CODE_INSIGHTS_HOOK_ACTIVE) {
-        return;
-      }
-
-      // Hook mode: two-phase execution.
-      //
-      // Phase 1 (foreground): Read stdin, sync the session file to SQLite.
-      //   Must complete before the hook returns so data is in the DB.
-      //
-      // Phase 2 (detached): Spawn a background process to run analysis.
-      //   Detached from Claude Code's hook process tree so it survives
-      //   hook cleanup. Uses `insights <id> --native -q` (no --hook),
-      //   so no stdin dependency.
-
-      const stdinData = await readStdin();
-      let parsed: { session_id?: string; transcript_path?: string; cwd?: string };
-      try {
-        parsed = JSON.parse(stdinData);
-      } catch {
-        throw new Error('--hook mode requires valid JSON on stdin (got: ' + stdinData.slice(0, 100) + ')');
-      }
-
-      if (!parsed.session_id) {
-        throw new Error('--hook stdin JSON missing required field: session_id');
-      }
-
-      resolvedSessionId = parsed.session_id;
-
-      // Phase 1: Sync the single file before analysis
-      if (parsed.transcript_path) {
-        const { syncSingleFile } = await import('./sync.js');
-        await syncSingleFile({ filePath: parsed.transcript_path, sourceTool: opts.source, quiet });
-      }
-
-      // Phase 2: Detach the analysis into a background process.
-      // claude -p spawned inside a hook subprocess gets cancelled by
-      // Claude Code's hook manager. Spawning a detached process with
-      // its own process group escapes that process tree.
-      const configDir = getConfigDir();
-      if (!existsSync(configDir)) {
-        mkdirSync(configDir, { recursive: true, mode: 0o700 });
-      }
-      const logFd = openSync(HOOK_LOG_PATH, 'a');
-
-      const args = [CLI_ENTRY, 'insights', resolvedSessionId, '--native', '-q'];
-      if (opts.force) args.push('--force');
-
-      const child = spawn(process.execPath, args, {
-        detached: true,
-        stdio: ['ignore', logFd, logFd],
-        env: { ...process.env, CODE_INSIGHTS_HOOK_ACTIVE: '1' },
-      });
-      child.unref();
-
-      // Hook returns immediately — analysis continues in background.
+      // --hook is deprecated: the new `session-end` command handles this path.
+      // We keep --hook working so existing ~/.claude/settings.json installations
+      // continue to work until the user runs `install-hook` again.
+      // Print a deprecation warning to stderr (not stdout, so JSON consumers aren't broken).
+      process.stderr.write(
+        '[Code Insights] DEPRECATED: --hook flag is deprecated. Run `code-insights install-hook` to upgrade to the new session-end hook.\n'
+      );
+      const { sessionEndCommand } = await import('./session-end.js');
+      await sessionEndCommand({ native: opts.native ?? true, quiet, source: opts.source });
       return;
     } else {
       if (!sessionId) {
-        throw new Error('Session ID is required (or use --hook to read from stdin)');
+        throw new Error('Session ID is required');
       }
       resolvedSessionId = sessionId;
     }
@@ -479,18 +417,3 @@ export async function insightsCheckCommand(opts: {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function readStdin(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (process.stdin.isTTY) {
-      resolve('{}');
-      return;
-    }
-    let data = '';
-    process.stdin.setEncoding('utf-8');
-    process.stdin.on('data', chunk => { data += chunk; });
-    process.stdin.on('end', () => resolve(data.trim()));
-    process.stdin.on('error', reject);
-  });
-}
