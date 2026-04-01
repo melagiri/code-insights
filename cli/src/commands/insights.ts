@@ -93,6 +93,7 @@ export interface InsightsCommandOptions {
   force?: boolean;
   quiet?: boolean;
   source?: string;
+  model?: string;
   /** Pre-built runner to reuse across batch calls. Skips runner construction and validate(). */
   _runner?: AnalysisRunner;
 }
@@ -113,7 +114,7 @@ export async function runInsightsCommand(options: InsightsCommandOptions): Promi
     runner = options._runner;
   } else if (options.native) {
     ClaudeNativeRunner.validate();
-    runner = new ClaudeNativeRunner();
+    runner = new ClaudeNativeRunner({ model: options.model });
   } else {
     runner = ProviderRunner.fromConfig();
   }
@@ -267,6 +268,7 @@ export async function insightsCommand(
     source?: string;
     force?: boolean;
     quiet?: boolean;
+    model?: string;
   }
 ): Promise<void> {
   const quiet = opts.quiet ?? false;
@@ -290,6 +292,7 @@ export async function insightsCommand(
       force: opts.force ?? false,
       quiet,
       source: opts.source,
+      model: opts.model,
     });
   } catch (error) {
     if (!quiet) {
@@ -308,6 +311,7 @@ export async function insightsCheckCommand(opts: {
   days?: number;
   quiet?: boolean;
   analyze?: boolean;
+  model?: string;
 }): Promise<void> {
   const days = opts.days ?? 7;
   const quiet = opts.quiet ?? false;
@@ -343,7 +347,7 @@ export async function insightsCheckCommand(opts: {
     // --analyze: process all found sessions with progress output
     if (analyze) {
       ClaudeNativeRunner.validate();
-      const runner = new ClaudeNativeRunner();
+      const runner = new ClaudeNativeRunner({ model: opts.model });
       let successCount = 0;
 
       for (let i = 0; i < rows.length; i++) {
@@ -370,7 +374,7 @@ export async function insightsCheckCommand(opts: {
     // Auto-analyze silently when 1-2 unanalyzed sessions
     if (count <= 2) {
       ClaudeNativeRunner.validate();
-      const runner = new ClaudeNativeRunner();
+      const runner = new ClaudeNativeRunner({ model: opts.model });
       for (const row of rows) {
         try {
           await runInsightsCommand({ sessionId: row.id, native: true, quiet: true, _runner: runner });

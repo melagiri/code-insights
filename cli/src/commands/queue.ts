@@ -59,12 +59,12 @@ export async function queueStatusCommand(opts: { quiet?: boolean } = {}): Promis
 
 // ── queue process ─────────────────────────────────────────────────────────────
 
-export async function queueProcessCommand(opts: { quiet?: boolean } = {}): Promise<void> {
+export async function queueProcessCommand(opts: { quiet?: boolean; model?: string } = {}): Promise<void> {
   const { quiet = false } = opts;
   const log = quiet ? () => {} : console.log.bind(console);
 
   try {
-    const count = await processQueue({ quiet });
+    const count = await processQueue({ quiet, model: opts.model });
     if (count === 0) {
       log(chalk.dim('[Code Insights] No pending items in queue'));
     } else {
@@ -131,7 +131,8 @@ export function buildQueueCommand(): Command {
     .command('process')
     .description('Process pending queue items (foreground)')
     .option('-q, --quiet', 'Suppress output')
-    .action((opts) => queueProcessCommand({ quiet: opts.quiet }));
+    .option('--model <model>', 'Model for native analysis (default: sonnet)')
+    .action((opts) => queueProcessCommand({ quiet: opts.quiet, model: opts.model }));
 
   queueCmd
     .command('retry [session_id]')

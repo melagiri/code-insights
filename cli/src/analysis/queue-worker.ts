@@ -18,6 +18,7 @@ export interface ProcessQueueOptions {
   quiet?: boolean;
   /** Runner type to use — 'native' uses claude -p, anything else uses configured provider */
   runnerType?: string;
+  model?: string;
 }
 
 /**
@@ -40,7 +41,7 @@ export async function processQueue(options: ProcessQueueOptions = {}): Promise<n
   let runner: ClaudeNativeRunner | undefined;
   try {
     ClaudeNativeRunner.validate();
-    runner = new ClaudeNativeRunner();
+    runner = new ClaudeNativeRunner({ model: options.model });
   } catch {
     // claude CLI not available — fall back to provider runner (runInsightsCommand handles this)
     runner = undefined;

@@ -127,8 +127,9 @@ program
   .option('--native', 'Use claude -p for analysis worker (default: true)')
   .option('-s, --source <tool>', 'Source tool identifier (default: claude-code)')
   .option('-q, --quiet', 'Suppress output')
+  .option('--model <model>', 'Model for native analysis (default: sonnet)')
   .action(async (opts) => {
-    await sessionEndCommand({ native: opts.native ?? true, quiet: opts.quiet, source: opts.source });
+    await sessionEndCommand({ native: opts.native ?? true, quiet: opts.quiet, source: opts.source, model: opts.model });
   });
 
 // queue command suite — manage the analysis_queue
@@ -143,6 +144,7 @@ const insightsCmd = program
   .option('-s, --source <tool>', 'Source tool identifier (default: claude-code)')
   .option('--force', 'Re-analyze even if already analyzed at this session length')
   .option('-q, --quiet', 'Suppress output')
+  .option('--model <model>', 'Model for native analysis (default: sonnet)')
   .action(async (sessionId: string | undefined, opts) => {
     await insightsCommand(sessionId, opts);
   });
@@ -153,11 +155,13 @@ insightsCmd
   .option('--days <n>', 'Lookback window in days', '7')
   .option('-q, --quiet', 'Machine-readable output (just count)')
   .option('--analyze', 'Process all found sessions sequentially')
+  .option('--model <model>', 'Model for native analysis (default: sonnet)')
   .action(async (opts) => {
     await insightsCheckCommand({
       days: opts.days ? parseInt(opts.days, 10) : 7,
       quiet: opts.quiet,
       analyze: opts.analyze,
+      model: opts.model,
     });
   });
 
