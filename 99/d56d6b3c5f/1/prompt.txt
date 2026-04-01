@@ -1,0 +1,21 @@
+Hello
+
+---
+
+We need to update the release skill to ensure the readme files @README.md and @cli/README.md are also checked for any required update before releasing
+
+---
+
+hello
+
+---
+
+I think we should change the Gate 1 to explicitly state the @cli/README.md file
+
+---
+
+yes, go ahead and make the changes. do it in a feature branch..
+
+---
+
+yes
