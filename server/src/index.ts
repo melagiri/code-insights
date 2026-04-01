@@ -11,6 +11,7 @@ import sessionsRouter from './routes/sessions.js';
 import messagesRouter from './routes/messages.js';
 import insightsRouter from './routes/insights.js';
 import analysisRouter from './routes/analysis.js';
+import analysisQueueRouter from './routes/analysis-queue.js';
 import analyticsRouter from './routes/analytics.js';
 import configRouter from './routes/config.js';
 import exportRouter from './routes/export.js';
@@ -50,6 +51,7 @@ export function createApp(): Hono {
   app.route('/api/messages', messagesRouter);
   app.route('/api/insights', insightsRouter);
   app.route('/api/analysis', analysisRouter);
+  app.route('/api/analysis/queue', analysisQueueRouter);
   app.route('/api/analytics', analyticsRouter);
   app.route('/api/config', configRouter);
   app.route('/api/export', exportRouter);
