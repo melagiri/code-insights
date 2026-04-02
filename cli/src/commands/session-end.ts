@@ -34,6 +34,7 @@ export interface SessionEndOptions {
   native?: boolean;
   quiet?: boolean;
   source?: string;
+  model?: string;
 }
 
 /**
@@ -85,10 +86,10 @@ export async function sessionEndCommand(options: SessionEndOptions = {}): Promis
   enqueue(sessionId, native ? 'native' : 'provider');
 
   // Phase 3: Spawn detached worker to process the queue
-  spawnWorker(quiet);
+  spawnWorker(quiet, options.model);
 }
 
-function spawnWorker(quiet: boolean): void {
+function spawnWorker(quiet: boolean, model?: string): void {
   try {
     const configDir = getConfigDir();
     if (!existsSync(configDir)) {
@@ -98,6 +99,7 @@ function spawnWorker(quiet: boolean): void {
 
     const args = [CLI_ENTRY, 'queue', 'process'];
     if (quiet) args.push('-q');
+    if (model) args.push('--model', model);
 
     const child = spawn(process.execPath, args, {
       detached: true,

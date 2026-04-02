@@ -63,8 +63,16 @@ function extractResultFromEnvelope(rawOutput: string): string {
   return resultEvent.result;
 }
 
+/** Default model used by ClaudeNativeRunner when --model is not specified. */
+export const DEFAULT_NATIVE_MODEL = 'sonnet';
+
 export class ClaudeNativeRunner implements AnalysisRunner {
   readonly name = 'claude-code-native';
+  private readonly model: string;
+
+  constructor(options?: { model?: string }) {
+    this.model = options?.model ?? DEFAULT_NATIVE_MODEL;
+  }
 
   /**
    * Validate that the `claude` CLI is available in PATH.
@@ -101,6 +109,7 @@ export class ClaudeNativeRunner implements AnalysisRunner {
     try {
       const args = [
         '-p',
+        '--model', this.model,
         '--output-format', 'json',
         '--append-system-prompt-file', promptFile,
       ];
@@ -128,7 +137,7 @@ export class ClaudeNativeRunner implements AnalysisRunner {
         durationMs: Date.now() - start,
         inputTokens: 0,
         outputTokens: 0,
-        model: 'claude-native',
+        model: this.model,
         provider: 'claude-code-native',
       };
     } finally {
