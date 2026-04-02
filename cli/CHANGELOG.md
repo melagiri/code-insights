@@ -2,6 +2,12 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.8.4] - 2026-04-02
+
+### Fixed
+
+- **Tmpdir analysis sessions excluded from sync** — `claude -p` analysis sessions created by `ClaudeNativeRunner` (running in `tmpdir()`) were being discovered as real user sessions during sync. The Claude Code provider now skips project directories matching tmpdir patterns (`var-folders`, `-tmp`). Existing polluted sessions soft-deleted.
+
 ## [4.8.3] - 2026-04-02
 
 ### Added
