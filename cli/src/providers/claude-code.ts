@@ -54,6 +54,10 @@ function discoverJsonlFiles(baseDir: string, projectFilter?: string): string[] {
     // Skip hidden files and non-directories
     if (projectDir.startsWith('.')) continue;
 
+    // Skip tmpdir-mapped project folders — these are claude -p analysis sessions
+    // created by ClaudeNativeRunner (cwd: tmpdir()), not real user sessions.
+    if (projectDir.includes('var-folders') || projectDir === '-tmp') continue;
+
     const projectPath = path.join(baseDir, projectDir);
     let stat: ReturnType<typeof fs.statSync>;
     try {
