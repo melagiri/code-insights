@@ -86,6 +86,7 @@ const PROVIDERS: ProviderInfo[] = [
     models: [
       { id: 'gemma-4-12b', name: 'Gemma 4 12B (Q4_K_M)', description: 'Flagship local model' },
       { id: 'gemma-4-27b', name: 'Gemma 4 27B (Q4_K_M)', description: 'Large local model' },
+      { id: 'custom', name: 'Custom model', description: 'Any GGUF loaded in llama-server' },
     ],
   },
 ];

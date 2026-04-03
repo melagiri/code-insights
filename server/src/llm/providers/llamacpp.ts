@@ -12,11 +12,10 @@ import { flattenContent } from '../types.js';
 
 const DEFAULT_LLAMACPP_URL = 'http://localhost:8080';
 
-// Token budget for small quantized models.
-// 12B-27B GGUF models running in llama-server have limited context windows;
-// sending 80K tokens (the default for large hosted models) causes OOM or degraded output.
-// 24K (24576) is a safe upper bound that fits in most Gemma 4 Q4_K_M configs.
-export const LLAMACPP_MAX_INPUT_TOKENS = 24576;
+// Default timeout for chat requests (2 minutes).
+// Local inference with quantized models can be slow (especially first request while model loads
+// into GPU memory), but anything beyond 2 minutes likely indicates a hang.
+const DEFAULT_CHAT_TIMEOUT_MS = 120_000;
 
 export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient {
   const url = baseUrl || DEFAULT_LLAMACPP_URL;
@@ -29,12 +28,16 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
       // Inner helper — performs a single attempt at the llama-server completions endpoint.
       // Returns the raw content string so the caller can retry on parse failure if needed.
       const attempt = async (): Promise<{ content: string; inputTokens: number; outputTokens: number }> => {
+        // Use caller-provided signal, or fall back to a default timeout to prevent indefinite hangs
+        // when llama-server accepts the connection but stalls (model loading, GPU memory pressure).
+        const signal = options?.signal ?? AbortSignal.timeout(DEFAULT_CHAT_TIMEOUT_MS);
+
         let res: Response;
         try {
           res = await fetch(`${url}/v1/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            signal: options?.signal,
+            signal,
             body: JSON.stringify({
               model,
               // flattenContent converts ContentBlock[] to string; strings pass through unchanged.
@@ -71,10 +74,18 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
           throw new Error(`llama-server API error (HTTP ${res.status})${detail ? ` - ${detail}` : ''}`);
         }
 
-        const data = await res.json() as {
+        let data: {
           choices: Array<{ message: { content: string } }>;
           usage?: { prompt_tokens: number; completion_tokens: number };
         };
+        try {
+          data = await res.json() as typeof data;
+        } catch {
+          const preview = await res.text().catch(() => '');
+          throw new Error(
+            `llama-server returned a non-JSON response (HTTP ${res.status}).${preview ? ` Body starts with: ${preview.slice(0, 120)}` : ''}`
+          );
+        }
 
         return {
           content: data.choices[0]?.message?.content || '',
@@ -99,8 +110,25 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
       }
 
       if (!jsonValid) {
-        // Single retry on JSON parse failure (LLM Expert requirement)
+        // Single retry on JSON parse failure (LLM Expert requirement).
+        // Validate the retry result too — if both attempts fail, surface the error
+        // instead of silently returning malformed content.
         const retry = await attempt();
+        let retryValid = false;
+        try {
+          JSON.parse(retry.content);
+          retryValid = true;
+        } catch {
+          // still not valid JSON
+        }
+
+        if (!retryValid) {
+          throw new Error(
+            `llama-server returned invalid JSON on both attempts. ` +
+            `Response preview: ${retry.content.slice(0, 200)}`
+          );
+        }
+
         return {
           content: retry.content,
           usage: {
