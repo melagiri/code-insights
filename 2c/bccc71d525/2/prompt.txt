@@ -1,0 +1,802 @@
+Llama.cpp launched new version and Google launched gemma4 which is their advanced model … I want to support that in our code insights along with ollama local models. Plan this integration and come up with feasiblity, steps and pros and cons for it
+
+---
+
+Plan the implementation and handover for technical review with technical architect and expert agents. Once complete, then handed over to product manager for full ceremony implementation
+
+---
+
+Continue from where you left off.
+
+---
+
+How can I teleport this session to my macbook
+
+---
+
+better continue here.. the limits are reset:
+
+Plan the implementation and handover for technical review with technical architect and expert agents. Once complete, then handed over to product manager for full ceremony implementation
+
+---
+
+<task-notification>
+<task-id>a483ea1114faa8b98</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/tmp/claude-0/-home-user-code-insights/4d5a683c-171c-4915-93a8-b3c848c4e10e/tasks/a483ea1114faa8b98.output</output-file>
+<status>completed</status>
+<summary>Agent "Plan llama.cpp + Gemma 4 integration" completed</summary>
+<result>I now have a complete picture. Here is the full implementation plan.
+
+---
+
+## Implementation Plan: llama.cpp Provider + Gemma 4 Model Support
+
+### Summary of Changes
+
+This plan touches **14 files** (3 new, 11 modified) across all three packages (CLI, server, dashboard). The llama.cpp provider reuses OpenAI-compatible HTTP calls with connection-refused error handling borrowed from the Ollama provider pattern. Gemma 4 models are added to three providers (Gemini API, Ollama, and the new llama.cpp).
+
+---
+
+### Phase 1: Type System (Foundation)
+
+**File 1: `/home/user/code-insights/cli/src/types.ts` (MODIFY)**
+
+Line 331 -- extend the `LLMProvider` union type:
+```typescript
+export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'llamacpp';
+```
+
+No other type changes needed. `LLMProviderConfig` already supports optional `apiKey` and `baseUrl`, which is exactly what llama.cpp needs (no key, custom base URL).
+
+---
+
+### Phase 2: Provider Metadata + Pricing Constants
+
+**File 2: `/home/user/code-insights/cli/src/constants/llm-providers.ts` (MODIFY)**
+
+Add the new `llamacpp` provider entry to the `PROVIDERS` array (after Ollama). Add Gemma 4 to existing providers.
+
+Changes:
+1. Add Gemma 4 models to the `gemini` provider entry:
+   - `{ id: 'gemma-4-12b', name: 'Gemma 4 12B', description: 'Local via Gemini API', inputCostPer1M: 0.07, outputCostPer1M: 0.3 }` (pricing TBD -- use Gemini Flash-tier pricing as placeholder)
+   - `{ id: 'gemma-4-27b', name: 'Gemma 4 27B', description: 'Local via Gemini API', inputCostPer1M: 0.15, outputCostPer1M: 0.6 }` (placeholder)
+
+2. Add Gemma 4 to the `ollama` provider's model list:
+   - `{ id: 'gemma4', name: 'Gemma 4', description: 'Google Gemma 4, free' }`
+   - `{ id: 'gemma4:27b', name: 'Gemma 4 27B', description: 'Google Gemma 4 27B, free' }`
+
+3. Add the new llama.cpp provider entry:
+```typescript
+{
+  id: 'llamacpp',
+  name: 'llama.cpp (Local)',
+  requiresApiKey: false,
+  models: [
+    { id: 'gemma-4-12b', name: 'Gemma 4 12B', description: 'Recommended for local' },
+    { id: 'gemma-4-27b', name: 'Gemma 4 27B', description: 'Higher quality, more VRAM' },
+    { id: 'custom', name: 'Custom Model', description: 'Any GGUF loaded in llama-server' },
+  ],
+}
+```
+
+Note: The `models` list for llama.cpp is suggestive -- the actual model depends on what GGUF is loaded. Model discovery via `GET /v1/models` handles this at runtime. The `custom` entry signals users can type any model name.
+
+**File 3: `/home/user/code-insights/dashboard/src/lib/cost-utils.ts` (MODIFY)**
+
+Add llama.cpp to the free-provider checks:
+- Line 46: `if (provider === 'ollama' || provider === 'llamacpp') return null;`
+- Line 79: `if (provider === 'ollama' || provider === 'llamacpp') return 0;`
+
+Add Gemma 4 entries to `PROVIDER_PRICING.gemini` if Google publishes API pricing for them.
+
+**File 4: `/home/user/code-insights/server/src/llm/analysis-pricing.ts` (MODIFY)**
+
+Line 44: Change `if (provider === 'ollama')` to `if (provider === 'ollama' || provider === 'llamacpp')` so llama.cpp gets $0.00 cost like Ollama.
+
+---
+
+### Phase 3: Server-Side Provider Implementation
+
+**File 5: `/home/user/code-insights/server/src/llm/providers/llamacpp.ts` (NEW)**
+
+Create a new provider file following the exact pattern of `ollama.ts` but targeting the OpenAI-compatible API. This is the core implementation.
+
+Structure:
+```typescript
+// llama.cpp provider — local inference via llama-server (OpenAI-compatible API)
+
+import type { LLMClient, LLMMessage, LLMResponse, ChatOptions } from '../types.js';
+import { flattenContent } from '../types.js';
+
+const DEFAULT_LLAMACPP_URL = 'http://localhost:8080';
+
+export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient {
+  const url = baseUrl || DEFAULT_LLAMACPP_URL;
+
+  return {
+    provider: 'llamacpp',
+    model,
+
+    async chat(messages: LLMMessage[], options?: ChatOptions): Promise&lt;LLMResponse&gt; {
+      // ... fetch to `${url}/v1/chat/completions`
+      // OpenAI-compatible request body: { model, messages, temperature: 0.7, max_tokens: 8192 }
+      // flattenContent on each message's content
+      // ECONNREFUSED detection same as ollama.ts but with llama-server specific message
+      // Response parsing identical to openai.ts (choices[0].message.content, usage.prompt_tokens/completion_tokens)
+    },
+
+    estimateTokens(text: string): number {
+      return Math.ceil(text.length / 4);
+    },
+  };
+}
+
+/**
+ * Discover models loaded in llama-server via GET /v1/models.
+ * Returns empty array if llama-server is not running.
+ */
+export async function discoverLlamaCppModels(
+  baseUrl?: string
+): Promise&lt;Array&lt;{ id: string; owned_by: string }&gt;&gt; {
+  const url = baseUrl || DEFAULT_LLAMACPP_URL;
+  try {
+    const response = await fetch(`${url}/v1/models`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) return [];
+    const data = await response.json() as { data?: Array&lt;{ id: string; owned_by: string }&gt; };
+    return data.data || [];
+  } catch {
+    return [];
+  }
+}
+```
+
+Key design decisions for this file:
+- **Connection error handling**: Mirror the Ollama pattern -- catch `ECONNREFUSED` and throw a user-friendly message: `"Cannot connect to llama-server at ${url} — is it running? Start it with: llama-server -m &lt;model.gguf&gt;"`
+- **No auth header**: llama-server does not require API keys by default. No `Authorization` header sent.
+- **JSON mode**: llama-server supports `response_format: { type: "json_object" }` in the request body. Include this to improve JSON reliability from quantized models. This is a key differentiator from the plain OpenAI client.
+- **Model name flexibility**: llama-server's `/v1/models` returns the loaded model's name. If the user configured model `"custom"` or left it blank, the provider should still work because llama-server uses whatever model is loaded.
+
+**File 6: `/home/user/code-insights/server/src/llm/client.ts` (MODIFY)**
+
+Add the import and case:
+- Line 11 area: `import { createLlamaCppClient } from './providers/llamacpp.js';`
+- In `createClientFromConfig()` switch (after `case 'ollama'`):
+  ```typescript
+  case 'llamacpp':
+    return createLlamaCppClient(config.model, config.baseUrl);
+  ```
+- In `isLLMConfigured()` (line 27): Change `if (llm.provider === 'ollama')` to `if (llm.provider === 'ollama' || llm.provider === 'llamacpp')` since llama.cpp also needs no API key.
+
+---
+
+### Phase 4: CLI-Side Provider Implementation
+
+**File 7: `/home/user/code-insights/cli/src/analysis/provider-runner.ts` (MODIFY)**
+
+Add `makeLlamaCppChat` function (after `makeOllamaChat`, around line 174). This mirrors the OpenAI chat function but with no auth header and the llama.cpp default URL:
+
+```typescript
+function makeLlamaCppChat(model: string, baseUrl?: string): LLMChatFn {
+  const url = baseUrl || 'http://localhost:8080';
+  return async (messages) =&gt; {
+    const response = await fetch(`${url}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 8192,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() =&gt; '');
+      throw new Error(`llama-server API error (HTTP ${response.status})${detail ? ` - ${detail}` : ''}`);
+    }
+    const data = await response.json() as {
+      choices: Array&lt;{ message: { content: string } }&gt;;
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
+    return {
+      content: data.choices[0]?.message?.content || '',
+      usage: data.usage
+        ? { inputTokens: data.usage.prompt_tokens, outputTokens: data.usage.completion_tokens }
+        : undefined,
+    };
+  };
+}
+```
+
+In `makeChatFn()` switch statement (line 177-183), add:
+```typescript
+case 'llamacpp': return makeLlamaCppChat(config.model, config.baseUrl);
+```
+
+In `ProviderRunner.fromConfig()` (line 211): Change `if (llm.provider !== 'ollama' &amp;&amp; !llm.apiKey)` to `if (llm.provider !== 'ollama' &amp;&amp; llm.provider !== 'llamacpp' &amp;&amp; !llm.apiKey)`.
+
+---
+
+### Phase 5: CLI Config Wizard
+
+**File 8: `/home/user/code-insights/cli/src/commands/config.ts` (MODIFY)**
+
+Three changes:
+1. Line 49 area: In `showConfigAction()`, change `if (llm.provider !== 'ollama')` to `if (llm.provider !== 'ollama' &amp;&amp; llm.provider !== 'llamacpp')` to suppress API key display for llama.cpp.
+
+2. Line 108: Update `--provider` help text: `'LLM provider (openai, anthropic, gemini, ollama, llamacpp)'`
+
+3. Line 252 area: In `runInteractiveLLMConfig()`, the base URL prompt currently only fires for `provider === 'ollama'`. Change to `if (provider === 'ollama' || provider === 'llamacpp')` with appropriate default URLs:
+   - Ollama: `http://localhost:11434`
+   - llama.cpp: `http://localhost:8080`
+   
+   Update the prompt message and default conditionally:
+   ```typescript
+   if (provider === 'ollama' || provider === 'llamacpp') {
+     const defaultUrl = provider === 'ollama' ? 'http://localhost:11434' : 'http://localhost:8080';
+     const label = provider === 'ollama' ? 'Ollama' : 'llama-server';
+     const { baseUrl } = await inquirer.prompt&lt;{ baseUrl: string }&gt;([{
+       type: 'input',
+       name: 'baseUrl',
+       message: `${label} URL (leave blank for default ${defaultUrl}):`,
+       default: existing?.baseUrl ?? '',
+     }]);
+     if (baseUrl &amp;&amp; baseUrl !== defaultUrl) {
+       llmConfig.baseUrl = baseUrl;
+     }
+   }
+   ```
+
+---
+
+### Phase 6: Server Config Routes
+
+**File 9: `/home/user/code-insights/server/src/routes/config.ts` (MODIFY)**
+
+Three changes:
+1. Line 9: Add `'llamacpp'` to `VALID_PROVIDERS`:
+   ```typescript
+   const VALID_PROVIDERS = ['openai', 'anthropic', 'gemini', 'ollama', 'llamacpp'] as const;
+   ```
+
+2. Add import for `discoverLlamaCppModels`:
+   ```typescript
+   import { discoverLlamaCppModels } from '../llm/providers/llamacpp.js';
+   ```
+
+3. Add a new endpoint for llama.cpp model discovery (parallel to Ollama's endpoint at line 130):
+   ```typescript
+   // GET /api/config/llm/llamacpp-models — return models loaded in llama-server
+   app.get('/llm/llamacpp-models', async (c) =&gt; {
+     const baseUrl = c.req.query('baseUrl');
+     const models = await discoverLlamaCppModels(baseUrl || undefined);
+     return c.json({ models });
+   });
+   ```
+
+---
+
+### Phase 7: Dashboard UI
+
+**File 10: `/home/user/code-insights/dashboard/src/lib/types.ts` (MODIFY)**
+
+Line 231: Update the LLMConfig type's provider union:
+```typescript
+provider?: 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'llamacpp';
+```
+
+**File 11: `/home/user/code-insights/dashboard/src/lib/api.ts` (MODIFY)**
+
+Add a `fetchLlamaCppModels` function (after `fetchOllamaModels` at line 184):
+```typescript
+export function fetchLlamaCppModels(baseUrl?: string) {
+  const qs = baseUrl ? `?baseUrl=${encodeURIComponent(baseUrl)}` : '';
+  return request&lt;{ models: Array&lt;{ id: string; owned_by: string }&gt; }&gt;(
+    `/config/llm/llamacpp-models${qs}`
+  );
+}
+```
+
+**File 12: `/home/user/code-insights/dashboard/src/pages/SettingsPage.tsx` (MODIFY)**
+
+This is the most involved UI change. Several modifications:
+
+1. **Update the `LLMProvider` type** (line 24): Add `'llamacpp'` to the union.
+
+2. **Add llama.cpp to the `PROVIDERS` array** (after the Ollama entry around line 68):
+   ```typescript
+   {
+     id: 'llamacpp',
+     name: 'llama.cpp (Local)',
+     requiresApiKey: false,
+     models: [
+       { id: 'gemma-4-12b', name: 'Gemma 4 12B', description: 'Recommended' },
+       { id: 'gemma-4-27b', name: 'Gemma 4 27B', description: 'Higher quality' },
+     ],
+   },
+   ```
+
+3. **Add Gemma 4 to the Ollama model list** in the PROVIDERS constant:
+   - `{ id: 'gemma4', name: 'Gemma 4' }`
+   - `{ id: 'gemma4:27b', name: 'Gemma 4 27B' }`
+
+4. **Add Gemma 4 to the Gemini model list** in the PROVIDERS constant:
+   - `{ id: 'gemma-4-12b', name: 'Gemma 4 12B', description: 'Lightweight' }`
+   - `{ id: 'gemma-4-27b', name: 'Gemma 4 27B', description: 'Capable' }`
+
+5. **Model input for llama.cpp**: The llama.cpp provider should use the same free-text model input pattern as Ollama (line 399-427), not the dropdown pattern used by cloud providers. Extend the conditional at line 399 from `llmProvider === 'ollama'` to `llmProvider === 'ollama' || llmProvider === 'llamacpp'`.
+
+6. **Add llama.cpp model discovery**: Add state for `llamacppDiscoveredModels` parallel to `ollamaDiscoveredModels`. Add a `useEffect` that fires when `llmProvider === 'llamacpp'` to call `fetchLlamaCppModels(llmBaseUrl)` and populate suggestions.
+
+7. **Base URL section**: Extend the Ollama base URL UI block (lines 504-549) to also show for llama.cpp, with the appropriate default placeholder (`http://localhost:8080` instead of `http://localhost:11434`). Update the collapsible help text:
+   - For Ollama: keep existing text about `ollama serve`
+   - For llama.cpp: change to text about `llama-server -m &lt;model.gguf&gt;`
+
+8. **Suggestions block**: When `llmProvider === 'llamacpp'`, merge hardcoded suggestions from the PROVIDERS array with discovered models from `llamacppDiscoveredModels`.
+
+**File 13: `/home/user/code-insights/dashboard/src/components/sessions/AnalysisCostLine.tsx` (MODIFY)**
+
+Line 148: Add `llamacpp` to the free-provider display check:
+```typescript
+{row.provider === 'ollama' || row.provider === 'llamacpp' || row.provider === 'claude-code-native' ? 'free' : formatCost(row.estimated_cost_usd)}
+```
+
+Line 57: Also update:
+```typescript
+const allFree = usage.every(row =&gt; row.provider === 'ollama' || row.provider === 'llamacpp');
+```
+
+**File 14: `/home/user/code-insights/dashboard/src/components/analysis/AnalyzeDropdown.tsx` (MODIFY)**
+
+Line 47: Update the Ollama check to include llama.cpp:
+```typescript
+const isLocal = llmConfig?.provider === 'ollama' || llmConfig?.provider === 'llamacpp';
+```
+
+---
+
+### Phase 8: JSON Reliability for Quantized Models
+
+The existing `jsonrepair` pipeline in `/home/user/code-insights/cli/src/analysis/response-parsers.ts` and `/home/user/code-insights/server/src/routes/reflect.ts` already handles:
+- Extracting JSON from `&lt;json&gt;...&lt;/json&gt;` tags or raw `{...}` blocks
+- Repairing trailing commas, unclosed braces, truncated output via `jsonrepair`
+
+For llama.cpp specifically, the **`response_format: { type: "json_object" }`** in the request body (added in Phase 3/4) constrains the grammar at the decoding level, which is the most reliable approach. The existing repair pipeline serves as a safety net.
+
+No additional retry/repair logic is needed beyond what already exists, because:
+1. llama-server supports grammar-constrained JSON output natively
+2. The existing `jsonrepair` fallback handles edge cases
+3. The `parseLLMJson` function in reflect.ts already has the two-tier parse strategy
+
+---
+
+### Implementation Order (Dependency-Aware)
+
+1. **Phase 1** (types.ts) -- everything depends on the type union
+2. **Phase 2** (llm-providers.ts, cost-utils.ts, analysis-pricing.ts) -- metadata needed by factories
+3. **Phase 3** (providers/llamacpp.ts, client.ts) -- server-side provider
+4. **Phase 4** (provider-runner.ts) -- CLI-side provider
+5. **Phase 5** (config.ts CLI) -- wizard support
+6. **Phase 6** (routes/config.ts) -- server API route
+7. **Phase 7** (dashboard types, api, SettingsPage, AnalysisCostLine, AnalyzeDropdown) -- UI
+8. **Phase 8** -- verification that JSON pipeline works (no code changes)
+
+Phases 3-6 can be done in parallel since they don't depend on each other, only on Phase 1-2.
+
+---
+
+### Testing Strategy
+
+1. **Unit test for the new provider**: Create `/home/user/code-insights/server/src/llm/providers/llamacpp.test.ts` testing:
+   - `createLlamaCppClient` returns correct provider/model properties
+   - `discoverLlamaCppModels` returns empty array when server unreachable
+   - Chat function constructs correct request body (mock `fetch`)
+   - Connection refused error produces user-friendly message
+
+2. **Existing test coverage**: The `analysis-pricing.ts` tests (if any) should verify `llamacpp` returns $0. The config route tests should accept `llamacpp` as a valid provider.
+
+3. **Integration testing** (manual):
+   - Start `llama-server -m gemma-4-12b-Q4_K_M.gguf` and verify model discovery endpoint
+   - Run `code-insights config llm --provider llamacpp --model gemma-4-12b`
+   - Run `code-insights insights &lt;session_id&gt;` and verify analysis completes
+   - Test dashboard Settings page: select llama.cpp provider, see model suggestions, save and test
+
+4. **TypeScript exhaustiveness**: The `switch` statements in `client.ts` and `provider-runner.ts` use `default: throw`, so TypeScript will not flag an exhaustiveness error, but the new case must be added or runtime throws occur.
+
+---
+
+### Architectural Decisions
+
+1. **llama.cpp as a separate provider vs. reusing OpenAI provider with custom baseUrl**: Separate provider is the right call. The OpenAI provider hardcodes `https://api.openai.com/v1/chat/completions` and always sends an `Authorization` header. llama.cpp has a different default URL, no auth, and benefits from `response_format: { type: "json_object" }` being always-on (the OpenAI provider does not send this). A separate provider is cleaner and follows the "no half-measures" philosophy.
+
+2. **Model name for llama.cpp**: llama-server loads one model at a time. The "model" field in the config is somewhat cosmetic -- it identifies which model the user loaded. The `/v1/models` discovery endpoint confirms what is actually loaded. The provider should pass whatever model string the user configured in the request body, and llama-server will use the loaded model regardless.
+
+3. **Gemma 4 on Gemini API**: If Google exposes Gemma 4 models through the Generative Language API (which they have done for Gemma 2), they would use the same Gemini provider with model IDs like `gemma-4-12b`. If not available via API, those entries can be removed from the Gemini provider's model list. Adding them now is the right call -- they are easy to remove if wrong.
+
+4. **No streaming support**: The existing providers all use `stream: false`. The llama.cpp provider follows this pattern. Streaming is a separate concern tracked elsewhere.
+
+---
+
+### Critical Files for Implementation
+
+- `/home/user/code-insights/cli/src/types.ts` -- LLMProvider union type (everything depends on this)
+- `/home/user/code-insights/server/src/llm/providers/llamacpp.ts` -- new provider implementation (core new file)
+- `/home/user/code-insights/cli/src/constants/llm-providers.ts` -- provider metadata and model lists
+- `/home/user/code-insights/cli/src/analysis/provider-runner.ts` -- CLI-side chat function dispatch
+- `/home/user/code-insights/dashboard/src/pages/SettingsPage.tsx` -- dashboard UI for provider selection</result>
+<usage><total_tokens>55090</total_tokens><tool_uses>65</tool_uses><duration_ms>276618</duration_ms></usage>
+</task-notification>
+
+---
+
+Stop hook feedback:
+[~/.claude/stop-hook-git-check.sh]: There are untracked files in the repository. Please commit and push these changes to the remote branch. Do not create a pull request unless the user has explicitly asked for one.
+
+---
+
+<task-notification>
+<task-id>a0e45fcdb0b72118a</task-id>
+<tool-use-id>toolu_01EfbXNLzpncfJtdMkvFoEoJ</tool-use-id>
+<output-file>/tmp/claude-0/-home-user-code-insights/4d5a683c-171c-4915-93a8-b3c848c4e10e/tasks/a0e45fcdb0b72118a.output</output-file>
+<status>completed</status>
+<summary>Agent "PM ceremony for llama.cpp integration" completed</summary>
+<result>Issue #267 already exists and is comprehensive — it was created earlier today. The handover document at `/home/user/code-insights/docs/implementation/handover-llamacpp-provider.md` is also already in place. Both are complete and accurate.
+
+Here is the full status:
+
+---
+
+## Setup Verification: llama.cpp Provider Integration
+
+### GitHub Issue #267 — EXISTS AND COMPLETE
+
+**URL:** https://github.com/melagiri/code-insights/issues/267
+**Title:** Add llama.cpp as a local LLM provider (Gemma 4 flagship)
+**Labels:** `feature`, `infrastructure`
+**State:** Open
+
+The issue body covers:
+- Full scope table (14 files, 3 new)
+- All 8 implementation phases with checkboxes
+- Technical Architect required changes verbatim (ollama audit, test coverage, tech debt flag)
+- LLM Expert critical fixes verbatim (token limit BLOCKING, temperature, retry, facet quality)
+- Complete acceptance criteria
+- Out of scope section
+- Tech debt tracking note
+
+### Handover Document — EXISTS AND COMPLETE
+
+**Path:** `/home/user/code-insights/docs/implementation/handover-llamacpp-provider.md`
+
+The document covers:
+- What the engineer is building and why
+- Every file with the exact change required
+- All four expert-required fixes with file targets and specific values (24K token cap, 0.3 temperature, single retry, ollama grep command)
+- Vitest test requirements with the three required cases
+- Pre-PR gate instructions
+- Definition of Done checklist
+
+### CURRENT_SPRINT.md — EXISTS AND CURRENT
+
+**Path:** `/home/user/code-insights/docs/implementation/CURRENT_SPRINT.md`
+
+Tracks all 8 phases as in-progress, references issue #267, and lists the two follow-up issues that must be created before closing #267.
+
+---
+
+### What Remains Before Ceremony Can Proceed
+
+The two documents and the issue are ready. The engineer can begin immediately. The one outstanding PM action is to create the two tech debt follow-up issues — these should be opened once the PR is in review (not before, to avoid cluttering the board with issues tied to incomplete work):
+
+1. **SettingsPage duplicated provider types** — the page re-declares types that live in `dashboard/src/lib/types.ts`. Size: S.
+2. **Simplified prompts for 12B quantized models** — LLM Expert recommendation, not required for this PR. Size: M.
+
+Both will be opened when the engineer creates the PR and the main implementation is confirmed complete.</result>
+<usage><total_tokens>39758</total_tokens><tool_uses>20</tool_uses><duration_ms>154468</duration_ms></usage>
+</task-notification>
+
+---
+
+go ahead
+
+---
+
+Stop hook feedback:
+[~/.claude/stop-hook-git-check.sh]: There are uncommitted changes in the repository. Please commit and push these changes to the remote branch. Do not create a pull request unless the user has explicitly asked for one.
+
+---
+
+This session is being continued from another machine. Application state may have changed. The updated working directory is /Users/melagiri/Workspace/codeInsights/code-insights
+
+---
+
+are you continuing here or remote?
+
+---
+
+yes
+
+---
+
+What is the progress on this ?
+
+---
+
+recreate the team and follow full ceremony to complete the implementation and PR review
+
+---
+
+fix all 5
+
+---
+
+one more round of review please
+
+---
+
+merged
+
+---
+
+ok, now - plan the release changes and updates for marketing site including docs in @../code-insights-web/ folder
+
+---
+
+plan this completely and build in feature branches.. ensure you are on latest master first in both repos..
+
+---
+
+# /release — Automated Release Workflow
+
+**Arguments**: minor
+
+You are executing the release workflow for `@code-insights/cli`. Parse `minor` to extract:
+- **type** (required): `patch`, `minor`, or `major`
+- **description** (optional): A one-liner for the release title
+
+If type is missing or not one of `patch`/`minor`/`major`, ask the user to provide it.
+
+---
+
+## Step 1: Pre-flight Checks
+
+Run ALL of these checks. If any fail, STOP and tell the user what to fix.
+
+```bash
+# Must be on master
+git branch --show-current  # Must output "master"
+
+# Must have clean working tree
+git status --porcelain     # Must be empty
+
+# Pull latest
+git pull origin master
+```
+
+Read the current version from `cli/package.json` (the `"version"` field).
+
+Compute the new version:
+- `patch`: increment the third number (3.6.1 → 3.6.2)
+- `minor`: increment the second number, reset third to 0 (3.6.1 → 3.7.0)
+- `major`: increment the first number, reset second and third to 0 (3.6.1 → 4.0.0)
+
+**Resume detection**: Run `npm view @code-insights/cli version` to get the currently published version. If the version in `package.json` is ALREADY GREATER than the npm version, this is a **resumed release** — skip to Step 6.
+
+---
+
+## Step 2: Analyze Changes
+
+Find the last git tag and analyze what changed:
+
+```bash
+# Find latest tag
+git describe --tags --abbrev=0
+
+# Commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Full diff since last tag
+git diff $(git describe --tags --abbrev=0)..HEAD --stat
+```
+
+Read the full diff and commit messages. Then:
+
+1. **Generate a CHANGELOG entry** in the existing format (see `cli/CHANGELOG.md` for style). Group changes under `### Added`, `### Changed`, `### Fixed`, `### Improved` as appropriate. Match the existing tone — concise but descriptive, with bold lead-ins.
+
+2. **Generate a release title** — a short phrase summarizing the release (e.g., "LLM-Powered Export Page", "PostHog custom domain"). Use the user's description if provided, otherwise derive from the changes.
+
+3. **For minor/major releases**: Assess which docs need updating:
+   - `docs/ROADMAP.md` — if new milestones were completed
+   - `docs/PRODUCT.md` — if product capabilities changed
+   - `docs/VISION.md` — for major releases, if the vision expanded
+   - `README.md` — if user-facing features or setup changed
+   - `cli/README.md` — if CLI usage, commands, or npm package description changed
+
+---
+
+## GATE 1: Review Changelog
+
+**STOP and present to the user:**
+
+```
+Release: vX.Y.Z — {title}
+Type: {patch|minor|major}
+
+Proposed CHANGELOG entry:
+─────────────────────────
+{the generated changelog entry}
+─────────────────────────
+
+Files to modify:
+  - cli/package.json (version bump)
+  - cli/CHANGELOG.md (new entry)
+  {- docs/ROADMAP.md (if applicable)}
+  {- docs/PRODUCT.md (if applicable)}
+  {- docs/VISION.md (if applicable)}
+  {- cli/README.md (if applicable)}
+
+Approve, or tell me what to change?
+```
+
+Wait for user approval. If they provide edits, incorporate them.
+
+---
+
+## Step 3: Apply Version Bump
+
+After approval, make the changes:
+
+1. **`cli/package.json`** — Update the `"version"` field to the new version
+2. **`cli/CHANGELOG.md`** — Prepend the new entry at the top (after the header, before the previous version entry). Format: `## [X.Y.Z] - YYYY-MM-DD`
+3. **Docs** (if approved at Gate 1) — Make the specific updates discussed
+
+---
+
+## Step 4: Build & Test
+
+Run the full build and test suite:
+
+```bash
+# Full workspace build (this is what prepublishOnly does)
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+
+# Run tests
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && pnpm test
+```
+
+**If build fails → STOP.** Show the error. Do not continue.
+**If tests fail → STOP.** Show the error. Do not continue.
+
+---
+
+## GATE 2: Confirm Publish
+
+**STOP and present to the user:**
+
+Show the full `git diff` of all changes made, then:
+
+```
+Build: PASSED
+Tests: PASSED
+
+Ready to:
+  1. Commit changes to master
+  2. Push to origin
+  3. Publish v{X.Y.Z} to npm
+  4. Create GitHub release
+
+Proceed?
+```
+
+Wait for explicit user approval before continuing.
+
+---
+
+## Step 5: Commit & Push
+
+Commit with specific files only (never `git add .`):
+
+```bash
+# Add only the files we changed
+git add cli/package.json cli/CHANGELOG.md
+# Add any docs files that were modified (if applicable)
+# git add docs/ROADMAP.md docs/PRODUCT.md docs/VISION.md README.md cli/README.md
+
+git commit -m "$(cat <<'EOF'
+chore: bump version to vX.Y.Z
+
+{one-line summary of what changed}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+git push origin master
+```
+
+---
+
+## Step 6: Publish to npm
+
+```bash
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && npm publish
+```
+
+The `prepublishOnly` script in `package.json` handles building all packages and copying dashboard/server dist files automatically.
+
+Verify the publish succeeded:
+
+```bash
+npm view @code-insights/cli version
+```
+
+If publish fails, show the error and STOP. The commit is already pushed — tell the user to fix the issue and re-run `/release` (resume detection will skip to this step).
+
+---
+
+## Step 7: GitHub Release
+
+Create the GitHub release using the changelog entry as the body:
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — {release title}" \
+  --notes "$(cat <<'EOF'
+{changelog entry content, formatted for GitHub}
+
+**Full Changelog**: https://github.com/melagiri/code-insights/compare/{previous_tag}...vX.Y.Z
+EOF
+)"
+```
+
+---
+
+## GATE 3: Verify
+
+**STOP and present to the user:**
+
+```
+Release vX.Y.Z complete!
+
+  npm: @code-insights/cli@X.Y.Z ✓
+  GitHub: {release URL}
+  Commit: {commit hash}
+
+Everything look correct?
+```
+
+---
+
+## Step 8: Done
+
+Summarize the release:
+
+```
+Released @code-insights/cli vX.Y.Z
+
+  Changes: {brief summary}
+  npm: https://www.npmjs.com/package/@code-insights/cli
+  GitHub: {release URL}
+  Files modified: {list}
+```
+
+---
+
+## Important Rules
+
+- **NEVER skip the gates** — always pause for user confirmation
+- **NEVER use `git add .` or `git add -A`** — add specific files only
+- **If build or tests fail, STOP** — do not try to fix and continue
+- **Commit message format**: `chore: bump version to vX.Y.Z` (matches existing pattern)
+- **Resume is safe** — if re-run after a partial release, it picks up where it left off
+
+---
+
+approved
+
+---
+
+proceed
