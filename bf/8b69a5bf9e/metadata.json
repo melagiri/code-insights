@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "bf8b69a5bf9e",
+  "strategy": "manual-commit",
+  "branch": "claude/plan-gemma-ollama-integration-03V9H",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cli/src/analysis/__tests__/provider-runner.test.ts",
+    "cli/src/analysis/provider-runner.ts",
+    "cli/src/commands/config.ts",
+    "cli/src/constants/llm-providers.ts",
+    "cli/src/types.ts",
+    "dashboard/src/components/analysis/AnalyzeDropdown.tsx",
+    "dashboard/src/components/sessions/AnalysisCostLine.tsx",
+    "dashboard/src/lib/api.ts",
+    "dashboard/src/lib/cost-utils.ts",
+    "dashboard/src/lib/types.ts",
+    "dashboard/src/pages/SettingsPage.tsx",
+    "server/src/llm/analysis-internal.ts",
+    "server/src/llm/analysis-pricing.ts",
+    "server/src/llm/analysis.ts",
+    "server/src/llm/client.ts",
+    "server/src/llm/facet-extraction.ts",
+    "server/src/llm/index.ts",
+    "server/src/llm/prompt-quality-analysis.ts",
+    "server/src/llm/providers/llamacpp.ts",
+    "server/src/routes/config.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/bf/8b69a5bf9e/0/metadata.json",
+      "transcript": "/bf/8b69a5bf9e/0/full.jsonl",
+      "context": "/bf/8b69a5bf9e/0/context.md",
+      "content_hash": "/bf/8b69a5bf9e/0/content_hash.txt",
+      "prompt": "/bf/8b69a5bf9e/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
