@@ -12,7 +12,7 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 |-------|------|-----------------|
 | **1. Foundation** ✅ | End-to-end flow | CLI sync, SQLite schema, Claude Code parser, basic dashboard |
 | **2. Integration** ✅ | Workflow integration | Claude Code hook (`install-hook`), CLI stats suite (5 subcommands) |
-| **3. Intelligence** ✅ | LLM-powered insights | Multi-provider LLM (OpenAI, Anthropic, Gemini, Ollama), session analysis, 4 insight types |
+| **3. Intelligence** ✅ | LLM-powered insights | Multi-provider LLM (OpenAI, Anthropic, Gemini, Ollama, llama.cpp), session analysis, 4 insight types |
 | **4. Feature Parity** ✅ | Local SPA + multi-source | Vite + React SPA, 5 providers (claude-code, cursor, codex-cli, copilot-cli, copilot), session-level export |
 | **5. Telemetry** ✅ | Anonymous usage signals | PostHog (opt-out model, 14 event types, anonymous device ID) |
 | **6. Distribution** ✅ | npm publish + docs | `@code-insights/cli` on npm, landing page at code-insights.app |
@@ -230,6 +230,7 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 | 4.6.1 | — | User profile on share cards, GitHub avatar CORS fix | ✅ Done |
 | 4.7.0 | — | Ollama auto-detection, LlmNudgeBanner for unconfigured LLM | ✅ Done |
 | 4.8.0 | 12 | Native analysis via Claude Code hooks, unified `insights` command, runner interface, V8 schema | ✅ Done |
+| 4.9.0 | — | llama.cpp provider + Gemma 4 model support, provider-aware token limits, JSON reliability | ✅ Done |
 
 ---
 

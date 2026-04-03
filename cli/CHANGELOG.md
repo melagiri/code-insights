@@ -2,6 +2,28 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.9.0] - 2026-04-03
+
+### Added
+
+- **llama.cpp provider** — New `llamacpp` LLM provider for running session analysis against a local `llama-server` instance. Uses the OpenAI-compatible `/v1/chat/completions` API. No API key required — fully local, fully free. Configure with `code-insights config llm --provider llamacpp`.
+
+- **Gemma 4 model support** — Google's Gemma 4 models (12B, 27B) added as default options across three providers: llama.cpp (GGUF quantizations), Ollama (`gemma4`, `gemma4:27b`), and Gemini API (`gemma-3-27b-it`).
+
+- **Model discovery for llama.cpp** — Dashboard Settings page includes a "Discover Loaded Model" button that queries the running `llama-server` at `/v1/models`. New `GET /api/config/llm/llamacpp-models` endpoint.
+
+- **Provider-aware token limits** — `getMaxInputTokens(provider)` caps input at 24K tokens for llama.cpp (small quantized models have limited context windows). All other providers retain the 80K default. Applied across session analysis, facet extraction, and prompt quality analysis.
+
+### Changed
+
+- **LLMProvider type** — Extended from 4 to 5 members: `'openai' | 'anthropic' | 'gemini' | 'ollama' | 'llamacpp'`. All provider checks updated across CLI, server, and dashboard.
+
+- **Temperature 0.3 for llama.cpp** — Lower temperature than the default 0.7, producing more consistent structured JSON output from quantized models.
+
+### Improved
+
+- **JSON reliability for local models** — llama.cpp provider uses grammar-constrained JSON output (`response_format: { type: "json_object" }`), single retry on parse failure with validation of retry result, and 120s default timeout to prevent hangs during model loading.
+
 ## [4.8.4] - 2026-04-02
 
 ### Fixed

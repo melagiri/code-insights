@@ -23,7 +23,7 @@ Code Insights provides:
 3. **Session classification** — Categorizes sessions (deep focus, bug hunt, feature build, etc.)
 4. **LLM-powered analysis** — Two analysis paths:
    - **Native (zero-config):** Claude Code users get automatic analysis via `SessionEnd` hook using their existing Claude subscription. No API key needed. Install with `code-insights install-hook`.
-   - **On-demand:** Configure any LLM provider (OpenAI, Anthropic, Gemini, Ollama) with your own API key for manual analysis from the dashboard or CLI.
+   - **On-demand:** Configure any LLM provider (OpenAI, Anthropic, Gemini, Ollama, llama.cpp) for manual analysis from the dashboard or CLI. Ollama and llama.cpp run fully local — no API key needed.
 5. **Visual dashboard** — Local web interface with charts, timelines, and filters at `http://localhost:7890`
 6. **CLI analytics** — Terminal stats via `code-insights stats` and subcommands
 
