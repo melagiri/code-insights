@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "0d515e54caed",
+  "session_id": "f1d62e94-2153-4efe-8b95-b8726d5a766c",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-03T09:54:14.49164Z",
+  "branch": "claude/plan-gemma-ollama-integration-03V9H",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/llm/providers/llamacpp.ts",
+    "dashboard/src/pages/SettingsPage.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e6f5fae9f2d0",
+  "checkpoint_transcript_start": 101,
+  "transcript_lines_at_start": 101,
+  "token_usage": {
+    "input_tokens": 3269,
+    "cache_creation_tokens": 94745,
+    "cache_read_tokens": 1510563,
+    "output_tokens": 8135,
+    "api_call_count": 20
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-03T09:54:14.359941Z",
+    "agent_lines": 37,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 37,
+    "agent_percentage": 100
+  }
+}
