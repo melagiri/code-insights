@@ -68,7 +68,7 @@ export function createClientFromConfig(config: LLMProviderConfig): LLMClient {
 export async function testLLMConfig(config: LLMProviderConfig): Promise<{ success: boolean; error?: string }> {
   try {
     const client = createClientFromConfig(config);
-    await client.chat([{ role: 'user', content: 'Say "ok" and nothing else.' }]);
+    await client.chat([{ role: 'user', content: 'Respond with exactly this JSON and nothing else: {"status":"ok"}' }]);
     return { success: true };
   } catch (error) {
     return {
