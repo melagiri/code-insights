@@ -21,11 +21,7 @@ export class ClaudeCodeProvider implements SessionProvider {
       return [];
     }
 
-    const files = discoverJsonlFiles(baseDir, options?.projectFilter);
-    if (files.length > LARGE_FILE_WARN_THRESHOLD) {
-      console.warn(`[claude-code] Discovered ${files.length} JSONL files. This may take a moment to sync.`);
-    }
-    return files;
+    return discoverJsonlFiles(baseDir, options?.projectFilter);
   }
 
   async parse(filePath: string): Promise<ParsedSession | null> {
@@ -36,12 +32,6 @@ export class ClaudeCodeProvider implements SessionProvider {
     return session;
   }
 }
-
-/**
- * Warn when discovery finds an unusually large number of files.
- * At this scale, sync may feel slow without feedback.
- */
-const LARGE_FILE_WARN_THRESHOLD = 500;
 
 /**
  * Discover all JSONL files in Claude directory

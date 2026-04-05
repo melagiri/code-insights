@@ -137,9 +137,6 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   let totalErrorCount = 0;
   let totalUpdatedExisting = 0;
   const sessionsByProvider: Record<string, number> = {};
-  let totalDiscoveredFiles = 0;
-  let discoveryWarned = false;
-
   for (const provider of providers) {
     const providerName = provider.getProviderName();
     try {
@@ -150,12 +147,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
       // Discovery
       spinner.start(`Discovering ${providerName} sessions...`);
       const sessionFiles = await provider.discover({ projectFilter: options.project });
-      totalDiscoveredFiles += sessionFiles.length;
       spinner.stop();
-      if (!discoveryWarned && totalDiscoveredFiles > 500) {
-        discoveryWarned = true;
-        log(chalk.dim(`  ${totalDiscoveredFiles} total session files discovered — sync may take a moment`));
-      }
 
       if (sessionFiles.length === 0) continue;
 
@@ -163,7 +155,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
       const filesToSync = filterFilesToSync(sessionFiles, syncState, options.force);
 
       if (filesToSync.length === 0) {
-        log(chalk.gray(`  ✔ ${providerName} up to date`));
+        log(chalk.gray(`  ✔ Up to date (${sessionFiles.length} sessions)`));
         continue;
       }
 
@@ -263,8 +255,8 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
   if (shouldRecalculateUsageStats) {
     spinner.start('Recalculating usage stats...');
     try {
-      const result = recalculateUsageStats();
-      spinner.succeed(`Usage stats reconciled (${result.sessionsWithUsage} sessions with usage data)`);
+      recalculateUsageStats();
+      spinner.stop();
     } catch (error) {
       spinner.warn('Could not reconcile usage stats');
       if (!options.quiet) {

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
 import { createRequire } from 'module';
+import chalk from 'chalk';
 import { PostHog } from 'posthog-node';
 import { loadConfig, getConfigDir } from './config.js';
 
@@ -115,16 +116,8 @@ export function showTelemetryNoticeIfNeeded(): boolean {
 
   if (shownVersion === currentVersion) return false;
 
-  // Show the updated disclosure banner
-  console.log('');
-  console.log('  Code Insights collects anonymous usage data to improve the CLI and dashboard.');
-  console.log('  Includes: commands, page views, OS, CLI version, AI tool types, session counts,');
-  console.log('  LLM provider, performance timing.');
-  console.log('  Never includes: file paths, project names, session content, API keys, or personal data.');
-  console.log('');
-  console.log('  Disable: code-insights telemetry disable');
-  console.log('  Details: code-insights telemetry status');
-  console.log('');
+  // Show a condensed single-line disclosure
+  console.log(chalk.dim('  Telemetry enabled · Disable: code-insights telemetry disable'));
 
   // Write the current version as content — best-effort, non-fatal
   try {
