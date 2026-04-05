@@ -1,0 +1,1522 @@
+looks like the llama.cpp integration isn't done correctly.. i have failures:
+llama-server API error (HTTP 400) - {"error":{"code":400,"message":"request (10890 tokens) exceeds the available context size (4096 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":10890,"n_ctx":4096}}
+
+event: progress
+data: {"phase":"loading_messages","message":"Loading messages..."}
+
+event: progress
+data: {"phase":"analyzing","currentChunk":1,"totalChunks":1,"message":"Analyzing... (1 of 1)"}
+
+event: error
+data: {"error":"llama-server API error (HTTP 400) - {\"error\":{\"code\":400,\"message\":\"request (10890 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":10890,\"n_ctx\":4096}}"}
+
+
+
+for 
+
+curl 'http://localhost:7890/api/analysis/session/stream?sessionId=copilot-vscode%3A37485b85-fca1-4f58-8574-330fbeb3346e' \
+  -H 'Accept: */*' \
+  -H 'Accept-Language: en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,te;q=0.6,kn;q=0.5' \
+  -H 'Connection: keep-alive' \
+  -b 'sb-xrbkoqjfolxiyfxubiom-auth-token.REDACTED; sb-xrbkoqjfolxiyfxubiom-auth-token.REDACTED' \
+  -H 'Referer: http://localhost:7890/sessions?project=7f813b7d98db190d&session=copilot-vscode%3A37485b85-fca1-4f58-8574-330fbeb3346e' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"'
+
+---
+
+fxi this with full ceremony and run multiple visual testing as part of ceremony to confirm the working fix.. fix until you are able to visually generate insights for at least 1 or 2 with fix in place..
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing."
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Verify feature and create PR' (blockedBy: above) -- includes pre-PR verification protocol
+   - Task: 'Review: Triple-layer code review (loops until 0 FIX NOW)' (blockedBy: above)
+   - Task: 'Post final review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+   IMPORTANT — Classify the feature scope for Dev's verification protocol:
+   - Does it touch UI/visual rendering? → Tag: VISUAL
+   - Does it produce output artifacts (images, PDFs, exports)? → Tag: OUTPUT_ARTIFACT
+   - Does it add new npm dependencies? → Tag: NEW_DEPS
+   - Does it change API endpoints? → Tag: API_CHANGE
+   Include these tags in the GitHub Issue so Dev knows which verification tiers apply.
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically.
+   - When Dev creates a PR, message the orchestrator: 'REVIEW_REQUEST: PR #XX is ready for /start-review'
+   - The orchestrator will run /start-review which loops until 0 FIX NOW items
+   - If review finds FIX NOW items, the orchestrator sends them to Dev. Dev fixes and pushes. Review re-runs automatically.
+   - You do NOT need to request additional review rounds — the loop is built into /start-review.
+
+7. REPORT: When review converges (0 FIX NOW items) and final summary is posted, message the orchestrator: 'PR #XX for Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing. is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- PRE-PR GATE (MANDATORY): Before any PR is created, Dev must complete the full verification protocol (see Dev agent instructions). GitHub Actions costs money — failed CI runs are wasted spend.",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: Fix llama.cpp integration: token budget doesn't account for prompt overhead + output tokens, causing exceed_context_size_error. Need to reduce effective conversation budget, improve error messages, and verify with real llama-server testing.. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed.
+
+## Pre-PR Verification Protocol (MANDATORY)
+
+Before creating any PR, you MUST complete ALL applicable verification tiers. Check the GitHub Issue for scope tags (VISUAL, OUTPUT_ARTIFACT, NEW_DEPS, API_CHANGE) to know which tiers apply.
+
+### Tier 1: Build & Test (ALWAYS required)
+1. Run `pnpm build` from the worktree repo root — must pass with zero errors
+2. Run `pnpm test` from cli/ — must pass
+3. If build or tests fail, fix before proceeding. Do NOT create the PR.
+
+### Tier 2: New Dependency Audit (required if NEW_DEPS tag)
+If you added any new npm dependencies:
+1. Search the library's GitHub issues for known limitations and common gotchas
+2. Read the library's README for caveats, browser compatibility, and unsupported features
+3. Specifically check for: CSS compatibility, serialization constraints, SSR issues, bundle size impact
+4. Document findings in the PR description under '## Dependency Audit'
+5. If you find high-risk limitations, verify your code handles them correctly
+
+### Tier 3: Functional Verification (required if VISUAL or API_CHANGE tag)
+You must verify the feature works by running it:
+
+**Server access:**
+1. First, check if the dev server is already running: `curl -s -o /dev/null -w '%{http_code}' http://localhost:7890/api/health` (or just `http://localhost:7890`)
+2. If the server responds (200), use the existing server — do NOT start a new one
+3. If the server is NOT running, start one:
+   ```bash
+   cd <worktree-path> && node cli/dist/index.js dashboard --no-sync &
+   DEV_SERVER_PID=$!
+   ```
+4. CRITICAL: If you started a server, you MUST kill it when done: `kill $DEV_SERVER_PID`
+5. NEVER leave orphaned server processes running
+
+**For UI features (VISUAL tag):**
+- Navigate to the affected page using agent-browser tools
+- Take a screenshot showing the feature renders correctly
+- Attach the screenshot to the PR description under '## Verification'
+
+**For output-producing features (OUTPUT_ARTIFACT tag):**
+- Trigger the feature (e.g., click download, run export)
+- Verify the output file exists and is non-empty
+- If it's a visual artifact (image, PDF), take a screenshot of the output
+- Attach evidence to the PR description under '## Verification'
+
+**For API changes (API_CHANGE tag):**
+- curl the new/modified endpoints
+- Verify the response shape matches the TypeScript types
+- Include the curl output in the PR description under '## Verification'
+
+### Tier 4: Cleanup
+- If you started a dev server, confirm it's killed: `kill $DEV_SERVER_PID 2>/dev/null`
+- Verify no orphaned node processes on port 7890: `lsof -ti:7890` (should return nothing, or only the user's existing server)
+
+## PR Description Template
+
+Your PR description MUST include these sections:
+
+```markdown
+## Summary
+[What this PR does]
+
+## Dependency Audit (if NEW_DEPS)
+[Library name]: [Known limitations found, or 'No significant limitations found']
+
+## Verification
+- Build: PASS
+- Tests: PASS
+- [Screenshot of feature rendering] (if VISUAL)
+- [Screenshot/proof of output artifact] (if OUTPUT_ARTIFACT)
+- [curl output] (if API_CHANGE)
+
+## Test plan
+- [ ] [Checklist of what to test]
+```
+
+## During Review Rounds
+
+If the review team sends back FIX NOW items:
+1. Read each item carefully
+2. Implement the fixes in the worktree
+3. Re-run applicable verification tiers (at minimum Tier 1)
+4. If fixes are visual, re-capture screenshots
+5. Push the fix commits to the PR branch
+6. Message pm-agent that fixes are pushed
+
+This is non-negotiable — thorough pre-PR verification prevents wasted review cycles and catches bugs that static code review cannot.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM sends a REVIEW_REQUEST -> run `/start-review` on the PR number
+4. **Review loop management**:
+   - `/start-review` handles the loop internally (runs rounds until 0 FIX NOW items)
+   - If review finds FIX NOW items, relay them to the dev-agent via SendMessage
+   - After dev pushes fixes, `/start-review` re-runs targeted reviewers automatically
+   - If review hits max rounds (4) without converging, escalate to user
+5. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 6: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+- **Dev must complete pre-PR verification** — build, test, functional check, dependency audit (as applicable)
+- **Review loops automatically** — orchestrator runs /start-review which iterates until convergence
+- **No orphaned processes** — dev agent must kill any server it starts
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-04T12:07:05.084Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for llamacpp token budget fix"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-04T12:07:11.084Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-04T12:12:49.150Z","idleReason":"available","summary":"[to pm-agent] PR #272 created, all tasks complete"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-04T12:12:54.941Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-04T12:13:01.356Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-04T12:13:05.418Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: start-review for PR #272"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-04T12:13:09.577Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+why 32768? i want more context like 128k
+
+---
+
+done, changed to 128k
+
+---
+
+API 422: {"success":false,"error":"The operation was aborted due to timeout"}
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green" summary="Verification blocked by hardware — 26B model can't complete inference">
+Re-verification update for PR #272.
+
+Build: PASS. llama-server is running with Gemma 4 26B (unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M) at 128K context.
+
+**Problem:** The 26B model crashes or stalls on actual chat completion inference. Direct `POST /v1/chat/completions` with a minimal 50-token prompt timed out at 60 seconds with no response. llama-server stays up (models endpoint responds) but never generates tokens. This is a hardware resource constraint — 16.8GB model + 128K KV cache exceeds available VRAM/RAM.
+
+**What I verified worked:**
+- `event: progress` for loading_messages fires correctly
+- `event: progress` for analyzing (1 of 1 chunk from the 12K budget) fires correctly  
+- The ECONNREFUSED handler fires and surfaces user-friendly error when llama-server crashes mid-inference
+- The `exceed_context_size_error` detection was verified in the previous test run (with the 4K context server)
+
+**The code changes are correct.** The issue is purely the local hardware can't run 26B inference. To get a successful `event: complete`, the user would need either:
+1. A smaller model (7B-12B Gemma 4 GGUF) that can actually complete inference
+2. More VRAM to run the 26B model
+
+Should I update the PR description to note this verification limitation, or is there a smaller test model available we should try?
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T02:43:11.845Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+main: model loaded
+main: server is listening on http://127.0.0.1:8080
+main: starting the main loop...
+srv  update_slots: all slots are idle
+
+---
+
+are you running all sessions? i wanted only to test 1 or 2 to verify if things are working before releasing the patch version
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 272
+
+You are setting up a triple-layer code review for PR `272`. This can be used standalone or as part of a `/start-feature` team workflow. The review loops until all FIX NOW items are resolved — it does NOT end after a single pass.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 272` to get PR title, description, and diff stats.
+Use `gh pr diff 272` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed per file
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Classify changed files into domains for specialist selection (Step 2)
+
+---
+
+## Step 2: Select Domain Specialists
+
+Instead of fixed generalist reviewers, select 1-2 **domain specialists** based on what the PR actually changes. Each specialist combines deep domain expertise with general engineering awareness. See `docs/REVIEW-SPECIALISTS.md` for the full specialist registry and prompt templates.
+
+### Domain Classification
+
+Classify each changed file into a domain based on file patterns:
+
+| Domain | File Pattern Triggers |
+|--------|----------------------|
+| **SQL/Database** | `server/src/routes/*.ts` (when containing SQL keywords), `cli/src/db/*.ts` |
+| **React/Frontend** | `dashboard/src/**/*.tsx`, `dashboard/src/**/*.ts` |
+| **Node/CLI** | `cli/src/commands/*.ts`, `cli/src/utils/*.ts`, `server/src/*.ts` (non-route, non-LLM) |
+| **Parser/Provider** | `cli/src/providers/**/*.ts`, `cli/src/parser/*.ts` |
+| **LLM** | `server/src/llm/**/*.ts` — handled by LLM Expert (separate, unchanged) |
+
+Files that don't match any domain (e.g., `package.json`, `tsconfig.json`, `.gitignore`, `CLAUDE.md`) are ignored during classification.
+
+### Selection Algorithm
+
+1. For each domain, sum the lines changed across all files in that domain
+2. **Primary specialist** = domain with the most lines changed
+3. **Secondary specialist** = next domain IF it has >= 30% of total changed lines AND is a different domain
+4. Cap at **2 domain specialists** (LLM Expert is a separate conditional reviewer)
+5. If a PR changes ONLY non-domain files, use the **Node/CLI Specialist** as general-purpose
+
+### LLM Expert (Conditional — Unchanged)
+
+**Invoke LLM Expert if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 2.5: Pre-Review Gates
+
+Before launching reviewers, check these gates. If any gate fails, the review CANNOT proceed — send the PR back to the dev agent (or inform the user if standalone) with what's missing.
+
+### Gate A: New Dependency Audit
+
+Check if `package.json` (any workspace) was modified in the PR diff.
+
+If new dependencies were added:
+
+```
+Task {
+  name: "dep-auditor",
+  subagent_type: "Explore",
+  prompt: "Research the following new npm dependencies added in PR #272. For EACH dependency:
+
+  1. Search the library's GitHub issues for known limitations, gotchas, and common pitfalls
+  2. Read the library's README for caveats, browser compatibility notes, and unsupported features
+  3. Check if the library has specific CSS, rendering, or serialization constraints
+  4. Check the library's weekly downloads and last publish date (is it maintained?)
+
+  Output a structured report:
+  ## Dependency Audit: [package-name]
+  ### Known Limitations
+  ### Gotchas for Our Use Case
+  ### Risk Level (low/medium/high)
+  ### Recommendation
+
+  Be thorough — silent failures from library limitations are the hardest bugs to catch in code review.",
+  mode: "bypassPermissions"
+}
+```
+
+Include the dependency audit findings in the context given to ALL reviewers.
+
+### Gate B: Functional Verification Evidence
+
+Check the PR description for a **Verification** section. The dev agent is required to include:
+
+- **For all PRs**: Build passes (`pnpm build` output or confirmation)
+- **For UI/visual features**: Screenshot of the feature rendering in the browser
+- **For features that produce output** (image export, PDF, file download): The actual output artifact or proof it's non-empty (file size, screenshot of result)
+- **For API changes**: curl output showing the endpoint returns the expected response shape
+
+If the PR description lacks verification evidence:
+- **If part of /start-feature**: Message the dev agent via SendMessage: "PR is missing verification evidence. Add a Verification section to the PR description with [specific evidence needed]. See the pre-PR verification protocol."
+- **If standalone**: Inform the user the PR needs verification evidence before review can proceed.
+
+**Do NOT proceed to Step 3 until verification evidence is present.**
+
+### Gate C: Visual Output Check (Conditional)
+
+If the PR produces visual output (images, PDFs, charts, OG cards, share cards, exports):
+- The exported/generated artifact MUST be attached to or linked from the PR description
+- A reviewer must be able to visually inspect the output without running the code
+- If missing, send PR back with: "This PR produces visual output — attach the generated artifact to the PR description."
+
+---
+
+## Step 3: Run Parallel Independent Reviews (Round N)
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+Track the current round number. Round 1 is the initial review. Round 2+ are follow-up reviews after fixes.
+
+**For Round 1**: Launch all applicable reviewers (TA Insider, Domain Specialist(s), LLM Expert if applicable).
+**For Round 2+**: Launch only targeted reviewers — those whose prior findings had FIX NOW or VERIFY AT RUNTIME items that were addressed. Skip reviewers whose prior findings were all resolved or NOT APPLICABLE.
+
+### Launch TA Insider Review (Always)
+
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #272 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 272
+  Also fetch the PR details: gh pr view 272
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  ADDITIONAL CHECKS:
+  7. If new dependencies were added, review the dependency audit findings: [INSERT DEP AUDIT IF APPLICABLE]
+  8. If the PR produces visual output, verify the attached artifact looks correct
+  9. Check that verification evidence in the PR description is credible (not just 'it works')
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title] — Round [N]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+### Launch Domain Specialist Reviews (1-2, Dynamic)
+
+For each selected specialist from Step 2, launch a review agent using the prompt template from `docs/REVIEW-SPECIALISTS.md`. Use the `superpowers:code-reviewer` subagent type for all domain specialists.
+
+**Important:** Copy the full prompt template from the specialist registry, including:
+- The domain-specific checks (80% focus)
+- The general engineering checks (20% focus)
+- The **Runtime Verification Rule** (shared instruction — include verbatim)
+- The Round 2+ fix verification instructions (if applicable)
+
+```
+Task {
+  name: "[domain]-specialist",          // e.g., "sql-specialist", "react-specialist"
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "[FULL PROMPT FROM docs/REVIEW-SPECIALISTS.md FOR THE SELECTED DOMAIN]",
+  mode: "bypassPermissions"
+}
+```
+
+**Example:** If Step 2 selected SQL/Database (primary) and React/Frontend (secondary), launch:
+
+```
+Task { name: "sql-specialist", subagent_type: "superpowers:code-reviewer", prompt: "[SQL/Database prompt]", mode: "bypassPermissions" }
+Task { name: "react-specialist", subagent_type: "superpowers:code-reviewer", prompt: "[React/Frontend prompt]", mode: "bypassPermissions" }
+```
+
+### Launch LLM Expert Review (If Applicable — Unchanged)
+
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #272 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 272
+  Also fetch the PR details: gh pr view 272
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  RUNTIME VERIFICATION RULE:
+  When you encounter code where the runtime behavior is NOT self-evident from
+  reading — flag it as 🟠 VERIFY AT RUNTIME instead of reasoning about correctness.
+  1. State what you THINK the behavior is
+  2. State what the RISK is if you're wrong
+  3. Require the dev to paste actual runtime output proving correctness
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title] — Round [N]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟠 VERIFY AT RUNTIME, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #272. This is review ROUND [N].
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title] — Round [N]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - 🔴 FIX NOW items (MUST be resolved before merge)
+  - ❌ NOT APPLICABLE items with technical rationale
+  - ⚠️ ESCALATE TO FOUNDER items with reason
+  - 🟡 SUGGESTIONS (non-blocking, dev's discretion)
+  ### Final Verdict: [PASS — ready for merge | CHANGES REQUIRED — Round [N+1] needed]",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results & Loop Decision
+
+After synthesis is complete, check the Final Verdict:
+
+### If PASS (0 FIX NOW items):
+
+1. **Post final review summary to GitHub PR** (see template below)
+2. **If part of /start-feature**: Message the PM agent that review is complete and PR is ready for founder merge.
+3. **If standalone**: Inform the user the PR is approved.
+
+### If CHANGES REQUIRED (1+ FIX NOW or VERIFY AT RUNTIME items):
+
+1. **Post round summary to GitHub PR** (see template below)
+2. **Send actionable items to dev agent** (or user if standalone):
+   - List each FIX NOW item with clear description of what needs to change
+   - List each VERIFY AT RUNTIME item with the specific runtime output needed
+   - Reference specific files and line numbers where possible
+3. **Wait for fixes to be pushed** — dev agent pushes fix commits to the PR branch
+4. **Post-fix re-verification gate (MANDATORY):**
+   - Dev MUST re-run ALL functional verification commands from the original PR body
+   - Dev MUST paste updated verification output as a PR comment
+   - If the PR had curl examples, re-run them and paste the responses
+   - If the PR had screenshot evidence, re-capture after fixes
+   - For VERIFY AT RUNTIME items, dev MUST paste the specific runtime output requested
+   - **Fixes without re-verification evidence are not considered complete**
+5. **Go back to Step 3** with Round N+1, targeting only the reviewers whose areas were affected
+
+### Loop Safety
+
+- **Max 4 rounds** — if FIX NOW items remain after 4 rounds, ESCALATE TO FOUNDER with full context
+- **Round 2+ is targeted** — only re-invoke reviewers whose prior FIX NOW items were addressed (don't re-run all 4 reviewers for a one-line fix)
+- **New issues found during fix verification count as new FIX NOW items** — the loop continues
+
+### PR Comment Template
+
+```bash
+gh pr comment 272 --body "$(cat <<'EOF'
+## Triple-Layer Code Review — Round [N] of [TOTAL]
+
+### Reviewers
+| Role | Domain | This Round |
+|------|--------|------------|
+| TA (Insider) | Architecture, types, schema | [Active/Skipped] |
+| [Specialist 1 name] | [Domain] | [Active/Skipped] |
+| [Specialist 2 name] | [Domain] | [Active/Skipped/N/A] |
+| LLM Expert | Prompt quality, token efficiency | [Active/Skipped/N/A] |
+
+### Pre-Review Gates
+- [ ] New dependency audit: [PASS/N/A]
+- [ ] Functional verification evidence: [PASS — describe what was verified]
+- [ ] Visual output attached: [PASS/N/A]
+
+### Issues Found & Resolution
+#### 🔴 FIX NOW
+[List from synthesis — empty if PASS]
+
+#### 🟠 VERIFY AT RUNTIME
+[Items requiring runtime evidence — empty if none]
+
+#### ❌ NOT APPLICABLE
+[List with technical rationale]
+
+#### 🟡 SUGGESTIONS
+[Non-blocking items]
+
+### Post-Fix Verification
+[For Round 2+: paste re-run of original functional verification commands + VERIFY AT RUNTIME evidence]
+
+**Round [N] verdict: [PASS — Ready for merge | CHANGES REQUIRED — see FIX NOW / VERIFY AT RUNTIME items]**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark specialist comments as "NOT APPLICABLE" with technical justification, EXCEPT for VERIFY AT RUNTIME items (see below)
+- **VERIFY AT RUNTIME items cannot be dismissed** — TA synthesis MUST NOT mark these as NOT APPLICABLE. They require runtime evidence from the dev before they can be resolved
+- **Domain specialists are selected dynamically** — see Step 2 and `docs/REVIEW-SPECIALISTS.md` for the registry
+- **Always post summary to GitHub PR** — this creates the audit trail
+- **Review loops until 0 FIX NOW and 0 VERIFY AT RUNTIME items** — a single pass is not sufficient if blocking issues exist
+- **Post-fix re-verification is mandatory** — after Round N fixes, dev must re-run ALL functional verification from the PR body and paste updated output
+- **Pre-review gates are mandatory** — missing verification evidence blocks the review from starting
+- **Max 4 rounds** — escalate to founder if review doesn't converge
+- **Round 2+ is targeted** — don't waste reviewer cycles re-reviewing areas with no changes
+
+---
+
+<teammate-message teammate_id="node-cli-specialist" color="purple" summary="Node/CLI Specialist Review PR #272 Round 1">
+## Node/CLI Specialist Review: fix(llamacpp): account for prompt overhead in token budget — Round 1
+
+### Async Safety
+
+No issues. All `fetch` calls are properly awaited. The `AbortSignal.timeout` pattern in the server provider is correct. The CLI's `makeLlamaCppChat` does not set a timeout (same as before this PR) — not a regression, but worth noting as a pre-existing gap.
+
+### File System & I/O
+
+No file system operations in this PR. All changes are HTTP client code and constants. No concerns.
+
+### Issues Found
+
+**🔴 FIX NOW — Error detection ordering bug in `server/src/llm/providers/llamacpp.ts` (lines 72-94 in the PR branch)**
+
+The `exceed_context_size_error` detection block is guarded by `if (res.status >= 400)`, but it is placed **after** the `if (res.status >= 500)` block. Since 500 >= 400 is true, a 5xx `exceed_context_size_error` would be caught by the 500 handler first and never reach the new detection code.
+
+However — looking more carefully at the actual flow: the entire block is inside `if (!res.ok)`, and the ordering is:
+1. 401/403 check → throw
+2. `>= 400` context error check (NEW) → throw if matched
+3. `>= 500` check → throw
+4. generic fallback → throw
+
+Wait — re-reading the PR diff more carefully against the branch source: the `>= 400` block is inserted **between** the 401/403 check and the `>= 500` check. This means for a 500-level response, execution hits the `>= 400` block first, attempts JSON parse, and only falls through to the `>= 500` handler if it's NOT an `exceed_context_size_error`. This is actually **correct** — the ordering works as intended because `>= 400` catches both 4xx and 5xx, and the specific error type check inside narrows it.
+
+After careful re-analysis: **downgrading to 🔵 NOTE**. The ordering is correct but non-obvious. A comment like `// Covers both 4xx and 5xx — llama-server may use either status code` would improve clarity.
+
+---
+
+**🟡 SUGGESTION — CLI `makeLlamaCppChat` missing `stripJsonTags` and retry logic**
+
+The server-side `createLlamaCppClient` now has `stripJsonTags()` stripping and JSON retry logic, but the CLI's `makeLlamaCppChat` (in `cli/src/analysis/provider-runner.ts`) has neither. This is a pre-existing divergence, not introduced by this PR, but the PR widens the gap by adding `stripJsonTags` only to the server side. If a user runs `code-insights insights --native` (which uses the CLI path), they won't benefit from the `<json>` tag stripping.
+
+Not blocking since it's pre-existing, but worth tracking.
+
+---
+
+**🟡 SUGGESTION — `max_tokens` reduced from 8192 to 4096 without prompt adjustment**
+
+Both the server and CLI paths now send `max_tokens: 4096` to llama-server. The PR description mentions "8K max_tokens output" in the budget math but the actual code uses 4096. The math in the comment (`analysis-internal.ts` lines 44-50 in PR) says:
+
+> `32K - 3K prompt - 8K output ≈ 21K available`
+
+But the actual output reservation is now 4K, not 8K. This means the real budget is more like `32K - 3K - 4K = 25K available`, and the 12K conversation budget is even more conservative than described. This is safe (more headroom), but the comment is misleading. The comment should reflect the actual 4K `max_tokens` value.
+
+---
+
+**🟡 SUGGESTION — `stripJsonTags` regex uses lazy quantifier on potentially large content**
+
+```typescript
+const match = content.match(/<json>\s*([\s\S]*?)\s*<\/json>/i);
+```
+
+The `[\s\S]*?` lazy match on potentially large LLM output (up to 4K tokens of content) is fine for correctness, but if the content contains `<json>` without a closing `</json>`, the regex engine will backtrack through the entire string before failing. For typical LLM output sizes (a few KB), this is negligible. Just noting for awareness — no action needed.
+
+---
+
+**🔵 NOTE — Timeout increase from 2 minutes to 10 minutes**
+
+`DEFAULT_CHAT_TIMEOUT_MS` changed from 120s to 600s. The justification (CPU inference at 10 tok/s) is sound. This only affects the server-side llamacpp provider. The CLI side has no timeout (uses default Node.js fetch behavior, which is effectively infinite). No issue, just documenting the change.
+
+---
+
+**🔵 NOTE — Duplicated error detection logic between CLI and server**
+
+The `exceed_context_size_error` detection is copy-pasted between `cli/src/analysis/provider-runner.ts` and `server/src/llm/providers/llamacpp.ts`. Both parse the JSON error body identically. This is acceptable for now (the CLI path is simpler and doesn't use the full `LLMClient` interface), but if more error types need detection in the future, consider extracting a shared helper.
+
+---
+
+### Verdict
+
+**APPROVE with minor suggestions.** The core fix is sound — reducing the conversation budget from 24K to 12K and accounting for prompt overhead correctly addresses the `exceed_context_size_error`. The `stripJsonTags` addition and error detection are good defensive improvements.
+
+Action items (non-blocking):
+1. Fix the comment in `analysis-internal.ts` to reflect actual 4K `max_tokens` (not 8K)
+2. Consider adding `stripJsonTags` to the CLI path for parity
+</teammate-message>
+
+<teammate-message teammate_id="node-cli-specialist" color="purple">
+{"type":"idle_notification","from":"node-cli-specialist","timestamp":"2026-04-05T03:16:53.190Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="Phase 1 insider review of PR #272 complete">
+## TA Review (Phase 1 - Insider): fix(llamacpp): account for prompt overhead in token budget — Round 1
+
+### Data Contract Impact
+- [x] Types aligned across CLI, server, and dashboard — no type changes in this PR
+- [x] SQLite schema changes have proper migrations — N/A (no schema changes)
+- [x] CLI binary name is `code-insights` — N/A
+- [x] No breaking changes to existing SQLite data — confirmed, pure runtime behavior change
+
+### Test Coverage (TDD Domain Verification)
+- [x] `server/src/llm/providers/llamacpp.ts` change — this file has no dedicated test file currently. The `stripJsonTags` function and `exceed_context_size_error` detection are new logic paths. See FIX NOW #1 below.
+- [x] `cli/src/analysis/provider-runner.ts` change — mirrors server detection. Same coverage gap applies.
+- [x] `server/src/llm/analysis-internal.ts` change — `getMaxInputTokens` is a pure function with a single branch. Trivial but testable. See SUGGESTION #1.
+
+### Pattern Consistency
+- [x] Matches existing codebase patterns — error handling follows established llamacpp error cascade
+- [x] SQLite queries use prepared statements — N/A
+- [x] Provider interface followed — yes, changes are within existing provider contract
+
+### Architecture Alignment
+
+The budget math is sound. With 12K conversation budget at 80% chunking threshold (9.6K effective) + ~3K prompt overhead + 4K max_tokens = ~16.6K total. Fits in both 16K and 32K context windows. The reduction from 8192 to 4096 max_tokens is mirrored correctly in both `llamacpp.ts` (server) and `provider-runner.ts` (CLI).
+
+The `stripJsonTags` addition is correctly scoped to the server's `llamacpp.ts` only — the CLI's `provider-runner.ts` doesn't need it because it returns raw content to the caller without JSON validation/retry logic.
+
+The token estimation change from `chars/4` to `chars/3` is only in the server's `llamacpp.ts` `estimateTokens` method, which is correct — the CLI path doesn't do its own chunking.
+
+### Issues Found
+
+**FIX NOW:**
+
+1. **Duplicated error detection logic across CLI and server** — The `exceed_context_size_error` parsing block is copy-pasted between `server/src/llm/providers/llamacpp.ts` and `cli/src/analysis/provider-runner.ts` (identical ~15 lines). The comment in the CLI says "mirrors server detection" which acknowledges the duplication. Given the existing architecture constraint (CLI cannot import from server due to circular deps, documented in `provider-runner.ts` header), this duplication is **acceptable for now**. However, the `stripJsonTags` function and the `chars/3` token estimation change are NOT mirrored to the CLI — is this intentional?
+
+   **Verdict:** The CLI's `makeLlamaCppChat` does NOT do JSON validation/retry and does NOT do chunking, so omitting `stripJsonTags` and `estimateTokens` changes from the CLI is correct. **Reclassifying from FIX NOW to NOTE** — no action needed.
+
+2. **Server error handler ordering could mask exceed_context_size_error on 500s** — In `llamacpp.ts`, the new `if (res.status >= 400)` block is placed AFTER the 401/403 check but BEFORE the `>= 500` check. If llama-server returns `exceed_context_size_error` with a 500 status, the `>= 400` block correctly catches it first (since 500 >= 400). Flow is correct. **No action needed.**
+
+**SUGGESTIONS:**
+
+1. **Unit tests for `stripJsonTags`** — The function handles a specific edge case (models wrapping JSON in `<json>` tags). A few unit tests would prevent regressions:
+   - Input with `<json>...</json>` wrapper → returns inner content
+   - Input without wrapper → returns input unchanged  
+   - Input with nested tags or case variations
+   
+   This is a new exported-scope function with non-trivial regex behavior. Not blocking merge, but recommended.
+
+2. **Unit test for `getMaxInputTokens`** — Now that this function has provider-specific branching (llamacpp → 12288, others → 80000), a simple assertion test would document the contract. Not blocking.
+
+**NOTES:**
+
+1. **Timeout increase from 2min to 10min is aggressive but justified** — The PR description explains: a 2000-token response at 10 tok/s takes ~3.5 minutes. CPU-only inference on large sessions could easily exceed 2 minutes. The 10-minute ceiling is generous but prevents false-positive timeouts. The user can still abort via Ctrl+C. Acceptable.
+
+2. **`stripJsonTags` is defined at module scope but not exported** — It's only used within `createLlamaCppClient`. If tests are added later, it would need to be exported or tested indirectly through the `chat` method. Minor consideration.
+
+3. **The `max_tokens` reduction from 8192 to 4096 affects output length** — For very large sessions with many insights, 4096 tokens of output may truncate the analysis JSON. However, the existing chunking mechanism splits large sessions into multiple chunks, and each chunk's analysis should fit well within 4096 output tokens. The structured JSON schema for analysis typically produces 1500-2500 tokens. Acceptable trade-off.
+
+4. **`stripJsonTags` regex uses non-greedy match** — `([\s\S]*?)` with the `<\/json>` anchor. This correctly handles content that might contain angle brackets but won't match nested `<json>` tags (since `*?` stops at the first `</json>`). Behavior is correct for the expected use case.
+
+### Phase 1 Verdict
+[x] **Approved** (from architecture perspective)
+
+The changes are well-scoped, the budget math is correct, error detection is properly duplicated across the CLI/server boundary with appropriate comments, and the `stripJsonTags` fix addresses a real model behavior quirk. No data contract, schema, or type alignment concerns. Test coverage suggestions are non-blocking — the PR includes live verification evidence that demonstrates the error detection working correctly.
+</teammate-message>
+
+<teammate-message teammate_id="llm-expert-reviewer" color="orange" summary="LLM Expert Review Round 1 for PR #272">
+## LLM Expert Review: fix(llamacpp): account for prompt overhead in token budget — Round 1
+
+### Prompt Quality Assessment
+**Clarity: 4/5** — No prompt text changes in this PR; the existing prompts instruct `<json>...</json>` wrapping, which is the root cause of the `stripJsonTags` addition. The prompts themselves are clear.
+
+**Token Efficiency: 5/5** — The budget reduction from 24K to 12K is well-justified. The math checks out: 12K conversation * 0.8 chunking = 9.6K effective + ~3K prompt overhead + 4K max_tokens output = ~16.6K total, fitting comfortably in both 16K and 32K context windows. The previous 24K budget left zero headroom for prompt + output tokens in a 32K window.
+
+**Output Consistency: 4/5** — The `stripJsonTags()` function is a pragmatic fix for models that follow the system prompt's `<json>...</json>` instruction literally even when `response_format: json_object` is set. This is a real cross-model compatibility issue.
+
+**Resilience: 4/5** — The `exceed_context_size_error` detection is well-structured with actionable user messaging. The timeout increase from 2min to 10min is reasonable for CPU inference.
+
+---
+
+### Token Efficiency
+
+The budget arithmetic is sound:
+
+| Component | Before | After |
+|-----------|--------|-------|
+| Conversation budget | 24,576 | 12,288 |
+| Effective (80% chunking) | 19,660 | 9,830 |
+| Prompt overhead | ~3,000 | ~3,000 |
+| max_tokens (output) | 8,192 | 4,096 |
+| **Total request** | **~30,852** | **~16,926** |
+
+Before: exceeded 32K. After: fits in even 16K with headroom. Good.
+
+The `max_tokens` reduction from 8192 to 4096 is appropriate — analysis responses target <2000 tokens, so 4096 provides 2x headroom without wasting context budget.
+
+The `chars/3` estimation (up from `chars/4`) is more conservative, which is correct for code-heavy content where token density is higher.
+
+---
+
+### Model Selection
+
+Not applicable to this PR — no model selection changes. The existing `temperature: 0.3` for llamacpp is correct for structured JSON output from small quantized models.
+
+---
+
+### Issues Found
+
+#### 🟡 SUGGESTION: `stripJsonTags` is duplicated concept with `extractJsonPayload`
+
+The server-side analysis pipeline already has `extractJsonPayload()` (re-exported from `@code-insights/cli/analysis/response-parsers`) which handles `<json>...</json>` unwrapping. The new `stripJsonTags()` in `llamacpp.ts` is a second implementation of the same concept at a different layer.
+
+**Current behavior:** `stripJsonTags` runs at the provider level (llamacpp.ts), while `extractJsonPayload` runs at the consumer level (analysis.ts, facet-extraction.ts, reflect.ts).
+
+**Why this is OK for now:** The llamacpp provider needs to strip tags BEFORE its JSON validation retry logic (lines 123-158 in the diff). If it didn't strip first, valid JSON wrapped in `<json>` tags would trigger a needless retry. The consumer-level `extractJsonPayload` wouldn't help here because it runs after the provider returns.
+
+**Future consideration:** If other local providers (Ollama) exhibit the same behavior, consider hoisting `stripJsonTags` into a shared utility. But for now, the duplication is justified by the architectural layer difference.
+
+#### 🟡 SUGGESTION: `max_tokens: 4096` not applied in CLI's `makeLlamaCppChat`
+
+Looking at the diff for `cli/src/analysis/provider-runner.ts`, the PR correctly reduces `max_tokens` from 8192 to 4096. Good — both the server provider and CLI provider are in sync.
+
+However, the current master code I read still shows `max_tokens: 8192` at line 190. Confirming the diff does change this — this is correct in the PR.
+
+#### 🟠 VERIFY AT RUNTIME: Error detection ordering in `llamacpp.ts` (server)
+
+In the server provider, the error handling sequence is:
+
+```
+1. if (res.status === 401 || res.status === 403) → auth error (throws)
+2. if (res.status >= 500) → server error (throws)  
+3. if (res.status >= 400) → exceed_context_size_error detection
+4. generic error throw
+```
+
+**What I THINK happens:** The `exceed_context_size_error` from llama-server returns HTTP 400. Steps 1 and 2 would not match (400 is not 401/403/5xx), so step 3 correctly catches it.
+
+**RISK if wrong:** If llama-server returns `exceed_context_size_error` with a 5xx status code, step 2 would catch it first with a generic "Is the model loaded?" message, and the user would never see the helpful context window message.
+
+**Recommendation:** Dev should confirm the actual HTTP status code returned by llama-server for `exceed_context_size_error` by checking runtime output or llama-server documentation. If it's always 400, the current ordering is fine.
+
+#### 🟡 SUGGESTION: Timeout of 10 minutes may be too generous
+
+The increase from 2min to 10min is justified in the comment ("2000 tokens at 10 tok/s = ~3.5 min"). However, 10 minutes is a long time for a user to wait with no feedback. If the server genuinely stalls (GPU memory pressure, model unloaded), the user waits 10 minutes before getting an error.
+
+**Mitigation already in place:** The server-side analysis uses SSE streaming with progress events, so the user isn't staring at a blank screen. The CLI path (`provider-runner.ts`) does NOT have a timeout at all (no AbortSignal), so this is only relevant for the server provider.
+
+This is acceptable but worth noting — if users report "analysis seems stuck," this 10-minute timeout could be a factor.
+
+#### 🔵 NOTE: CLI provider lacks `stripJsonTags` and retry logic
+
+The CLI's `makeLlamaCppChat` (in `provider-runner.ts`) is a simplified version of the server's `createLlamaCppClient`. It does NOT have:
+- `stripJsonTags()` — if a model wraps output in `<json>` tags, the CLI will return it raw
+- JSON validation retry logic — if the first attempt returns invalid JSON, it throws immediately
+
+This is pre-existing and not introduced by this PR. The CLI path goes through `extractJsonPayload` in the response parsers downstream, which handles `<json>` unwrapping. So the `stripJsonTags` omission is fine — the consumer handles it. The missing retry is a known asymmetry (tracked in Issue #240 per the file header).
+
+#### 🔵 NOTE: `response_format: json_object` + `<json>` tags prompt = belt-and-suspenders
+
+The system prompts instruct models to wrap output in `<json>...</json>` tags, AND the llamacpp provider sends `response_format: { type: 'json_object' }`. This creates a tension:
+- `response_format: json_object` tells the model to output raw JSON
+- The prompt says wrap in `<json>` tags
+
+Different models resolve this differently — some follow the prompt (wrap in tags), some follow the format constraint (raw JSON). The `stripJsonTags` function handles both cases correctly. This is a sensible defensive approach for local models with varying instruction-following capabilities.
+
+---
+
+### Recommendations
+
+1. **No blocking issues.** The PR is well-reasoned and the math checks out.
+2. **Verify the HTTP status code** for `exceed_context_size_error` from llama-server at runtime (the 🟠 item above).
+3. The `stripJsonTags` addition is correctly placed — it must run before the JSON validation retry loop. The apparent duplication with `extractJsonPayload` is justified by the architectural layer difference.
+4. Consider adding a brief inline comment in `stripJsonTags` noting that `extractJsonPayload` handles the same concern at the consumer layer, to prevent future developers from trying to "consolidate" them.
+
+**Overall assessment: APPROVE with minor suggestions.** The token budget math is correct, the error handling is well-structured, and the `stripJsonTags` fix addresses a real cross-model compatibility issue. No prompt quality or token efficiency concerns.
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-04-05T03:17:24.045Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="llm-expert-reviewer" color="orange">
+{"type":"idle_notification","from":"llm-expert-reviewer","timestamp":"2026-04-05T03:17:27.798Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-synthesizer" color="pink" summary="Phase 2 synthesis complete for PR #272">
+Phase 2 synthesis for PR #272 is complete and posted as a PR comment.
+
+**Verdict: CHANGES REQUIRED** — one FIX NOW item.
+
+**FIX NOW (1 item):**
+The comment in `analysis-internal.ts` (lines 47-48) says "8K max_tokens reserved for model output" but the actual `max_tokens` is 4096 (4K) in both `llamacpp.ts` and `provider-runner.ts`. The math in the comment needs to be corrected to reflect the 4K output budget.
+
+**Everything else is clean.** All three reviewers approved the core logic. The token budget reduction (24K→12K), timeout increase (2min→10min), `stripJsonTags`, error detection, and token estimator change (chars/4→chars/3) are all correct and well-implemented.
+
+PR comment: https://github.com/melagiri/code-insights/pull/272#issuecomment-4188180944
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"idle_notification","from":"ta-synthesizer","timestamp":"2026-04-05T03:19:43.462Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+merged
+
+---
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"dev-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"node-cli-specialist has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"shutdown_approved","requestId":"shutdown-1775359401543@dev-agent","from":"dev-agent","timestamp":"2026-04-05T03:23:26.361Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="node-cli-specialist" color="purple">
+{"type":"shutdown_approved","requestId":"shutdown-1775359402939@node-cli-specialist","from":"node-cli-specialist","timestamp":"2026-04-05T03:23:27.536Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"shutdown_approved","requestId":"shutdown-1775359402089@ta-reviewer","from":"ta-reviewer","timestamp":"2026-04-05T03:23:27.704Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"llm-expert-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-synthesizer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"pm-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="llm-expert-reviewer" color="orange">
+{"type":"shutdown_approved","requestId":"shutdown-1775359403322@llm-expert-reviewer","from":"llm-expert-reviewer","timestamp":"2026-04-05T03:23:28.859Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-synthesizer" color="pink">
+{"type":"shutdown_approved","requestId":"shutdown-1775359403506@ta-synthesizer","from":"ta-synthesizer","timestamp":"2026-04-05T03:23:29.104Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"shutdown_approved","requestId":"shutdown-1775359401016@pm-agent","from":"pm-agent","timestamp":"2026-04-05T03:23:29.494Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The user reported that llama.cpp integration was broken — llama-server returned HTTP 400 `exceed_context_size_error` because the request (10890 tokens) exceeded the server's context size (4096 tokens). The user wanted this fixed with "full ceremony" (the `/start-feature` team workflow with PM, Dev, TA, and review agents) and required **visual verification** that insights actually generate end-to-end for at least 1-2 sessions before releasing the patch. The user explicitly said: "fix this with full ceremony and run multiple visual testing as part of ceremony to confirm the working fix.. fix until you are able to visually generate insights for at least 1 or 2 with fix in place."
+
+2. Key Technical Concepts:
+   - **llama.cpp / llama-server**: Local LLM inference server exposing OpenAI-compatible API at `/v1/chat/completions`
+   - **Token budget math**: conversation tokens + prompt overhead (~3K) + max_tokens output must fit within llama-server's `-c` context window
+   - **Token estimation heuristic**: `chars/4` (old) vs `chars/3` (new, more conservative) for estimating token counts
+   - **Chunking**: Messages are split into chunks at 80% of the max input token budget
+   - **`response_format: { type: 'json_object' }`**: llama-server grammar-constrained JSON output
+   - **`<json>` tag wrapping**: Models following system prompt instruction to wrap in `<json>...</json>` tags despite `response_format: json_object`, causing JSON parse failures
+   - **SSE streaming**: Server-Sent Events for analysis progress (`loading_messages`, `analyzing`, `saving`, `complete`/`error`)
+   - **`extractJsonPayload()`**: Consumer-level `<json>` tag stripping in response-parsers.ts (pre-existing)
+   - **`stripJsonTags()`**: New provider-level tag stripping needed before JSON validation retry logic
+   - **`/start-feature` ceremony**: Full team workflow with PM, Dev, TA agents, worktree isolation, and triple-layer code review
+   - **Gemma 4 26B (Q4_K_M GGUF)**: The model the user runs locally, generating at ~6-10 tok/s on CPU
+
+3. Files and Code Sections:
+   - **`server/src/llm/analysis-internal.ts`** (lines 40-54)
+     - Contains `getMaxInputTokens()` which returns provider-specific token budgets
+     - Changed from 24576 to 12288 for llamacpp
+     - Comment updated from "8K max_tokens" to "4K max_tokens" (review fix)
+     ```typescript
+     export const MAX_INPUT_TOKENS = 80000;
+     export function getMaxInputTokens(provider: string): number {
+       if (provider === 'llamacpp') return 12288;  // was 24576
+       return MAX_INPUT_TOKENS;
+     }
+     ```
+
+   - **`server/src/llm/providers/llamacpp.ts`** (main provider implementation)
+     - Added `stripJsonTags()` helper:
+     ```typescript
+     function stripJsonTags(content: string): string {
+       const match = content.match(/<json>\s*([\s\S]*?)\s*<\/json>/i);
+       return match?.[1]?.trim() ?? content;
+     }
+     ```
+     - Increased timeout from 120s to 600s:
+     ```typescript
+     const DEFAULT_CHAT_TIMEOUT_MS = 600_000;  // was 120_000
+     ```
+     - Reduced max_tokens from 8192 to 4096
+     - Added `exceed_context_size_error` detection (parses JSON error body, extracts `n_prompt_tokens` and `n_ctx`):
+     ```typescript
+     if (errorBody?.error?.type === 'exceed_context_size_error') {
+       const nPrompt = errorBody.error.n_prompt_tokens;
+       const nCtx = errorBody.error.n_ctx;
+       throw new Error(
+         `Session too large for llama-server context window (${nPrompt} tokens requested, server context is ${nCtx}). Start llama-server with a larger context: llama-server -m <model.gguf> -c 32768`
+       );
+     }
+     ```
+     - Changed `estimateTokens` from `chars/4` to `chars/3`
+     - JSON validation now calls `stripJsonTags()` before `JSON.parse()`, and returns stripped content
+
+   - **`cli/src/analysis/provider-runner.ts`** (CLI-side llamacpp chat function, lines 176-218)
+     - Changed `max_tokens: 8192` to `max_tokens: 4096`
+     - Added identical `exceed_context_size_error` detection (mirrors server)
+     - Does NOT need `stripJsonTags` (downstream `extractJsonPayload` handles it)
+
+   - **`server/src/llm/analysis.ts`** (lines 80-322)
+     - Read to understand chunking logic: `chunkMessages()` splits at 80% of `maxInputTokens`
+     - Uses `client.estimateTokens()` to determine if chunking is needed
+     - The `buildCacheableConversationBlock()` and system prompt are NOT counted in the token estimation — this was part of the root cause
+
+   - **`cli/src/analysis/prompts.ts`** (line 28, lines 69-168)
+     - `SHARED_ANALYST_SYSTEM_PROMPT`: ~50 tokens
+     - `buildSessionAnalysisInstructions()`: ~3000 tokens of analysis instructions, classification guidance, JSON schema — this is the "prompt overhead" that wasn't accounted for
+
+   - **`cli/src/analysis/response-parsers.ts`** (lines 12-17)
+     - Pre-existing `extractJsonPayload()` that strips `<json>` tags at the consumer layer
+     - The llamacpp provider needed its own stripping because it validates JSON BEFORE reaching this parser
+
+4. Errors and Fixes:
+   - **Original error: `exceed_context_size_error` (HTTP 400)** — 10890 tokens requested, 4096 available. Root cause: token budget math didn't account for prompt overhead + output tokens, and user's llama-server context too small.
+     - Fix: Reduced conversation budget 24K→12K, user restarted llama-server with `-c 131072`
+   
+   - **`Cannot connect to llama-server at http://localhost:8080`** — During testing, llama-server wasn't reachable. The user had restarted it.
+     - Fix: Confirmed server was running, retested.
+   
+   - **`llama-server returned invalid JSON on both attempts. Response preview: <json>\n{\n "facets":...`** — The model wrapped valid JSON in `<json>...</json>` tags. The provider's `JSON.parse()` check failed because `<json>{...}</json>` is not valid JSON. It retried (wasting inference time), failed again, and threw.
+     - Fix: Added `stripJsonTags()` function that strips `<json>...</json>` wrapper before JSON validation. This was discovered only through live testing.
+   
+   - **curl timeout at 5 minutes (300s)** — The 16-message session inference was too slow at ~6-10 tok/s.
+     - Fix: Tested with smaller 4-message session, increased provider timeout from 2min to 10min.
+   
+   - **Dev agent timed out** — The agent's own timeout expired waiting for llama-server inference.
+     - Fix: I took over verification directly from the orchestrator session.
+   
+   - **Review FIX NOW: Comment said "8K" but actual max_tokens is 4096** — Budget math comment in `analysis-internal.ts` was stale.
+     - Fix: Updated comment to reflect 4K output budget: "32K - 3K prompt - 4K output ≈ 25K available"
+   
+   - **User feedback: "why 32768? i want more context like 128k"** — I had suggested 32K context, user wanted 128K.
+     - Fix: Told user to use `-c 131072`
+   
+   - **User feedback: "are you running all sessions?"** — User thought I was testing all sessions, wanted only 1-2.
+     - Clarified: Only testing 2 sessions (4-msg and 8-msg), not all.
+
+5. Problem Solving:
+   - **Compound token budget problem**: Identified that the budget math was wrong at multiple levels — conversation budget too high (24K), prompt overhead unaccounted (~3K), output tokens unaccounted (8K), and token estimation too optimistic (chars/4). Each fix was layered.
+   - **`<json>` tag wrapping**: Discovered through live testing that the model follows the system prompt's "wrap in `<json>` tags" instruction even when `response_format: json_object` is set. The provider's JSON validation retry loop caught this as invalid JSON. The fix was to strip tags at the provider level before validation, separate from the consumer-level `extractJsonPayload()`.
+   - **Slow inference**: CPU inference at 6-10 tok/s meant the 2-minute timeout was too short for real analysis. Increased to 10 minutes. Also reduced max_tokens from 8192 to 4096 to halve inference time.
+   - **End-to-end verification confirmed**: 2 sessions successfully analyzed with Gemma 4 26B, producing real insights.
+
+6. All User Messages:
+   - "looks like the llama.cpp integration isn't done correctly.. i have failures: [full error output and curl command]"
+   - "fix this with full ceremony and run multiple visual testing as part of ceremony to confirm the working fix.. fix until you are able to visually generate insights for at least 1 or 2 with fix in place.."
+   - "why 32768? i want more context like 128k"
+   - "done, changed to 128k"
+   - "these are the logs on the server.. what is happening? [full llama-server logs]"
+   - "are you running all sessions? i wanted only to test 1 or 2 to verify if things are working before releasing the patch version"
+   - "run the review and let me know once complete.. i will merge"
+   - "merged"
+
+7. Pending Tasks:
+   - None. All tasks completed. PR #272 merged. Worktree, branch, and team cleaned up.
+
+8. Current Work:
+   The feature is fully complete. PR #272 has been merged into master. The worktree (`../code-insights-fix-llamacpp-token-budget/`), feature branch (`feature/fix-llamacpp-token-budget`), and team (`feat-fix-llamacpp-token-budget`) have all been cleaned up. The local master branch has been pulled with the merged changes. All 6 teammate agents (pm-agent, dev-agent, ta-reviewer, node-cli-specialist, llm-expert-reviewer, ta-synthesizer) have been shut down and the team deleted.
+
+9. Optional Next Step:
+   No pending next steps. The user's request has been fully completed. The llamacpp integration fix is merged and verified working with real inference on Gemma 4 26B. If the user wants to cut a patch release, that would be a natural follow-up but was not explicitly requested.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/melagiri/.claude/projects/-Users-melagiri-Workspace-codeInsights-code-insights/40cb292b-9ea2-4da3-94d1-1c764cbe1053.jsonl
+
+---
+
+# /release — Automated Release Workflow
+
+**Arguments**: patch
+
+You are executing the release workflow for `@code-insights/cli`. Parse `patch` to extract:
+- **type** (required): `patch`, `minor`, or `major`
+- **description** (optional): A one-liner for the release title
+
+If type is missing or not one of `patch`/`minor`/`major`, ask the user to provide it.
+
+---
+
+## Step 1: Pre-flight Checks
+
+Run ALL of these checks. If any fail, STOP and tell the user what to fix.
+
+```bash
+# Must be on master
+git branch --show-current  # Must output "master"
+
+# Must have clean working tree
+git status --porcelain     # Must be empty
+
+# Pull latest
+git pull origin master
+```
+
+Read the current version from `cli/package.json` (the `"version"` field).
+
+Compute the new version:
+- `patch`: increment the third number (3.6.1 → 3.6.2)
+- `minor`: increment the second number, reset third to 0 (3.6.1 → 3.7.0)
+- `major`: increment the first number, reset second and third to 0 (3.6.1 → 4.0.0)
+
+**Resume detection**: Run `npm view @code-insights/cli version` to get the currently published version. If the version in `package.json` is ALREADY GREATER than the npm version, this is a **resumed release** — skip to Step 6.
+
+---
+
+## Step 2: Analyze Changes
+
+Find the last git tag and analyze what changed:
+
+```bash
+# Find latest tag
+git describe --tags --abbrev=0
+
+# Commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Full diff since last tag
+git diff $(git describe --tags --abbrev=0)..HEAD --stat
+```
+
+Read the full diff and commit messages. Then:
+
+1. **Generate a CHANGELOG entry** in the existing format (see `cli/CHANGELOG.md` for style). Group changes under `### Added`, `### Changed`, `### Fixed`, `### Improved` as appropriate. Match the existing tone — concise but descriptive, with bold lead-ins.
+
+2. **Generate a release title** — a short phrase summarizing the release (e.g., "LLM-Powered Export Page", "PostHog custom domain"). Use the user's description if provided, otherwise derive from the changes.
+
+3. **For minor/major releases**: Assess which docs need updating:
+   - `docs/ROADMAP.md` — if new milestones were completed
+   - `docs/PRODUCT.md` — if product capabilities changed
+   - `docs/VISION.md` — for major releases, if the vision expanded
+   - `README.md` — if user-facing features or setup changed
+   - `cli/README.md` — if CLI usage, commands, or npm package description changed
+
+---
+
+## GATE 1: Review Changelog
+
+**STOP and present to the user:**
+
+```
+Release: vX.Y.Z — {title}
+Type: {patch|minor|major}
+
+Proposed CHANGELOG entry:
+─────────────────────────
+{the generated changelog entry}
+─────────────────────────
+
+Files to modify:
+  - cli/package.json (version bump)
+  - cli/CHANGELOG.md (new entry)
+  {- docs/ROADMAP.md (if applicable)}
+  {- docs/PRODUCT.md (if applicable)}
+  {- docs/VISION.md (if applicable)}
+  {- cli/README.md (if applicable)}
+
+Approve, or tell me what to change?
+```
+
+Wait for user approval. If they provide edits, incorporate them.
+
+---
+
+## Step 3: Apply Version Bump
+
+After approval, make the changes:
+
+1. **`cli/package.json`** — Update the `"version"` field to the new version
+2. **`cli/CHANGELOG.md`** — Prepend the new entry at the top (after the header, before the previous version entry). Format: `## [X.Y.Z] - YYYY-MM-DD`
+3. **Docs** (if approved at Gate 1) — Make the specific updates discussed
+
+---
+
+## Step 4: Build & Test
+
+Run the full build and test suite:
+
+```bash
+# Full workspace build (this is what prepublishOnly does)
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+
+# Run tests
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && pnpm test
+```
+
+**If build fails → STOP.** Show the error. Do not continue.
+**If tests fail → STOP.** Show the error. Do not continue.
+
+---
+
+## GATE 2: Confirm Publish
+
+**STOP and present to the user:**
+
+Show the full `git diff` of all changes made, then:
+
+```
+Build: PASSED
+Tests: PASSED
+
+Ready to:
+  1. Commit changes to master
+  2. Push to origin
+  3. Publish v{X.Y.Z} to npm
+  4. Create GitHub release
+
+Proceed?
+```
+
+Wait for explicit user approval before continuing.
+
+---
+
+## Step 5: Commit & Push
+
+Commit with specific files only (never `git add .`):
+
+```bash
+# Add only the files we changed
+git add cli/package.json cli/CHANGELOG.md
+# Add any docs files that were modified (if applicable)
+# git add docs/ROADMAP.md docs/PRODUCT.md docs/VISION.md README.md cli/README.md
+
+git commit -m "$(cat <<'EOF'
+chore: bump version to vX.Y.Z
+
+{one-line summary of what changed}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+git push origin master
+```
+
+---
+
+## Step 6: Publish to npm
+
+```bash
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && npm publish
+```
+
+The `prepublishOnly` script in `package.json` handles building all packages and copying dashboard/server dist files automatically.
+
+Verify the publish succeeded:
+
+```bash
+npm view @code-insights/cli version
+```
+
+If publish fails, show the error and STOP. The commit is already pushed — tell the user to fix the issue and re-run `/release` (resume detection will skip to this step).
+
+---
+
+## Step 7: GitHub Release
+
+Create the GitHub release using the changelog entry as the body:
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — {release title}" \
+  --notes "$(cat <<'EOF'
+{changelog entry content, formatted for GitHub}
+
+**Full Changelog**: https://github.com/melagiri/code-insights/compare/{previous_tag}...vX.Y.Z
+EOF
+)"
+```
+
+---
+
+## GATE 3: Verify
+
+**STOP and present to the user:**
+
+```
+Release vX.Y.Z complete!
+
+  npm: @code-insights/cli@X.Y.Z ✓
+  GitHub: {release URL}
+  Commit: {commit hash}
+
+Everything look correct?
+```
+
+---
+
+## Step 8: Done
+
+Summarize the release:
+
+```
+Released @code-insights/cli vX.Y.Z
+
+  Changes: {brief summary}
+  npm: https://www.npmjs.com/package/@code-insights/cli
+  GitHub: {release URL}
+  Files modified: {list}
+```
+
+---
+
+## Important Rules
+
+- **NEVER skip the gates** — always pause for user confirmation
+- **NEVER use `git add .` or `git add -A`** — add specific files only
+- **If build or tests fail, STOP** — do not try to fix and continue
+- **Commit message format**: `chore: bump version to vX.Y.Z` (matches existing pattern)
+- **Resume is safe** — if re-run after a partial release, it picks up where it left off
+
+---
+
+approved
+
+---
+
+proceed
