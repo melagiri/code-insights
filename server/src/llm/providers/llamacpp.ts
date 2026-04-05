@@ -12,10 +12,16 @@ import { flattenContent } from '../types.js';
 
 const DEFAULT_LLAMACPP_URL = 'http://localhost:8080';
 
-// Default timeout for chat requests (2 minutes).
-// Local inference with quantized models can be slow (especially first request while model loads
-// into GPU memory), but anything beyond 2 minutes likely indicates a hang.
-const DEFAULT_CHAT_TIMEOUT_MS = 120_000;
+/** Strip <json>...</json> wrapper that some models emit despite response_format: json_object. */
+function stripJsonTags(content: string): string {
+  const match = content.match(/<json>\s*([\s\S]*?)\s*<\/json>/i);
+  return match?.[1]?.trim() ?? content;
+}
+
+// Default timeout for chat requests (10 minutes).
+// Local inference with quantized models on CPU can be very slow — a 2000-token response
+// at 10 tok/s takes ~3.5 minutes. Allow generous headroom for large sessions and slow hardware.
+const DEFAULT_CHAT_TIMEOUT_MS = 600_000;
 
 export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient {
   const url = baseUrl || DEFAULT_LLAMACPP_URL;
@@ -43,7 +49,7 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
               // flattenContent converts ContentBlock[] to string; strings pass through unchanged.
               messages: messages.map(m => ({ role: m.role, content: flattenContent(m.content) })),
               temperature: 0.3,
-              max_tokens: 8192,
+              max_tokens: 4096,
               // Grammar-constrained JSON output — llama-server honours OpenAI's response_format.
               response_format: { type: 'json_object' },
             }),
@@ -65,6 +71,23 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
             throw new Error(
               `llama-server returned HTTP ${res.status} — check your server configuration.${detail ? ` (${detail})` : ''}`
             );
+          }
+          // Detect exceed_context_size_error: llama-server returns this when the request's
+          // prompt + max_tokens exceeds the server's context window (-c flag at startup).
+          if (res.status >= 400) {
+            let errorBody: { error?: { type?: string; n_prompt_tokens?: number; n_ctx?: number } } = {};
+            try { errorBody = JSON.parse(detail); } catch { /* not JSON */ }
+            if (errorBody?.error?.type === 'exceed_context_size_error') {
+              const nPrompt = errorBody.error.n_prompt_tokens;
+              const nCtx = errorBody.error.n_ctx;
+              const tokenInfo = (nPrompt !== undefined && nCtx !== undefined)
+                ? ` (${nPrompt} tokens requested, server context is ${nCtx})`
+                : '';
+              throw new Error(
+                `Session too large for llama-server context window${tokenInfo}. ` +
+                `Start llama-server with a larger context: llama-server -m <model.gguf> -c 32768`
+              );
+            }
           }
           if (res.status >= 500) {
             throw new Error(
@@ -100,10 +123,14 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
       // genuine capability failures (which would fail again anyway).
       const first = await attempt();
 
+      // Strip <json>...</json> wrapper if present — some models follow the system prompt instruction
+      // to wrap output in <json> tags even when response_format: json_object is set.
+      const stripped = stripJsonTags(first.content);
+
       // Validate JSON structure — if content is not parseable, try once more.
       let jsonValid = false;
       try {
-        JSON.parse(first.content);
+        JSON.parse(stripped);
         jsonValid = true;
       } catch {
         // not valid JSON
@@ -114,9 +141,10 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
         // Validate the retry result too — if both attempts fail, surface the error
         // instead of silently returning malformed content.
         const retry = await attempt();
+        const retryStripped = stripJsonTags(retry.content);
         let retryValid = false;
         try {
-          JSON.parse(retry.content);
+          JSON.parse(retryStripped);
           retryValid = true;
         } catch {
           // still not valid JSON
@@ -130,7 +158,7 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
         }
 
         return {
-          content: retry.content,
+          content: retryStripped,
           usage: {
             inputTokens: first.inputTokens + retry.inputTokens,
             outputTokens: first.outputTokens + retry.outputTokens,
@@ -139,7 +167,7 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
       }
 
       return {
-        content: first.content,
+        content: stripped,
         usage: {
           inputTokens: first.inputTokens,
           outputTokens: first.outputTokens,
@@ -149,9 +177,11 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
     },
 
     estimateTokens(text: string): number {
-      // Rough approximation: 4 chars per token (same heuristic as Ollama).
-      // llama-server uses its own tokenizer; this is good enough for chunking decisions.
-      return Math.ceil(text.length / 4);
+      // More conservative approximation: 3 chars per token.
+      // chars/4 underestimates for code-heavy or multilingual content, which triggers
+      // chunking too late and can still exceed the context window. chars/3 errs on the
+      // side of earlier chunking, which is safer for quantized local models.
+      return Math.ceil(text.length / 3);
     },
   };
 }

@@ -187,7 +187,7 @@ function makeLlamaCppChat(model: string, baseUrl?: string): LLMChatFn {
           model,
           messages,
           temperature: 0.3,
-          max_tokens: 8192,
+          max_tokens: 4096,
           response_format: { type: 'json_object' },
         }),
       });
@@ -202,6 +202,22 @@ function makeLlamaCppChat(model: string, baseUrl?: string): LLMChatFn {
     }
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
+      // Detect exceed_context_size_error: mirrors server/src/llm/providers/llamacpp.ts detection.
+      if (response.status >= 400) {
+        let errorBody: { error?: { type?: string; n_prompt_tokens?: number; n_ctx?: number } } = {};
+        try { errorBody = JSON.parse(detail); } catch { /* not JSON */ }
+        if (errorBody?.error?.type === 'exceed_context_size_error') {
+          const nPrompt = errorBody.error.n_prompt_tokens;
+          const nCtx = errorBody.error.n_ctx;
+          const tokenInfo = (nPrompt !== undefined && nCtx !== undefined)
+            ? ` (${nPrompt} tokens requested, server context is ${nCtx})`
+            : '';
+          throw new Error(
+            `Session too large for llama-server context window${tokenInfo}. ` +
+            `Start llama-server with a larger context: llama-server -m <model.gguf> -c 32768`
+          );
+        }
+      }
       throw new Error(`llama-server API error (HTTP ${response.status})${detail ? ` - ${detail}` : ''}`);
     }
     const data = await response.json() as {

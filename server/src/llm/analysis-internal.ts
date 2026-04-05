@@ -41,15 +41,21 @@ export interface AnalysisResult {
  * Maximum input tokens to send to the LLM (leaves room for the response).
  *
  * Provider-aware: llamacpp targets small quantized models (12B-27B GGUF) with limited
- * context windows. Sending 80K tokens to these models causes OOM or severely degraded
- * structured JSON output. 24K is a safe upper bound for Gemma 4 Q4_K_M configs.
+ * context windows. The CONVERSATION budget must leave room for:
+ *   - ~3K tokens of system prompt + analysis instructions (prompt overhead)
+ *   - 4K max_tokens reserved for model output
+ * With a 32K context llama-server (-c 32768): 32K - 3K prompt - 4K output ≈ 25K available.
+ * At 12K conversation budget with 80% chunking (9.6K effective), total request stays under 17K,
+ * fitting safely in even a 16K context window.
+ *
+ * Previously 24K, which caused exceed_context_size_error because it didn't account for overhead.
  *
  * All other providers (hosted APIs with large context windows) use the 80K default.
  */
 export const MAX_INPUT_TOKENS = 80000;
 
 export function getMaxInputTokens(provider: string): number {
-  if (provider === 'llamacpp') return 24576;
+  if (provider === 'llamacpp') return 12288;
   return MAX_INPUT_TOKENS;
 }
 
