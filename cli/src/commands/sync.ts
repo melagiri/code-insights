@@ -151,7 +151,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
       spinner.start(`Discovering ${providerName} sessions...`);
       const sessionFiles = await provider.discover({ projectFilter: options.project });
       totalDiscoveredFiles += sessionFiles.length;
-      spinner.succeed(`Found ${sessionFiles.length} ${providerName} session files`);
+      spinner.stop();
       if (!discoveryWarned && totalDiscoveredFiles > 500) {
         discoveryWarned = true;
         log(chalk.dim(`  ${totalDiscoveredFiles} total session files discovered — sync may take a moment`));
@@ -161,9 +161,11 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
 
       // Filter to only new/modified files
       const filesToSync = filterFilesToSync(sessionFiles, syncState, options.force);
-      log(chalk.gray(`  ${filesToSync.length} files need syncing (${sessionFiles.length - filesToSync.length} already synced)`));
 
-      if (filesToSync.length === 0) continue;
+      if (filesToSync.length === 0) {
+        log(chalk.gray(`  ✔ ${providerName} up to date`));
+        continue;
+      }
 
       if (options.dryRun) {
         for (const file of filesToSync) {
@@ -175,7 +177,6 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
       // Process files — accumulate per-provider counts, show one summary line after
       let providerSyncedCount = 0;
       let providerUpdatedCount = 0;
-      let providerSkippedCount = 0;
       let providerMessageCount = 0;
 
       for (const filePath of filesToSync) {
@@ -186,13 +187,14 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
           // Parse session
           const session = await provider.parse(filePath);
           if (!session) {
-            providerSkippedCount++;
+            // Track null-parse files so they aren't re-discovered on every sync run
+            updateSyncState(syncState, filePath, '__empty__');
+            saveSyncState(syncState);
             continue;
           }
 
           // Skip trivial sessions (≤2 messages) — likely abandoned prompts with no content
           if (session.messageCount <= 2) {
-            providerSkippedCount++;
             updateSyncState(syncState, filePath, session.id);
             saveSyncState(syncState);
             continue;
@@ -229,17 +231,14 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
 
       // One summary line per provider instead of per-file noise
       spinner.stop();
-      if (providerSyncedCount > 0 || providerSkippedCount > 0) {
+      if (providerSyncedCount > 0) {
         const providerNewCount = providerSyncedCount - providerUpdatedCount;
         const parts: string[] = [];
         if (providerNewCount > 0) parts.push(`${providerNewCount} new`);
         if (providerUpdatedCount > 0) parts.push(`${providerUpdatedCount} updated`);
         if (parts.length === 0) parts.push('0 synced');
         const syncedPart = `${parts.join(', ')}${providerMessageCount > 0 ? ` (${providerMessageCount.toLocaleString()} messages)` : ''}`;
-        const skippedPart = providerSkippedCount > 0
-          ? `, ${providerSkippedCount} empty`
-          : '';
-        log(chalk.gray(`  ${syncedPart}${skippedPart}`));
+        log(chalk.gray(`  ✔ Synced ${syncedPart}`));
       }
     } catch (error) {
       totalErrorCount++;

@@ -172,6 +172,10 @@ program.action(async () => {
 });
 
 // Show one-time telemetry disclosure before any command runs
-showTelemetryNoticeIfNeeded();
+// Skip for --version/-V and --help/-h since those commands don't need it
+const isVersionOrHelp = process.argv.some(arg => ['--version', '-V', '--help', '-h'].includes(arg));
+if (!isVersionOrHelp) {
+  showTelemetryNoticeIfNeeded();
+}
 
 program.parse();
