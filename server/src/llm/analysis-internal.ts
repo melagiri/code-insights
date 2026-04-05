@@ -43,10 +43,10 @@ export interface AnalysisResult {
  * Provider-aware: llamacpp targets small quantized models (12B-27B GGUF) with limited
  * context windows. The CONVERSATION budget must leave room for:
  *   - ~3K tokens of system prompt + analysis instructions (prompt overhead)
- *   - 8K max_tokens reserved for model output
- * With a 32K context llama-server (-c 32768): 32K - 3K prompt - 8K output ≈ 21K available.
- * At 12K conversation budget with 80% chunking (9.6K effective), total request stays under 21K,
- * fitting safely in a 32K context window. Even 16K context servers work for smaller sessions.
+ *   - 4K max_tokens reserved for model output
+ * With a 32K context llama-server (-c 32768): 32K - 3K prompt - 4K output ≈ 25K available.
+ * At 12K conversation budget with 80% chunking (9.6K effective), total request stays under 17K,
+ * fitting safely in even a 16K context window.
  *
  * Previously 24K, which caused exceed_context_size_error because it didn't account for overhead.
  *
