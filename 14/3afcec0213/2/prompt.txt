@@ -1,0 +1,1510 @@
+2 things.
+
+1. On every startup or first install - i see a warning:
+npm install -g @code-insights/cli
+npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+
+changed 120 packages in 9s
+
+2. On every version check - i see this:
+code-insights --version
+
+  Code Insights collects anonymous usage data to improve the CLI and dashboard.
+  Includes: commands, page views, OS, CLI version, AI tool types, session counts,
+  LLM provider, performance timing.
+  Never includes: file paths, project names, session content, API keys, or personal data.
+
+  Disable: code-insights telemetry disable
+  Details: code-insights telemetry status
+
+we need to get rid of that warning during install and remove verbose information in version output
+
+---
+
+ok, leave the issue #1 as is.. fix the second one.. but also, i have one more:
+
+code-insights
+
+  Code Insights Sync
+
+✔ Database ready
+
+  Syncing claude-code...
+⠋ Discovering claude-code sessions...[claude-code] Discovered 600 JSONL files. This may take a moment to sync.
+✔ Found 600 claude-code session files
+  600 total session files discovered — sync may take a moment
+  6 files need syncing (594 already synced)
+  1 new, 1 updated (583 messages), 4 empty
+
+  Syncing cursor...
+✔ Found 170 cursor session files
+  48 files need syncing (122 already synced)
+  0 synced, 48 empty
+
+  Syncing codex-cli...
+✔ Found 38 codex-cli session files
+  0 files need syncing (38 already synced)
+
+  Syncing copilot-cli...
+✔ Found 2 copilot-cli session files
+  0 files need syncing (2 already synced)
+
+  Syncing copilot...
+✔ Found 379 copilot session files
+  69 files need syncing (310 already synced)
+  0 synced, 69 empty
+✔ Usage stats reconciled (292 sessions with usage data)
+
+   ____          _        ___           _       _     _
+  / ___|___   __| | ___  |_ _|_ __  ___(_) __ _| |__ | |_ ___
+ | |   / _ \ / _` |/ _ \  | || '_ \/ __| |/ _` | '_ \| __/ __|
+ | |__| (_) | (_| |  __/  | || | | \__ \ | (_| | | | | |_\__ \
+  \____\___/ \__,_|\___| |___|_| |_|___/_|\__, |_| |_|\__|___/
+                                           |___/ v4.9.2
+
+  Dashboard:  http://localhost:7890
+  Press Ctrl+C to stop
+
+  Code Insights dashboard running at http://localhost:7890
+
+this is what gets printed on code-insights when sessions sync. I think we can improve things here.. instead of first counting sessions and then stating x sessions are already synced. and also some with messaging like 69 empty - where we can skip showing them in count itself everytime.. can we improve the query to not even consider them while syncing?
+
+---
+
+not just the messaging.. the discovery itself.. can we improve the performance there?
+
+---
+
+yes, use feature branch and full ceremony for fixing it
+
+---
+
+# /start-feature — Auto-Setup Feature Development Team
+
+**Feature**: Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose
+
+You are setting up a hybrid agent team for feature development. The PM agent leads the team and owns the ceremony. Your job is minimal setup, then hand control to PM.
+
+---
+
+## Step 1: Create Git Worktree
+
+Slugify the feature description into a branch name:
+- Take `Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose`, lowercase it, replace spaces/special chars with hyphens, truncate to 50 chars
+- Prefix with `feature/` (e.g., "add demo mode onboarding" -> `feature/add-demo-mode-onboarding`)
+
+```bash
+# Example (adapt the slug from Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose):
+BRANCH_NAME="feature/<slugified-arguments>"
+git fetch origin
+git worktree add ../code-insights-${BRANCH_NAME#feature/} -b ${BRANCH_NAME} origin/main
+```
+
+If the worktree or branch already exists, inform the user and ask how to proceed.
+
+Run `pnpm install` in the worktree:
+```bash
+cd ../code-insights-${BRANCH_NAME#feature/} && pnpm install
+```
+
+---
+
+## Step 2: Create Named Team
+
+Create the team using TeamCreate. Use the slugified branch name (without `feature/` prefix) as the team name:
+
+```
+TeamCreate {
+  team_name: "feat-<slugified-arguments>",
+  description: "Feature team: Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose"
+}
+```
+
+---
+
+## Step 3: Spawn PM Agent
+
+The PM agent handles scoping, GitHub Issues, and task graph creation. It does NOT spawn other agents — only the orchestrator can spawn agents.
+
+```
+Task {
+  name: "pm-agent",
+  subagent_type: "product-manager",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the PM for this feature team.
+
+FEATURE REQUEST: Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose
+WORKTREE: ../code-insights-<slugified-arguments>/
+BRANCH: feature/<slugified-arguments>
+TEAM: feat-<slugified-arguments>
+
+Your responsibilities are scoping, GitHub Issues, task graph, and handoff preparation.
+IMPORTANT: You CANNOT spawn agents. Only the orchestrator can. When you need an agent spawned, message the orchestrator with the request.
+
+Follow this protocol:
+
+1. SCOPE: Read docs in docs/ and CLAUDE.md to understand what this feature involves. Check for existing design docs in docs/plans/. Check docs/architecture/ for architecture context. If the scope is unclear, message the orchestrator for clarification.
+
+2. ISSUES: Search for an existing GitHub Issue that matches this feature. If one exists, use it. If not, create one with proper description, acceptance criteria, and T-shirt size. Record the issue number.
+
+3. TASK GRAPH: Create the ceremony tasks using TaskCreate, then set dependencies with TaskUpdate:
+   - Task: 'TA: Review architecture alignment' (no dependencies) -- SKIP if internal-only (new components, UI, styling)
+   - Task: 'LLM Expert: Design prompt architecture' (no dependencies) -- SKIP if feature doesn't involve LLM calls
+   - Task: 'PM: Prepare handoff context in GitHub Issue' (no dependencies, you do this yourself)
+   - Task: 'Dev: Read handoff and design docs, prepare questions' (blockedBy: TA + LLM Expert if applicable + PM handoff)
+   - Task: 'Dev + TA: Reach consensus on implementation approach' (blockedBy: above) -- SKIP if internal-only
+   - Task: 'Dev: Implement feature in worktree' (blockedBy: above)
+   - Task: 'Dev: Verify feature and create PR' (blockedBy: above) -- includes pre-PR verification protocol
+   - Task: 'Review: Triple-layer code review (loops until 0 FIX NOW)' (blockedBy: above)
+   - Task: 'Post final review summary to GitHub PR' (blockedBy: above)
+
+4. DO YOUR OWN TASK: Work on your handoff task -- prepare context in the GitHub Issue (description, acceptance criteria, relevant doc paths, implementation guidance).
+
+   IMPORTANT — Classify the feature scope for Dev's verification protocol:
+   - Does it touch UI/visual rendering? → Tag: VISUAL
+   - Does it produce output artifacts (images, PDFs, exports)? → Tag: OUTPUT_ARTIFACT
+   - Does it add new npm dependencies? → Tag: NEW_DEPS
+   - Does it change API endpoints? → Tag: API_CHANGE
+   Include these tags in the GitHub Issue so Dev knows which verification tiers apply.
+
+5. REQUEST AGENT SPAWNS: When your handoff task is done, message the orchestrator:
+   - If TA is needed: 'SPAWN_REQUEST: ta-agent — [brief context]'
+   - When dev prerequisites are met: 'SPAWN_REQUEST: dev-agent — [brief context including issue number and key details]'
+   The orchestrator will spawn the agents and assign tasks.
+
+   SKIP TA if the feature is internal-only (new components, UI fixes, styling, LLM provider additions). In that case, mark the TA task as completed with note 'Skipped -- internal-only change'.
+
+   If the feature involves LLM calls (prompts, model selection, token budgets, structured output):
+   - 'SPAWN_REQUEST: llm-expert-agent — [brief context about the LLM aspect]'
+   The LLM Expert will design the prompt architecture, token budget, and model recommendation before dev implements.
+
+   SKIP LLM Expert if the feature doesn't touch LLM code. Mark the task as completed with note 'Skipped -- no LLM impact'.
+
+6. MONITOR: Check TaskList periodically.
+   - When Dev creates a PR, message the orchestrator: 'REVIEW_REQUEST: PR #XX is ready for /start-review'
+   - The orchestrator will run /start-review which loops until 0 FIX NOW items
+   - If review finds FIX NOW items, the orchestrator sends them to Dev. Dev fixes and pushes. Review re-runs automatically.
+   - You do NOT need to request additional review rounds — the loop is built into /start-review.
+
+7. REPORT: When review converges (0 FIX NOW items) and final summary is posted, message the orchestrator: 'PR #XX for Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose is ready for founder review and merge.'
+
+IMPORTANT RULES:
+- NEVER merge PRs -- founder-only
+- NEVER try to spawn agents -- message the orchestrator instead
+- All dev work happens in the worktree
+- If you need user clarification, message the orchestrator who will ask the user
+- You can message existing teammates directly via SendMessage for routine coordination
+- Task dependencies enforce ceremony order -- don't skip steps
+- PRE-PR GATE (MANDATORY): Before any PR is created, Dev must complete the full verification protocol (see Dev agent instructions). GitHub Actions costs money — failed CI runs are wasted spend.",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 4: Orchestrator Spawns Agents on PM Request
+
+After PM completes its handoff and sends a SPAWN_REQUEST message, the orchestrator spawns the requested agent:
+
+**For TA (if PM requests it):**
+```
+Task {
+  name: "ta-agent",
+  subagent_type: "technical-architect",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the TA for feature team feat-<slugified-arguments>. Feature: Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose. Check TaskList for your assigned tasks. Use SendMessage to communicate with pm-agent and later dev-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the TA task to ta-agent.
+
+**For LLM Expert (if PM requests it):**
+```
+Task {
+  name: "llm-expert-agent",
+  subagent_type: "llm-expert",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the LLM Expert for feature team feat-<slugified-arguments>. Feature: Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose. Check TaskList for your assigned tasks. Design the prompt architecture, token budget, model recommendation, and output schema for the LLM aspects of this feature. Use SendMessage to communicate with pm-agent and ta-agent. Mark tasks in_progress when starting, completed when done.",
+  mode: "bypassPermissions"
+}
+```
+Assign the LLM Expert task to llm-expert-agent.
+
+**For Dev (when PM requests it):**
+```
+Task {
+  name: "dev-agent",
+  subagent_type: "engineer",
+  team_name: "feat-<slugified-arguments>",
+  prompt: "You are the Dev for feature team feat-<slugified-arguments>. Feature: Improve sync output and performance: (1) Fix null-parse files not being tracked in sync state causing re-parsing every run, (2) Skip telemetry notice on --version/--help, (3) Clean up sync output messaging to be less verbose. Worktree: ../code-insights-<slugified-arguments>/. All code work happens in the worktree. Check TaskList for your tasks. Use SendMessage to communicate with pm-agent. Mark tasks in_progress/completed.
+
+## Pre-PR Verification Protocol (MANDATORY)
+
+Before creating any PR, you MUST complete ALL applicable verification tiers. Check the GitHub Issue for scope tags (VISUAL, OUTPUT_ARTIFACT, NEW_DEPS, API_CHANGE) to know which tiers apply.
+
+### Tier 1: Build & Test (ALWAYS required)
+1. Run `pnpm build` from the worktree repo root — must pass with zero errors
+2. Run `pnpm test` from cli/ — must pass
+3. If build or tests fail, fix before proceeding. Do NOT create the PR.
+
+### Tier 2: New Dependency Audit (required if NEW_DEPS tag)
+If you added any new npm dependencies:
+1. Search the library's GitHub issues for known limitations and common gotchas
+2. Read the library's README for caveats, browser compatibility, and unsupported features
+3. Specifically check for: CSS compatibility, serialization constraints, SSR issues, bundle size impact
+4. Document findings in the PR description under '## Dependency Audit'
+5. If you find high-risk limitations, verify your code handles them correctly
+
+### Tier 3: Functional Verification (required if VISUAL or API_CHANGE tag)
+You must verify the feature works by running it:
+
+**Server access:**
+1. First, check if the dev server is already running: `curl -s -o /dev/null -w '%{http_code}' http://localhost:7890/api/health` (or just `http://localhost:7890`)
+2. If the server responds (200), use the existing server — do NOT start a new one
+3. If the server is NOT running, start one:
+   ```bash
+   cd <worktree-path> && node cli/dist/index.js dashboard --no-sync &
+   DEV_SERVER_PID=$!
+   ```
+4. CRITICAL: If you started a server, you MUST kill it when done: `kill $DEV_SERVER_PID`
+5. NEVER leave orphaned server processes running
+
+**For UI features (VISUAL tag):**
+- Navigate to the affected page using agent-browser tools
+- Take a screenshot showing the feature renders correctly
+- Attach the screenshot to the PR description under '## Verification'
+
+**For output-producing features (OUTPUT_ARTIFACT tag):**
+- Trigger the feature (e.g., click download, run export)
+- Verify the output file exists and is non-empty
+- If it's a visual artifact (image, PDF), take a screenshot of the output
+- Attach evidence to the PR description under '## Verification'
+
+**For API changes (API_CHANGE tag):**
+- curl the new/modified endpoints
+- Verify the response shape matches the TypeScript types
+- Include the curl output in the PR description under '## Verification'
+
+### Tier 4: Cleanup
+- If you started a dev server, confirm it's killed: `kill $DEV_SERVER_PID 2>/dev/null`
+- Verify no orphaned node processes on port 7890: `lsof -ti:7890` (should return nothing, or only the user's existing server)
+
+## PR Description Template
+
+Your PR description MUST include these sections:
+
+```markdown
+## Summary
+[What this PR does]
+
+## Dependency Audit (if NEW_DEPS)
+[Library name]: [Known limitations found, or 'No significant limitations found']
+
+## Verification
+- Build: PASS
+- Tests: PASS
+- [Screenshot of feature rendering] (if VISUAL)
+- [Screenshot/proof of output artifact] (if OUTPUT_ARTIFACT)
+- [curl output] (if API_CHANGE)
+
+## Test plan
+- [ ] [Checklist of what to test]
+```
+
+## During Review Rounds
+
+If the review team sends back FIX NOW items:
+1. Read each item carefully
+2. Implement the fixes in the worktree
+3. Re-run applicable verification tiers (at minimum Tier 1)
+4. If fixes are visual, re-capture screenshots
+5. Push the fix commits to the PR branch
+6. Message pm-agent that fixes are pushed
+
+This is non-negotiable — thorough pre-PR verification prevents wasted review cycles and catches bugs that static code review cannot.",
+  mode: "bypassPermissions"
+}
+```
+Assign the next unblocked dev task to dev-agent.
+
+---
+
+## Step 5: Supervise
+
+After spawning agents, your role is active supervisor:
+
+1. **PM handles scoping and task graph** — orchestrator handles all agent spawning
+2. **Spawn agents when PM sends SPAWN_REQUEST messages**
+3. **Intervene when**:
+   - PM messages you asking for user clarification -> relay to user
+   - An agent is stuck or reports a blocker -> help unblock
+   - PM sends a REVIEW_REQUEST -> run `/start-review` on the PR number
+4. **Review loop management**:
+   - `/start-review` handles the loop internally (runs rounds until 0 FIX NOW items)
+   - If review finds FIX NOW items, relay them to the dev-agent via SendMessage
+   - After dev pushes fixes, `/start-review` re-runs targeted reviewers automatically
+   - If review hits max rounds (4) without converging, escalate to user
+5. **When PM reports "ready for merge"** -> inform the user
+
+---
+
+## Step 6: Cleanup (After PR Merge)
+
+After the founder merges the PR:
+
+1. Send shutdown requests to all teammates (pm-agent, ta-agent, dev-agent)
+2. Delete the team: `TeamDelete`
+3. Clean up worktree:
+```bash
+git worktree remove ../code-insights-<slugified-arguments>
+```
+4. Confirm cleanup is complete
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Only the orchestrator spawns agents** — sub-agents CANNOT use the Task tool to spawn teammates. PM must send SPAWN_REQUEST messages to the orchestrator.
+- **PM handles scoping and coordination** — it creates task graphs, GitHub Issues, and prepares handoff context
+- **Orchestrator is the agent factory** — spawns TA and Dev agents when PM requests them
+- **All dev work happens in the worktree**
+- **Task dependencies enforce ceremony order** — agents can't skip steps
+- **TA is optional** for internal-only changes — PM decides based on scope
+- **Dev must complete pre-PR verification** — build, test, functional check, dependency audit (as applicable)
+- **Review loops automatically** — orchestrator runs /start-review which iterates until convergence
+- **No orphaned processes** — dev agent must kill any server it starts
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:44:48.398Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for sync improvements"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:44:57.516Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:45:06.234Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T03:48:09.515Z","idleReason":"available","summary":"[to pm-agent] PR #274 ready for review"}
+</teammate-message>
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 274
+
+You are setting up a triple-layer code review for PR `274`. This can be used standalone or as part of a `/start-feature` team workflow. The review loops until all FIX NOW items are resolved — it does NOT end after a single pass.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 274` to get PR title, description, and diff stats.
+Use `gh pr diff 274` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed per file
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Classify changed files into domains for specialist selection (Step 2)
+
+---
+
+## Step 2: Select Domain Specialists
+
+Instead of fixed generalist reviewers, select 1-2 **domain specialists** based on what the PR actually changes. Each specialist combines deep domain expertise with general engineering awareness. See `docs/REVIEW-SPECIALISTS.md` for the full specialist registry and prompt templates.
+
+### Domain Classification
+
+Classify each changed file into a domain based on file patterns:
+
+| Domain | File Pattern Triggers |
+|--------|----------------------|
+| **SQL/Database** | `server/src/routes/*.ts` (when containing SQL keywords), `cli/src/db/*.ts` |
+| **React/Frontend** | `dashboard/src/**/*.tsx`, `dashboard/src/**/*.ts` |
+| **Node/CLI** | `cli/src/commands/*.ts`, `cli/src/utils/*.ts`, `server/src/*.ts` (non-route, non-LLM) |
+| **Parser/Provider** | `cli/src/providers/**/*.ts`, `cli/src/parser/*.ts` |
+| **LLM** | `server/src/llm/**/*.ts` — handled by LLM Expert (separate, unchanged) |
+
+Files that don't match any domain (e.g., `package.json`, `tsconfig.json`, `.gitignore`, `CLAUDE.md`) are ignored during classification.
+
+### Selection Algorithm
+
+1. For each domain, sum the lines changed across all files in that domain
+2. **Primary specialist** = domain with the most lines changed
+3. **Secondary specialist** = next domain IF it has >= 30% of total changed lines AND is a different domain
+4. Cap at **2 domain specialists** (LLM Expert is a separate conditional reviewer)
+5. If a PR changes ONLY non-domain files, use the **Node/CLI Specialist** as general-purpose
+
+### LLM Expert (Conditional — Unchanged)
+
+**Invoke LLM Expert if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 2.5: Pre-Review Gates
+
+Before launching reviewers, check these gates. If any gate fails, the review CANNOT proceed — send the PR back to the dev agent (or inform the user if standalone) with what's missing.
+
+### Gate A: New Dependency Audit
+
+Check if `package.json` (any workspace) was modified in the PR diff.
+
+If new dependencies were added:
+
+```
+Task {
+  name: "dep-auditor",
+  subagent_type: "Explore",
+  prompt: "Research the following new npm dependencies added in PR #274. For EACH dependency:
+
+  1. Search the library's GitHub issues for known limitations, gotchas, and common pitfalls
+  2. Read the library's README for caveats, browser compatibility notes, and unsupported features
+  3. Check if the library has specific CSS, rendering, or serialization constraints
+  4. Check the library's weekly downloads and last publish date (is it maintained?)
+
+  Output a structured report:
+  ## Dependency Audit: [package-name]
+  ### Known Limitations
+  ### Gotchas for Our Use Case
+  ### Risk Level (low/medium/high)
+  ### Recommendation
+
+  Be thorough — silent failures from library limitations are the hardest bugs to catch in code review.",
+  mode: "bypassPermissions"
+}
+```
+
+Include the dependency audit findings in the context given to ALL reviewers.
+
+### Gate B: Functional Verification Evidence
+
+Check the PR description for a **Verification** section. The dev agent is required to include:
+
+- **For all PRs**: Build passes (`pnpm build` output or confirmation)
+- **For UI/visual features**: Screenshot of the feature rendering in the browser
+- **For features that produce output** (image export, PDF, file download): The actual output artifact or proof it's non-empty (file size, screenshot of result)
+- **For API changes**: curl output showing the endpoint returns the expected response shape
+
+If the PR description lacks verification evidence:
+- **If part of /start-feature**: Message the dev agent via SendMessage: "PR is missing verification evidence. Add a Verification section to the PR description with [specific evidence needed]. See the pre-PR verification protocol."
+- **If standalone**: Inform the user the PR needs verification evidence before review can proceed.
+
+**Do NOT proceed to Step 3 until verification evidence is present.**
+
+### Gate C: Visual Output Check (Conditional)
+
+If the PR produces visual output (images, PDFs, charts, OG cards, share cards, exports):
+- The exported/generated artifact MUST be attached to or linked from the PR description
+- A reviewer must be able to visually inspect the output without running the code
+- If missing, send PR back with: "This PR produces visual output — attach the generated artifact to the PR description."
+
+---
+
+## Step 3: Run Parallel Independent Reviews (Round N)
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+Track the current round number. Round 1 is the initial review. Round 2+ are follow-up reviews after fixes.
+
+**For Round 1**: Launch all applicable reviewers (TA Insider, Domain Specialist(s), LLM Expert if applicable).
+**For Round 2+**: Launch only targeted reviewers — those whose prior findings had FIX NOW or VERIFY AT RUNTIME items that were addressed. Skip reviewers whose prior findings were all resolved or NOT APPLICABLE.
+
+### Launch TA Insider Review (Always)
+
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #274 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 274
+  Also fetch the PR details: gh pr view 274
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  ADDITIONAL CHECKS:
+  7. If new dependencies were added, review the dependency audit findings: [INSERT DEP AUDIT IF APPLICABLE]
+  8. If the PR produces visual output, verify the attached artifact looks correct
+  9. Check that verification evidence in the PR description is credible (not just 'it works')
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title] — Round [N]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+### Launch Domain Specialist Reviews (1-2, Dynamic)
+
+For each selected specialist from Step 2, launch a review agent using the prompt template from `docs/REVIEW-SPECIALISTS.md`. Use the `superpowers:code-reviewer` subagent type for all domain specialists.
+
+**Important:** Copy the full prompt template from the specialist registry, including:
+- The domain-specific checks (80% focus)
+- The general engineering checks (20% focus)
+- The **Runtime Verification Rule** (shared instruction — include verbatim)
+- The Round 2+ fix verification instructions (if applicable)
+
+```
+Task {
+  name: "[domain]-specialist",          // e.g., "sql-specialist", "react-specialist"
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "[FULL PROMPT FROM docs/REVIEW-SPECIALISTS.md FOR THE SELECTED DOMAIN]",
+  mode: "bypassPermissions"
+}
+```
+
+**Example:** If Step 2 selected SQL/Database (primary) and React/Frontend (secondary), launch:
+
+```
+Task { name: "sql-specialist", subagent_type: "superpowers:code-reviewer", prompt: "[SQL/Database prompt]", mode: "bypassPermissions" }
+Task { name: "react-specialist", subagent_type: "superpowers:code-reviewer", prompt: "[React/Frontend prompt]", mode: "bypassPermissions" }
+```
+
+### Launch LLM Expert Review (If Applicable — Unchanged)
+
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #274 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 274
+  Also fetch the PR details: gh pr view 274
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  RUNTIME VERIFICATION RULE:
+  When you encounter code where the runtime behavior is NOT self-evident from
+  reading — flag it as 🟠 VERIFY AT RUNTIME instead of reasoning about correctness.
+  1. State what you THINK the behavior is
+  2. State what the RISK is if you're wrong
+  3. Require the dev to paste actual runtime output proving correctness
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title] — Round [N]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟠 VERIFY AT RUNTIME, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #274. This is review ROUND [N].
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title] — Round [N]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - 🔴 FIX NOW items (MUST be resolved before merge)
+  - ❌ NOT APPLICABLE items with technical rationale
+  - ⚠️ ESCALATE TO FOUNDER items with reason
+  - 🟡 SUGGESTIONS (non-blocking, dev's discretion)
+  ### Final Verdict: [PASS — ready for merge | CHANGES REQUIRED — Round [N+1] needed]",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results & Loop Decision
+
+After synthesis is complete, check the Final Verdict:
+
+### If PASS (0 FIX NOW items):
+
+1. **Post final review summary to GitHub PR** (see template below)
+2. **If part of /start-feature**: Message the PM agent that review is complete and PR is ready for founder merge.
+3. **If standalone**: Inform the user the PR is approved.
+
+### If CHANGES REQUIRED (1+ FIX NOW or VERIFY AT RUNTIME items):
+
+1. **Post round summary to GitHub PR** (see template below)
+2. **Send actionable items to dev agent** (or user if standalone):
+   - List each FIX NOW item with clear description of what needs to change
+   - List each VERIFY AT RUNTIME item with the specific runtime output needed
+   - Reference specific files and line numbers where possible
+3. **Wait for fixes to be pushed** — dev agent pushes fix commits to the PR branch
+4. **Post-fix re-verification gate (MANDATORY):**
+   - Dev MUST re-run ALL functional verification commands from the original PR body
+   - Dev MUST paste updated verification output as a PR comment
+   - If the PR had curl examples, re-run them and paste the responses
+   - If the PR had screenshot evidence, re-capture after fixes
+   - For VERIFY AT RUNTIME items, dev MUST paste the specific runtime output requested
+   - **Fixes without re-verification evidence are not considered complete**
+5. **Go back to Step 3** with Round N+1, targeting only the reviewers whose areas were affected
+
+### Loop Safety
+
+- **Max 4 rounds** — if FIX NOW items remain after 4 rounds, ESCALATE TO FOUNDER with full context
+- **Round 2+ is targeted** — only re-invoke reviewers whose prior FIX NOW items were addressed (don't re-run all 4 reviewers for a one-line fix)
+- **New issues found during fix verification count as new FIX NOW items** — the loop continues
+
+### PR Comment Template
+
+```bash
+gh pr comment 274 --body "$(cat <<'EOF'
+## Triple-Layer Code Review — Round [N] of [TOTAL]
+
+### Reviewers
+| Role | Domain | This Round |
+|------|--------|------------|
+| TA (Insider) | Architecture, types, schema | [Active/Skipped] |
+| [Specialist 1 name] | [Domain] | [Active/Skipped] |
+| [Specialist 2 name] | [Domain] | [Active/Skipped/N/A] |
+| LLM Expert | Prompt quality, token efficiency | [Active/Skipped/N/A] |
+
+### Pre-Review Gates
+- [ ] New dependency audit: [PASS/N/A]
+- [ ] Functional verification evidence: [PASS — describe what was verified]
+- [ ] Visual output attached: [PASS/N/A]
+
+### Issues Found & Resolution
+#### 🔴 FIX NOW
+[List from synthesis — empty if PASS]
+
+#### 🟠 VERIFY AT RUNTIME
+[Items requiring runtime evidence — empty if none]
+
+#### ❌ NOT APPLICABLE
+[List with technical rationale]
+
+#### 🟡 SUGGESTIONS
+[Non-blocking items]
+
+### Post-Fix Verification
+[For Round 2+: paste re-run of original functional verification commands + VERIFY AT RUNTIME evidence]
+
+**Round [N] verdict: [PASS — Ready for merge | CHANGES REQUIRED — see FIX NOW / VERIFY AT RUNTIME items]**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark specialist comments as "NOT APPLICABLE" with technical justification, EXCEPT for VERIFY AT RUNTIME items (see below)
+- **VERIFY AT RUNTIME items cannot be dismissed** — TA synthesis MUST NOT mark these as NOT APPLICABLE. They require runtime evidence from the dev before they can be resolved
+- **Domain specialists are selected dynamically** — see Step 2 and `docs/REVIEW-SPECIALISTS.md` for the registry
+- **Always post summary to GitHub PR** — this creates the audit trail
+- **Review loops until 0 FIX NOW and 0 VERIFY AT RUNTIME items** — a single pass is not sufficient if blocking issues exist
+- **Post-fix re-verification is mandatory** — after Round N fixes, dev must re-run ALL functional verification from the PR body and paste updated output
+- **Pre-review gates are mandatory** — missing verification evidence blocks the review from starting
+- **Max 4 rounds** — escalate to founder if review doesn't converge
+- **Round 2+ is targeted** — don't waste reviewer cycles re-reviewing areas with no changes
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T03:48:17.102Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:48:18.164Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: /start-review 274"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:48:21.080Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T03:48:25.745Z","idleReason":"available","summary":"[to pm-agent] Tasks 2, 3, 4 already complete — PR #274 live"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:48:25.879Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T03:48:33.586Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T03:48:35.510Z","idleReason":"available","summary":"[to pm-agent] PR #274 already created — all dev tasks done"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="cli-specialist" color="purple" summary="Node/CLI specialist review of PR #274 Round 1">
+## Node/CLI Specialist Review: fix(cli): improve sync output and track null-parse files — Round 1
+
+### Async Safety
+
+No issues. The sync loop is sequential (`for...of` with `await`), and the new `updateSyncState`/`saveSyncState` calls for null-parse files follow the same pattern already used for trivial sessions a few lines below. No new concurrency concerns introduced.
+
+### File System & I/O
+
+The new `updateSyncState(syncState, filePath, '__empty__')` call invokes `fs.statSync(realPath)` internally (line 439 of the current source). This is safe here because:
+1. The file was just successfully opened and parsed by `provider.parse(filePath)` — it exists.
+2. `splitVirtualPath` is already used correctly to extract `realPath`.
+3. `saveSyncState` writes atomically with `JSON.stringify` + `writeFileSync` with mode `0o600` — no change in behavior.
+
+The telemetry notice skip in `index.ts` uses `process.argv` directly — no file system concerns.
+
+### Issues Found
+
+**🟡 SUGGESTION — `'__empty__'` sentinel value as sessionId**
+
+`cli/src/commands/sync.ts`, PR diff line `updateSyncState(syncState, filePath, '__empty__');`
+
+The `FileSyncState.sessionId` field is typed as `string` and is used as a sync-state marker only — it is never used as a database key or passed to SQLite queries. So `'__empty__'` is safe as a sentinel. However, two observations:
+
+1. The sentinel is an undocumented magic string. If any future code reads `fileState.sessionId` and treats it as a real session ID (e.g., for lookup or telemetry), it would silently produce wrong results. A brief inline comment on the constant (e.g., `// Sentinel: file parsed but returned no session`) would help. The PR already has a comment explaining *why* — this is just about the *value* being recognizable.
+
+2. For virtual paths (multi-session DB files like Cursor's `state.vscdb`), `updateSyncState` pushes `sessionFragment` into `syncedSessionIds`. If a virtual-path file returns `null` from parse, the `sessionFragment` value would be tracked in `syncedSessionIds` as well, which is correct — it prevents re-discovery. No issue here, just noting I traced the path.
+
+**Verdict: fine as-is, comment is optional polish.**
+
+---
+
+**🟡 SUGGESTION — `process.argv` check placement in index.ts**
+
+`cli/src/index.ts`, PR diff lines 175-178:
+
+```ts
+const isVersionOrHelp = process.argv.some(arg => ['--version', '-V', '--help', '-h'].includes(arg));
+if (!isVersionOrHelp) {
+  showTelemetryNoticeIfNeeded();
+}
+```
+
+This works correctly for the stated goal. Two minor observations:
+
+1. Commander itself provides `program.opts()` after parsing, but since this runs *before* `program.parse()`, checking `process.argv` directly is the right call. No issue.
+
+2. Edge case: if a user passes both `--help` and another command (e.g., `code-insights sync --help`), the telemetry notice is still suppressed. This is actually *desirable* behavior — `--help` anywhere should be a quick exit with no side effects.
+
+3. The `.some()` + `.includes()` approach does a linear scan of a 4-element array per argv entry — negligible performance, no concern.
+
+**Verdict: correct and clean.**
+
+---
+
+**🔵 NOTE — `providerSkippedCount` removal changes summary output semantics**
+
+The removal of `providerSkippedCount` means that when *all* files for a provider are null-parse or trivial (0 synced, N skipped), the old code would still show a summary line (`0 synced, N empty`). The new code skips the summary entirely because `providerSyncedCount > 0` is false. Instead, the "up to date" message would NOT show either, because `filesToSync.length > 0` (they needed syncing, they just all came back empty).
+
+Trace through the flow for a provider with 5 new files that all parse to null:
+- `filesToSync.length` = 5 (not 0, so we don't hit the "up to date" branch)
+- All 5 parse to null → `providerSyncedCount` = 0
+- The `if (providerSyncedCount > 0)` guard is false → **no output line at all**
+- The spinner was `.stop()`'d, so no spinner artifact either
+
+This is a silent provider — no crash, no error, just no output for that provider. This may be intentional (cleaner output), but it's worth confirming this is desired behavior. Previously users would see "0 synced, 5 empty" which at least acknowledged the files existed.
+
+**Verdict: not a bug, but a UX behavior change to confirm is intentional.**
+
+---
+
+**🔵 NOTE — `saveSyncState` called inside a loop (pre-existing pattern)**
+
+The PR adds a `saveSyncState(syncState)` call for null-parse files. This matches the existing pattern for trivial sessions (line 198 in current source). Both write `JSON.stringify(state)` to disk on every iteration. For the 69 copilot + 48 cursor empty files mentioned in the PR description, that's 117 synchronous file writes on first run. This is a one-time cost (subsequent runs skip these files), and the pattern is pre-existing, so this is not a regression — just noting it.
+
+---
+
+### Verdict
+
+**APPROVE with minor suggestions.**
+
+No blocking issues found. The core fix (tracking null-parse files in sync state) is correct and solves the re-parse-every-run performance problem. The telemetry skip is clean. The output cleanup is a net improvement.
+
+The only item worth a quick confirmation from the dev: the silent-provider case (all files parse to null → no output line) — is that intentional? If so, ship it.
+
+</teammate-message>
+
+<teammate-message teammate_id="cli-specialist" color="purple">
+{"type":"idle_notification","from":"cli-specialist","timestamp":"2026-04-05T03:50:37.988Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="Phase 1 insider review complete - APPROVED">
+## TA Review (Phase 1 - Insider): fix(cli): improve sync output and track null-parse files in sync state — Round 1
+
+### Data Contract Impact
+- [x] Types aligned across CLI, server, and dashboard — No type changes. `SyncState`/`FileSyncState` unchanged. The `sessionId: string` field accepts the `'__empty__'` sentinel without type modification.
+- [x] SQLite schema changes have proper migrations — N/A.
+- [x] CLI binary name is `code-insights` — Correct.
+- [x] No breaking changes to existing SQLite data — The `'__empty__'` sentinel lives entirely in `.sync-state.json`, never touches SQLite.
+
+### Test Coverage (TDD Domain Verification)
+- N/A — CLI command wiring and entry point are SKIP domains per QA policy.
+
+### Pattern Consistency
+- [x] Matches existing codebase patterns — `updateSyncState()` + `saveSyncState()` pair follows the identical pattern used for trivial sessions.
+- [x] SQLite queries use prepared statements — N/A.
+- [x] Provider interface followed — N/A.
+
+### Architecture Alignment
+
+**1. Null-parse sentinel (`'__empty__'`):** Sound. The sentinel stays in `.sync-state.json` only — never leaks to SQLite. `filterFilesToSync()` will correctly re-parse these files if they're modified on disk (timestamp comparison). Force sync clears all entries including sentinels.
+
+**2. Telemetry skip:** Clean. Checking `process.argv` before `program.parse()` is correct since Commander hasn't parsed yet. Flag list matches Commander.js defaults.
+
+**3. Output cleanup:** Good UX. The condition narrowing from `providerSyncedCount > 0 || providerSkippedCount > 0` to just `providerSyncedCount > 0` is logically correct — the "up to date" path handles the zero-files case, and null-parse/trivial files no longer need a "skipped" count.
+
+### Issues Found
+No FIX NOW items. No VERIFY AT RUNTIME items. No issues requiring changes.
+
+### Phase 1 Verdict
+**APPROVED** from architecture perspective.
+
+Clean, focused PR with zero data contract impact. All three changes follow existing patterns. Posted as PR comment: https://github.com/melagiri/code-insights/pull/274#issuecomment-4188212018
+
+Ready for Phase 2 synthesis whenever domain specialist reviews are in.
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-04-05T03:50:48.762Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+that is ok - the edgecase. I merged the PR
+
+---
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"dev-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"cli-specialist has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"shutdown_approved","requestId":"shutdown-1775361176826@dev-agent","from":"dev-agent","timestamp":"2026-04-05T03:53:00.992Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"shutdown_approved","requestId":"shutdown-1775361177373@ta-reviewer","from":"ta-reviewer","timestamp":"2026-04-05T03:53:02.063Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="cli-specialist" color="purple">
+{"type":"shutdown_approved","requestId":"shutdown-1775361177597@cli-specialist","from":"cli-specialist","timestamp":"2026-04-05T03:53:02.168Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"pm-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"shutdown_approved","requestId":"shutdown-1775361175925@pm-agent","from":"pm-agent","timestamp":"2026-04-05T03:53:04.127Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+---
+
+# /release — Automated Release Workflow
+
+**Arguments**: patch
+
+You are executing the release workflow for `@code-insights/cli`. Parse `patch` to extract:
+- **type** (required): `patch`, `minor`, or `major`
+- **description** (optional): A one-liner for the release title
+
+If type is missing or not one of `patch`/`minor`/`major`, ask the user to provide it.
+
+---
+
+## Step 1: Pre-flight Checks
+
+Run ALL of these checks. If any fail, STOP and tell the user what to fix.
+
+```bash
+# Must be on master
+git branch --show-current  # Must output "master"
+
+# Must have clean working tree
+git status --porcelain     # Must be empty
+
+# Pull latest
+git pull origin master
+```
+
+Read the current version from `cli/package.json` (the `"version"` field).
+
+Compute the new version:
+- `patch`: increment the third number (3.6.1 → 3.6.2)
+- `minor`: increment the second number, reset third to 0 (3.6.1 → 3.7.0)
+- `major`: increment the first number, reset second and third to 0 (3.6.1 → 4.0.0)
+
+**Resume detection**: Run `npm view @code-insights/cli version` to get the currently published version. If the version in `package.json` is ALREADY GREATER than the npm version, this is a **resumed release** — skip to Step 6.
+
+---
+
+## Step 2: Analyze Changes
+
+Find the last git tag and analyze what changed:
+
+```bash
+# Find latest tag
+git describe --tags --abbrev=0
+
+# Commits since last tag
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+
+# Full diff since last tag
+git diff $(git describe --tags --abbrev=0)..HEAD --stat
+```
+
+Read the full diff and commit messages. Then:
+
+1. **Generate a CHANGELOG entry** in the existing format (see `cli/CHANGELOG.md` for style). Group changes under `### Added`, `### Changed`, `### Fixed`, `### Improved` as appropriate. Match the existing tone — concise but descriptive, with bold lead-ins.
+
+2. **Generate a release title** — a short phrase summarizing the release (e.g., "LLM-Powered Export Page", "PostHog custom domain"). Use the user's description if provided, otherwise derive from the changes.
+
+3. **For minor/major releases**: Assess which docs need updating:
+   - `docs/ROADMAP.md` — if new milestones were completed
+   - `docs/PRODUCT.md` — if product capabilities changed
+   - `docs/VISION.md` — for major releases, if the vision expanded
+   - `README.md` — if user-facing features or setup changed
+   - `cli/README.md` — if CLI usage, commands, or npm package description changed
+
+---
+
+## GATE 1: Review Changelog
+
+**STOP and present to the user:**
+
+```
+Release: vX.Y.Z — {title}
+Type: {patch|minor|major}
+
+Proposed CHANGELOG entry:
+─────────────────────────
+{the generated changelog entry}
+─────────────────────────
+
+Files to modify:
+  - cli/package.json (version bump)
+  - cli/CHANGELOG.md (new entry)
+  {- docs/ROADMAP.md (if applicable)}
+  {- docs/PRODUCT.md (if applicable)}
+  {- docs/VISION.md (if applicable)}
+  {- cli/README.md (if applicable)}
+
+Approve, or tell me what to change?
+```
+
+Wait for user approval. If they provide edits, incorporate them.
+
+---
+
+## Step 3: Apply Version Bump
+
+After approval, make the changes:
+
+1. **`cli/package.json`** — Update the `"version"` field to the new version
+2. **`cli/CHANGELOG.md`** — Prepend the new entry at the top (after the header, before the previous version entry). Format: `## [X.Y.Z] - YYYY-MM-DD`
+3. **Docs** (if approved at Gate 1) — Make the specific updates discussed
+
+---
+
+## Step 4: Build & Test
+
+Run the full build and test suite:
+
+```bash
+# Full workspace build (this is what prepublishOnly does)
+cd /Users/melagiri/Workspace/codeInsights/code-insights && pnpm build
+
+# Run tests
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && pnpm test
+```
+
+**If build fails → STOP.** Show the error. Do not continue.
+**If tests fail → STOP.** Show the error. Do not continue.
+
+---
+
+## GATE 2: Confirm Publish
+
+**STOP and present to the user:**
+
+Show the full `git diff` of all changes made, then:
+
+```
+Build: PASSED
+Tests: PASSED
+
+Ready to:
+  1. Commit changes to master
+  2. Push to origin
+  3. Publish v{X.Y.Z} to npm
+  4. Create GitHub release
+
+Proceed?
+```
+
+Wait for explicit user approval before continuing.
+
+---
+
+## Step 5: Commit & Push
+
+Commit with specific files only (never `git add .`):
+
+```bash
+# Add only the files we changed
+git add cli/package.json cli/CHANGELOG.md
+# Add any docs files that were modified (if applicable)
+# git add docs/ROADMAP.md docs/PRODUCT.md docs/VISION.md README.md cli/README.md
+
+git commit -m "$(cat <<'EOF'
+chore: bump version to vX.Y.Z
+
+{one-line summary of what changed}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+
+git push origin master
+```
+
+---
+
+## Step 6: Publish to npm
+
+```bash
+cd /Users/melagiri/Workspace/codeInsights/code-insights/cli && npm publish
+```
+
+The `prepublishOnly` script in `package.json` handles building all packages and copying dashboard/server dist files automatically.
+
+Verify the publish succeeded:
+
+```bash
+npm view @code-insights/cli version
+```
+
+If publish fails, show the error and STOP. The commit is already pushed — tell the user to fix the issue and re-run `/release` (resume detection will skip to this step).
+
+---
+
+## Step 7: GitHub Release
+
+Create the GitHub release using the changelog entry as the body:
+
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z — {release title}" \
+  --notes "$(cat <<'EOF'
+{changelog entry content, formatted for GitHub}
+
+**Full Changelog**: https://github.com/melagiri/code-insights/compare/{previous_tag}...vX.Y.Z
+EOF
+)"
+```
+
+---
+
+## GATE 3: Verify
+
+**STOP and present to the user:**
+
+```
+Release vX.Y.Z complete!
+
+  npm: @code-insights/cli@X.Y.Z ✓
+  GitHub: {release URL}
+  Commit: {commit hash}
+
+Everything look correct?
+```
+
+---
+
+## Step 8: Done
+
+Summarize the release:
+
+```
+Released @code-insights/cli vX.Y.Z
+
+  Changes: {brief summary}
+  npm: https://www.npmjs.com/package/@code-insights/cli
+  GitHub: {release URL}
+  Files modified: {list}
+```
+
+---
+
+## Important Rules
+
+- **NEVER skip the gates** — always pause for user confirmation
+- **NEVER use `git add .` or `git add -A`** — add specific files only
+- **If build or tests fail, STOP** — do not try to fix and continue
+- **Commit message format**: `chore: bump version to vX.Y.Z` (matches existing pattern)
+- **Resume is safe** — if re-run after a partial release, it picks up where it left off
+
+---
+
+approved
+
+---
+
+proceed
+
+---
+
+this is what it looks like now:
+
+code-insights
+
+  Code Insights collects anonymous usage data to improve the CLI and dashboard.
+  Includes: commands, page views, OS, CLI version, AI tool types, session counts,
+  LLM provider, performance timing.
+  Never includes: file paths, project names, session content, API keys, or personal data.
+
+  Disable: code-insights telemetry disable
+  Details: code-insights telemetry status
+
+
+  Code Insights Sync
+
+✔ Database ready
+
+  Syncing claude-code...
+⠋ Discovering claude-code sessions...[claude-code] Discovered 598 JSONL files. This may take a moment to sync.
+  598 total session files discovered — sync may take a moment
+  ✔ Synced 1 new, 1 updated (559 messages)
+
+  Syncing cursor...
+
+  Syncing codex-cli...
+  ✔ codex-cli up to date
+
+  Syncing copilot-cli...
+  ✔ copilot-cli up to date
+
+  Syncing copilot...
+✔ Usage stats reconciled (293 sessions with usage data)
+
+   ____          _        ___           _       _     _
+  / ___|___   __| | ___  |_ _|_ __  ___(_) __ _| |__ | |_ ___
+ | |   / _ \ / _` |/ _ \  | || '_ \/ __| |/ _` | '_ \| __/ __|
+ | |__| (_) | (_| |  __/  | || | | \__ \ | (_| | | | | |_\__ \
+  \____\___/ \__,_|\___| |___|_| |_|___/_|\__, |_| |_|\__|___/
+                                           |___/ v4.9.3
+
+  Dashboard:  http://localhost:7890
+  Press Ctrl+C to stop
+
+  Code Insights dashboard running at http://localhost:7890
+
+
+---
+
+Changes required:
+1. Discovering claude-code sessions...[claude-code] Discovered 598 JSONL files. This may take a moment to sync.
+  598 total session files discovered — sync may take a moment
+  ✔ Synced 1 new, 1 updated (559 messages)
+
+is too verbose - Discovering all that is not required. 
+
+2. Cursor, and other tools - instead of just saying up to date. just add a number. x sessions synced. Synced 1 new, 1 updated (559 messages) - like this.. 
+
+3. copilot is different - it says: Usage stats reconciled (293 sessions with usage data) --- why is this different? Can we make it consistent for all tools..
+
+4. This section - Code Insights collects anonymous usage data to improve the CLI and dashboard.
+  Includes: commands, page views, OS, CLI version, AI tool types, session counts,
+  LLM provider, performance timing.
+  Never includes: file paths, project names, session content, API keys, or personal data.
+
+  Disable: code-insights telemetry disable
+  Details: code-insights telemetry status --- This can be minimized and moved below somewhere to make it less relevant and also use lighter grey colours? to make it just like terms and conditions not primary text which grabs more attention
+
+---
+
+why name the tools again under each tool name sync?
+
+---
+
+Up to date (38 sessions, 3 new, 1 update) will make more sense, isn't it?
+
+---
+
+Synced 1 new, 1 updated (559 messages) - this is beautiful. for tools like cursor, codex also we get the same..
+
+---
+
+yes, fix it directly and update the PR
+
+---
+
+yes, fix it with full ceremony and update the PR
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T04:13:12.799Z","idleReason":"available","summary":"[to orchestrator] SPAWN_REQUEST: dev-agent for sync output polish"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T04:13:19.085Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T04:16:45.193Z","idleReason":"available","summary":"[to pm-agent] PR #276 ready for review"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"idle_notification","from":"dev-agent","timestamp":"2026-04-05T04:16:50.521Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"idle_notification","from":"pm-agent","timestamp":"2026-04-05T04:17:02.451Z","idleReason":"available","summary":"[to orchestrator] PR #276 ready — please trigger /start-review 276"}
+</teammate-message>
+
+---
+
+<teammate-message teammate_id="ta-reviewer" color="yellow" summary="TA Phase 1 Insider review for PR #276">
+## TA Review (Phase 1 - Insider): feat(cli): polish sync output — reduce noise, show session counts — Round 1
+
+### Architecture Alignment
+
+**Data Contract Impact**
+- [x] Types aligned across CLI, server, and dashboard — no type changes
+- [x] SQLite schema changes have proper migrations — no schema changes
+- [x] CLI binary name is `code-insights` — unchanged
+- [x] No breaking changes to existing SQLite data — confirmed
+
+**Scope:** Pure CLI output cosmetics across 3 files (`sync.ts`, `claude-code.ts`, `telemetry.ts`). No types, no schema, no API surface, no server, no dashboard touched. This is strictly terminal UX polish.
+
+### Test Coverage (TDD Domain Verification)
+
+- [x] `cli/src/commands/sync.ts` — existing `sync.test.ts` does not assert on the specific output strings being changed (checked: no assertions on "up to date", "Usage stats reconciled", or discovery warning text). Tests assert on `recalculateUsageStats` being called/not-called — that contract is preserved.
+- [x] `cli/src/providers/claude-code.ts` — removed `console.warn` and `LARGE_FILE_WARN_THRESHOLD` constant. No tests existed for this warning behavior. N/A.
+- [x] `cli/src/utils/telemetry.ts` — output formatting change only. N/A for TDD domain.
+
+### Pattern Consistency
+
+- [x] Matches existing codebase patterns — uses `chalk.dim()` and `chalk.gray()` consistently with surrounding code
+- [x] `chalk` import added to `telemetry.ts` — correct, it was not previously imported there
+- [x] `spinner.stop()` (no message) pattern already used elsewhere in sync.ts — consistent
+- [x] `recalculateUsageStats()` return value discarded — verified the return value is only consumed at this one call site for the log message. Safe to discard.
+
+### Issues Found
+
+No issues found. This is a clean, focused cosmetic change.
+
+**Observations (informational, not blocking):**
+
+- The "Up to date (N sessions)" message uses `sessionFiles.length` which is the total discovered files count for that provider. This is accurate — it represents the number of sessions the provider knows about, which is the right number to show the user.
+- The telemetry notice condensation removes the "what we collect / what we don't collect" details. Users can still run `code-insights telemetry status` for full details. The notice file mechanism (version-gated display) is preserved — the condensed message still only shows once per CLI version upgrade.
+- Removing the `LARGE_FILE_WARN_THRESHOLD` from `claude-code.ts` is clean — the spinner in `sync.ts` already provides discovery feedback, and the per-provider warning was redundant with the (now also removed) cross-provider warning in `sync.ts`.
+
+### Phase 1 Verdict
+
+[x] **Approved** (from architecture perspective)
+
+No data contract impact, no type changes, no schema changes, no API changes. All modifications are strictly CLI terminal output formatting. The changes are focused, consistent with existing patterns, and tests pass (1049 tests, 50 files per PR description).
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"idle_notification","from":"ta-reviewer","timestamp":"2026-04-05T04:18:16.250Z","idleReason":"available"}
+</teammate-message>
+
+<teammate-message teammate_id="cli-specialist" color="purple" summary="CLI specialist review for PR #276">
+## Node/CLI Specialist Review: feat(cli): polish sync output — Round 1
+
+### CLI UX
+
+The changes improve CLI UX meaningfully. The before/after comparison in the PR description demonstrates a cleaner, less noisy sync experience. Key UX observations:
+
+1. **Spinner-only discovery feedback** — removing the `console.warn` and the "total session files discovered" block is sound. The spinner `Discovering {provider} sessions...` already covers the feedback gap. Users don't need to know internal file counts during discovery.
+
+2. **"Up to date" with session count** — showing `Up to date (170 sessions)` gives users a useful signal about how much data the tool is managing. Good choice.
+
+3. **Condensed telemetry notice** — reducing the 7-line banner to a single dim line is a significant UX improvement. The verbose disclosure was excessive for a recurring notice that shows on every version bump.
+
+4. **Silent usage stats reconcile** — suppressing the `Usage stats reconciled (170 sessions with usage data)` line is appropriate. This is internal housekeeping that users don't need to see.
+
+### Issues Found
+
+**🟡 SUGGESTION — "sessions" label may be misleading in up-to-date message**
+
+At `cli/src/commands/sync.ts:158` (post-diff line), the new message is:
+```ts
+log(chalk.gray(`  ✔ Up to date (${sessionFiles.length} sessions)`));
+```
+
+`sessionFiles` is the result of `provider.discover()`, which returns **file paths** (one JSONL file per session for claude-code, but the semantics may differ for other providers like cursor which uses a single `state.vscdb`). For claude-code this is accurate (1 file = 1 session), but for cursor, `sessionFiles.length` could be `1` even when there are many sessions inside that single vscdb file.
+
+Looking at the PR screenshot, cursor shows `Up to date (170 sessions)` — this is likely the actual session count from the database, not the file count. So either:
+- The cursor provider's `discover()` returns session-level entries (making the label correct), OR
+- The number shown is coincidental/from a different provider
+
+Worth a quick verification that `sessionFiles.length` semantically equals "number of sessions" across all 5 providers. If it doesn't, consider labeling it `(${sessionFiles.length} files)` or fetching the actual session count from the DB for the up-to-date message.
+
+**🟡 SUGGESTION — `spinner.stop()` leaves no visual trace for usage stats**
+
+At `cli/src/commands/sync.ts:256-257` (post-diff):
+```ts
+recalculateUsageStats();
+spinner.stop();
+```
+
+`spinner.stop()` clears the spinner line entirely, which means the spinner text `Recalculating usage stats...` flashes and vanishes. This is fine if the operation is fast (<100ms), but if it takes noticeable time on large databases, the user sees a spinner appear and vanish with no explanation. The current approach is acceptable for the stated goal (suppress internal housekeeping), but if the operation ever becomes slow, consider `spinner.stop()` before starting rather than starting and stopping.
+
+**🔵 NOTE — Telemetry notice lost the "Details" pointer**
+
+The old banner included `Details: code-insights telemetry status`. The new condensed line only mentions the disable command. Users who want to see what's collected now have no pointer to `telemetry status`. This is a minor discoverability loss. Could be:
+```
+Telemetry enabled · Details: code-insights telemetry · Disable: code-insights telemetry disable
+```
+But this may be intentionally trimmed for brevity — author's call.
+
+**🔵 NOTE — `chalk` import added to telemetry.ts**
+
+The new `import chalk from 'chalk'` in `cli/src/utils/telemetry.ts` is fine — chalk is already a dependency used throughout the CLI. No issue, just noting for completeness.
+
+### Verdict
+
+**APPROVE with minor suggestions.** The changes are clean, focused, and achieve the stated goal of reducing sync output noise. No logic bugs, no async issues, no cross-platform concerns. The two suggestions (session count label accuracy across providers, lost telemetry details pointer) are minor and non-blocking. The code is safe to merge as-is.
+</teammate-message>
+
+<teammate-message teammate_id="cli-specialist" color="purple">
+{"type":"idle_notification","from":"cli-specialist","timestamp":"2026-04-05T04:18:27.898Z","idleReason":"available"}
+</teammate-message>
+
+---
+
+merged
+
+---
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"pm-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"ta-reviewer has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"cli-specialist has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="pm-agent" color="blue">
+{"type":"shutdown_approved","requestId":"shutdown-1775363006170@pm-agent","from":"pm-agent","timestamp":"2026-04-05T04:23:30.674Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="ta-reviewer" color="yellow">
+{"type":"shutdown_approved","requestId":"shutdown-1775363006781@ta-reviewer","from":"ta-reviewer","timestamp":"2026-04-05T04:23:30.926Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="cli-specialist" color="purple">
+{"type":"shutdown_approved","requestId":"shutdown-1775363007179@cli-specialist","from":"cli-specialist","timestamp":"2026-04-05T04:23:31.259Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+<teammate-message teammate_id="system">
+{"type":"teammate_terminated","message":"dev-agent has shut down."}
+</teammate-message>
+
+<teammate-message teammate_id="dev-agent" color="green">
+{"type":"shutdown_approved","requestId":"shutdown-1775363006376@dev-agent","from":"dev-agent","timestamp":"2026-04-05T04:23:34.671Z","paneId":"in-process","backendType":"in-process"}
+</teammate-message>
+
+---
+
+yes
+
+---
+
+approved
