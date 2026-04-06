@@ -132,7 +132,7 @@ code-insights stats patterns           # Cross-session patterns summary
 
 - **Runtime**: Node.js (ES2022, ES Modules)
 - **CLI Framework**: Commander.js
-- **Database**: SQLite (better-sqlite3) — WAL mode, local at `~/.code-insights/data.db`, Schema V7 (V8 planned)
+- **Database**: SQLite (better-sqlite3) — WAL mode, local at `~/.code-insights/data.db`, Schema V9
 - **Dashboard**: Vite + React 19 SPA
 - **Server**: Hono
 - **UI**: Tailwind CSS 4 + shadcn/ui (New York), Lucide icons

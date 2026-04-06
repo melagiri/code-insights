@@ -108,7 +108,7 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 - **Location:** `~/.code-insights/data.db`
 - **Mode:** WAL (concurrent reads during CLI sync)
 - **Driver:** better-sqlite3 (synchronous, fast, no async overhead)
-- **Schema:** Versioned migrations (V1–V7) applied on startup
+- **Schema:** Versioned migrations (V1–V9) applied on startup
 - **Timestamps:** ISO 8601 strings
 
 ### Tables
@@ -122,7 +122,8 @@ Providers are registered in `providers/registry.ts`. To add a new source tool:
 | `usage_stats` | Global usage aggregation | V1 |
 | `session_facets` | Cross-session facet data (friction, patterns, workflow) | V3 |
 | `reflect_snapshots` | Cached synthesis results, composite PK `(period, project_id, source_tool)` | V4 |
-| `analysis_usage` | Per-session LLM analysis cost data, composite PK `(session_id, analysis_type)` | V7 |
+| `analysis_usage` | Per-session LLM analysis cost data, composite PK `(session_id, analysis_type)`; V8 adds `session_message_count` for resume detection | V7, V8 |
+| `analysis_queue` | Async hook-triggered analysis jobs; durable retry-aware queue (pending/processing/completed/failed, max 3 attempts) | V9 |
 | `schema_version` | Migration tracking | V1 |
 
 ---

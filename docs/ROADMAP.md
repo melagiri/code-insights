@@ -258,11 +258,9 @@ This roadmap outlines the development phases for Code Insights. Timelines are fl
 
 ---
 
-## Phase 12: Native Analysis via Claude Code Hooks (Planned)
+## Phase 12: Native Analysis via Claude Code Hooks ✅
 
 **Goal:** Zero-config session analysis for Claude Code users — no API key needed. Uses the Claude subscription they already have.
-
-**Plan:** [`docs/plans/2026-03-28-native-analysis-hooks.md`](plans/2026-03-28-native-analysis-hooks.md)
 
 ### Milestones
 
