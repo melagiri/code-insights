@@ -265,7 +265,7 @@ code-insights reset --confirm              # Delete all local data
 
 ### LLM Cost Tracking
 
-Per-session analysis costs are tracked in the `analysis_usage` SQLite table (Schema V7). Each analysis call records provider, model, token counts (including cache creation/read tokens), estimated USD cost, and duration. The dashboard shows cost per session after analysis runs. Cost data is also available via the `/api/analysis/usage` endpoint.
+Per-session analysis costs are tracked in the `analysis_usage` SQLite table (Schema V7, extended in V8). Each analysis call records provider, model, token counts (including cache creation/read tokens), estimated USD cost, and duration. The dashboard shows cost per session after analysis runs. Cost data is also available via the `/api/analysis/usage` endpoint.
 
 ### Message Classification (Schema V6)
 
@@ -305,7 +305,7 @@ Adding a new source tool requires implementing the `SessionProvider` interface i
 ## Tech Stack
 
 - **CLI**: Node.js (ES2022, ES Modules), Commander.js
-- **Database**: SQLite (`better-sqlite3`) at `~/.code-insights/data.db` — WAL mode, local, Schema V7
+- **Database**: SQLite (`better-sqlite3`) at `~/.code-insights/data.db` — WAL mode, local, Schema V9
 - **Server**: Hono — lightweight API server, serves dashboard SPA at `localhost:7890`
 - **Dashboard**: Vite + React 19 SPA, Tailwind CSS 4 + shadcn/ui
 - **AI**: Multi-provider — OpenAI, Anthropic, Gemini, Ollama (your own API keys, proxied server-side)
