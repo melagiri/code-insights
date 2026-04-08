@@ -3,7 +3,7 @@
   "checkpoint_id": "abc894959e52",
   "strategy": "manual-commit",
   "branch": "master",
-  "checkpoints_count": 1,
+  "checkpoints_count": 13,
   "files_touched": [
     ".claude/hookify.use-git-rm-for-tracked-files.local.md"
   ],
@@ -28,13 +28,20 @@
       "context": "/ab/c894959e52/2/context.md",
       "content_hash": "/ab/c894959e52/2/content_hash.txt",
       "prompt": "/ab/c894959e52/2/prompt.txt"
+    },
+    {
+      "metadata": "/ab/c894959e52/3/metadata.json",
+      "transcript": "/ab/c894959e52/3/full.jsonl",
+      "context": "/ab/c894959e52/3/context.md",
+      "content_hash": "/ab/c894959e52/3/content_hash.txt",
+      "prompt": "/ab/c894959e52/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 1103,
-    "cache_creation_tokens": 356654,
-    "cache_read_tokens": 11388746,
-    "output_tokens": 35702,
-    "api_call_count": 120
+    "input_tokens": 1348,
+    "cache_creation_tokens": 650767,
+    "cache_read_tokens": 16195360,
+    "output_tokens": 53933,
+    "api_call_count": 178
   }
 }
