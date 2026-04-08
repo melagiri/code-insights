@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "abc894959e52",
+  "session_id": "873e822f-4271-44c3-a58d-b095ed7590ee",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-08T01:34:28.295316Z",
+  "branch": "master",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/hookify.use-git-rm-for-tracked-files.local.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d852328a46e2",
+  "token_usage": {
+    "input_tokens": 1103,
+    "cache_creation_tokens": 356654,
+    "cache_read_tokens": 11388746,
+    "output_tokens": 35702,
+    "api_call_count": 120
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-08T01:34:28.113368Z",
+    "agent_lines": 0,
+    "human_added": 10904,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 10904,
+    "agent_percentage": 0
+  }
+}
