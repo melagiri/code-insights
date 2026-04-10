@@ -500,7 +500,11 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
       if ((bubble.type === 1 || bubble.role === 'user') && typeof bubble.gitStatusRaw === 'string') {
         const match = bubble.gitStatusRaw.match(/^On branch (.+)/m);
         if (match) {
-          gitBranch = match[1].trim();
+          const branchName = match[1].trim();
+          // Exclude detached HEAD state which git reports as "(no branch)"
+          if (branchName !== '(no branch)') {
+            gitBranch = branchName;
+          }
           break;
         }
       }
@@ -509,7 +513,7 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
     // Build session usage from composerData.usageData (cost in cents) and
     // per-bubble tokenCount aggregation (inputTokens/outputTokens on assistant bubbles).
     let usage: import('../types.js').SessionUsage | undefined;
-    const usageData = composerData.usageData as Record<string, { costInCents?: number; amount?: number }> | undefined;
+    const usageData = composerData.usageData as Record<string, { costInCents?: number }> | undefined;
     const costInCents = usageData?.default?.costInCents;
 
     // Sum token counts from assistant bubbles (user bubbles always report 0)
