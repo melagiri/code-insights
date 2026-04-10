@@ -472,10 +472,10 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
     const timestamps = messages.map(m => m.timestamp.getTime()).filter(t => t > 0);
     let startedAt = timestamps.length > 0
       ? new Date(timestamps.reduce((a, b) => a < b ? a : b))
-      : new Date();
+      : new Date(0); // Epoch fallback — avoids misleading "now" timestamps
     let endedAt = timestamps.length > 0
       ? new Date(timestamps.reduce((a, b) => a > b ? a : b))
-      : new Date();
+      : new Date(0);
 
     // If timestamps are missing or invalid, try composerData timestamps
     const createdAt = composerData.createdAt as number | undefined;
@@ -492,6 +492,52 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
     const assistantMessages = messages.filter(m => m.type === 'assistant');
     const toolCallCount = messages.reduce((sum, m) => sum + m.toolCalls.length, 0);
 
+    // Extract gitBranch from the first user bubble that has gitStatusRaw.
+    // gitStatusRaw looks like: "On branch master\nYour branch is up to date..."
+    // gitStatusRaw is not surfaced on ParsedMessage — scan rawBubbles directly.
+    let gitBranch: string | null = null;
+    for (const bubble of rawBubbles) {
+      if ((bubble.type === 1 || bubble.role === 'user') && typeof bubble.gitStatusRaw === 'string') {
+        const match = bubble.gitStatusRaw.match(/^On branch (.+)/m);
+        if (match) {
+          gitBranch = match[1].trim();
+          break;
+        }
+      }
+    }
+
+    // Build session usage from composerData.usageData (cost in cents) and
+    // per-bubble tokenCount aggregation (inputTokens/outputTokens on assistant bubbles).
+    let usage: import('../types.js').SessionUsage | undefined;
+    const usageData = composerData.usageData as Record<string, { costInCents?: number; amount?: number }> | undefined;
+    const costInCents = usageData?.default?.costInCents;
+
+    // Sum token counts from assistant bubbles (user bubbles always report 0)
+    let totalInput = 0;
+    let totalOutput = 0;
+    for (const bubble of rawBubbles) {
+      if (bubble.type === 2 || bubble.role === 'assistant') {
+        const tc = bubble.tokenCount as Record<string, number> | undefined;
+        if (tc) {
+          totalInput += tc.inputTokens || 0;
+          totalOutput += tc.outputTokens || 0;
+        }
+      }
+    }
+
+    if (typeof costInCents === 'number' || totalInput > 0 || totalOutput > 0) {
+      usage = {
+        totalInputTokens: totalInput,
+        totalOutputTokens: totalOutput,
+        cacheCreationTokens: 0,
+        cacheReadTokens: 0,
+        estimatedCostUsd: typeof costInCents === 'number' ? costInCents / 100 : 0,
+        modelsUsed: [],
+        primaryModel: 'unknown',
+        usageSource: 'session',
+      };
+    }
+
     const session: ParsedSession = {
       id: `cursor:${composerId}`,
       projectPath,
@@ -502,17 +548,17 @@ function parseCursorSession(dbPath: string, composerId: string): ParsedSession |
       sessionCharacter: null,
       startedAt,
       endedAt,
-      messageCount: messages.length,
+      messageCount: userMessages.length + assistantMessages.length,
       userMessageCount: userMessages.length,
       assistantMessageCount: assistantMessages.length,
       toolCallCount,
       compactCount: 0,
       autoCompactCount: 0,
       slashCommands: [],
-      gitBranch: null, // Not available from Cursor's DB
+      gitBranch,
       claudeVersion: null,
       sourceTool: 'cursor',
-      usage: undefined, // No token data in Cursor's DB
+      usage,
       messages,
     };
 
@@ -707,10 +753,17 @@ function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: s
     // Truncate to 10,000 chars (same as Claude Code parser)
     const truncatedContent = content.length > 10000 ? content.slice(0, 10000) : content;
 
-    // Extract timestamp (milliseconds)
+    // Extract timestamp (milliseconds).
+    // Cursor does not store a createdAt field on bubbles. Real wall-clock time lives
+    // in assistant bubbles under timingInfo.clientRpcSendTime (Unix ms). User bubbles
+    // have no timestamp — leave as epoch so session bounds code filters them out.
+    // NOTE: clientStartTime is a performance offset (e.g. 926228.7 ms), NOT a wall clock.
     let timestamp: Date;
-    if (bubble.createdAt) {
-      timestamp = new Date(typeof bubble.createdAt === 'number' ? bubble.createdAt : Date.parse(bubble.createdAt as string));
+    const timingInfo = bubble.timingInfo as Record<string, unknown> | undefined;
+    const clientRpcSendTime = timingInfo?.clientRpcSendTime;
+    if (typeof clientRpcSendTime === 'number' && clientRpcSendTime > 1_000_000_000_000) {
+      // Sanity-check: must be after 2001-09-09 (Unix ms > 1e12) to be a wall clock
+      timestamp = new Date(clientRpcSendTime);
     } else {
       timestamp = new Date(0); // Epoch fallback — filtered out of session bounds calculation
     }
@@ -761,7 +814,7 @@ function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: s
       thinking: null, // Cursor doesn't expose thinking
       toolCalls,
       toolResults: [], // Not available from Cursor's format
-      usage: null, // No per-message usage data
+      usage: null, // Per-message usage not available; session-level tokens aggregated from rawBubbles
       timestamp,
       parentId: null,
     });
