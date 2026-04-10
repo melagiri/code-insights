@@ -214,6 +214,46 @@ describe('CursorProvider — parsing accuracy fixes', () => {
     expect(session!.gitBranch).toBeNull();
   });
 
+  // ── Lexical JSON in text field ────────────────────────────────────────────
+
+  it('extracts plain text from Lexical JSON stored in the text field', async () => {
+    const lexicalJson = JSON.stringify({
+      root: {
+        children: [
+          {
+            type: 'paragraph',
+            children: [{ text: 'Go through the codebase and understand the project.' }],
+          },
+        ],
+      },
+    });
+    const dbPath = makeCursorDb(tempDir, {
+      conversation: [
+        userBubble({ text: lexicalJson }),
+        assistantBubble(),
+      ],
+    });
+    const session = await provider.parse(virtualPath(dbPath));
+    expect(session).not.toBeNull();
+    const userMsg = session!.messages.find(m => m.type === 'user');
+    expect(userMsg).toBeDefined();
+    expect(userMsg!.content).toBe('Go through the codebase and understand the project.');
+    expect(userMsg!.content).not.toContain('{"root"');
+  });
+
+  it('leaves non-Lexical text field unchanged', async () => {
+    const dbPath = makeCursorDb(tempDir, {
+      conversation: [
+        userBubble({ text: 'How do I fix this bug?' }),
+        assistantBubble(),
+      ],
+    });
+    const session = await provider.parse(virtualPath(dbPath));
+    expect(session).not.toBeNull();
+    const userMsg = session!.messages.find(m => m.type === 'user');
+    expect(userMsg!.content).toBe('How do I fix this bug?');
+  });
+
   // ── messageCount consistency ──────────────────────────────────────────────
 
   it('messageCount equals userMessageCount + assistantMessageCount', async () => {

@@ -745,7 +745,10 @@ function parseBubbles(conversation: Array<Record<string, unknown>>, sessionId: s
     const contentField = (bubble.content as string | undefined) || '';
 
     if (textField) {
-      content = textField;
+      // Some Cursor versions store the Lexical editor JSON in `text` rather than `richText`.
+      // Detect and extract plain text from it so we don't display raw JSON to the user.
+      const lexicalFromText = textField.startsWith('{"root"') ? extractLexicalText(textField) : null;
+      content = lexicalFromText !== null ? lexicalFromText : textField;
     } else if (bubble.richText) {
       // richText may be a Lexical JSON object (user bubbles) or a plain string (older formats).
       // Try Lexical extraction first; fall back to coercing whatever value we have to a string.
