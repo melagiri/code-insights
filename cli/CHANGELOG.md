@@ -2,6 +2,12 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.9.7] - 2026-04-10
+
+### Fixed
+
+- **Cursor raw JSON in messages (complete fix)** — The v4.9.6 fix correctly parsed Lexical JSON for new sessions, but existing sessions already stored in the database kept their raw JSON content because `INSERT OR IGNORE` never overwrites existing rows. `--force` sync now uses `INSERT OR REPLACE` for messages, so re-parsing overwrites stale content. Running `code-insights sync --force` will fix all affected sessions.
+
 ## [4.9.6] - 2026-04-10
 
 ### Fixed
