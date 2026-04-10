@@ -31,6 +31,7 @@ let _stmtUpdateProjectWithUsage: BetterSqlite3.Statement | null = null;
 let _stmtUpdateProjectCountOnly: BetterSqlite3.Statement | null = null;
 let _stmtUpsertSession: BetterSqlite3.Statement | null = null;
 let _stmtInsertMessage: BetterSqlite3.Statement | null = null;
+let _stmtReplaceMessage: BetterSqlite3.Statement | null = null;
 let _stmtUpsertUsageStatsIncrement: BetterSqlite3.Statement | null = null;
 
 function getStmts() {
@@ -43,6 +44,7 @@ function getStmts() {
     _stmtUpdateProjectCountOnly = null;
     _stmtUpsertSession = null;
     _stmtInsertMessage = null;
+    _stmtReplaceMessage = null;
     _stmtUpsertUsageStatsIncrement = null;
   }
 
@@ -137,6 +139,16 @@ function getStmts() {
     `);
   }
 
+  if (!_stmtReplaceMessage) {
+    // Used by --force sync to overwrite existing message content (e.g. after a parsing fix).
+    _stmtReplaceMessage = db.prepare(`
+      INSERT OR REPLACE INTO messages (
+        id, session_id, type, content, thinking,
+        tool_calls, tool_results, usage, timestamp, parent_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  }
+
   if (!_stmtUpsertUsageStatsIncrement) {
     _stmtUpsertUsageStatsIncrement = db.prepare(`
       INSERT INTO usage_stats (id, total_input_tokens, total_output_tokens, cache_creation_tokens, cache_read_tokens, estimated_cost_usd, sessions_with_usage, last_updated_at)
@@ -158,6 +170,7 @@ function getStmts() {
     updateProjectCountOnly: _stmtUpdateProjectCountOnly,
     upsertSession: _stmtUpsertSession,
     insertMessage: _stmtInsertMessage,
+    replaceMessage: _stmtReplaceMessage,
     upsertUsageStatsIncrement: _stmtUpsertUsageStatsIncrement,
   };
 }
@@ -290,17 +303,19 @@ function upsertSession(
 
 /**
  * Insert messages for a session.
- * Replaces firebase/client.ts uploadMessages().
+ * isForce: when true (--force sync), uses INSERT OR REPLACE so existing message
+ * content is overwritten with the freshly-parsed result (e.g. after a parsing fix).
  */
-export function insertMessages(session: ParsedSession): void {
+export function insertMessages(session: ParsedSession, isForce = false): void {
   if (session.messages.length === 0) return;
 
   const db = getDb();
   const stmts = getStmts();
 
   const tx = db.transaction((messages: ParsedMessage[]) => {
+    const stmt = isForce ? stmts.replaceMessage : stmts.insertMessage;
     for (const msg of messages) {
-      stmts.insertMessage.run(
+      stmt.run(
         msg.id,
         msg.sessionId,
         msg.type,

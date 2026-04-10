@@ -194,7 +194,7 @@ export async function runSync(options: SyncOptions = {}): Promise<SyncResult> {
 
           // Write session and messages to SQLite
           const isNew = insertSessionWithProjectAndReturnIsNew(session, !!options.force);
-          insertMessages(session);
+          insertMessages(session, !!options.force);
 
           // Update and persist sync state after each file
           // so progress survives crashes
