@@ -646,7 +646,7 @@ function buildSession(
     sessionCharacter: null,
     startedAt,
     endedAt,
-    messageCount: messages.length,
+    messageCount: userMessages.length + assistantMessages.length,
     userMessageCount: userMessages.length,
     assistantMessageCount: assistantMessages.length,
     toolCallCount,
