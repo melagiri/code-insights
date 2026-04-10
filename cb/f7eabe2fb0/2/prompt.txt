@@ -1,0 +1,9 @@
+this is how my cursor messages are parsed.. [Image #1]
+
+---
+
+[Image source: /Users/melagiri/.claude/image-cache/827277ad-7f95-4064-809f-078056db833f/1.png]
+
+---
+
+commit this with a feature branch and create PR

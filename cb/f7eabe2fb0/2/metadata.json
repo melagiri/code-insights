@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "cbf7eabe2fb0",
+  "session_id": "827277ad-7f95-4064-809f-078056db833f",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-10T09:29:30.08102Z",
+  "branch": "fix/cursor-lexical-json-in-text-field",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "cli/src/providers/__tests__/cursor.test.ts",
+    "cli/src/providers/cursor.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e32443b143cf",
+  "token_usage": {
+    "input_tokens": 73,
+    "cache_creation_tokens": 60260,
+    "cache_read_tokens": 727558,
+    "output_tokens": 4549,
+    "api_call_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-10T09:29:30.011071Z",
+    "agent_lines": 44,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 44,
+    "agent_percentage": 100
+  }
+}
