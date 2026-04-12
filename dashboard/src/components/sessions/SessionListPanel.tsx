@@ -23,6 +23,7 @@ import { useDeletedSessionCount } from '@/hooks/useSessions';
 import { useQueuedSessionIds } from '@/hooks/useAnalysisQueue';
 import { SaveFilterPopover } from '@/components/filters/SaveFilterPopover';
 import { SavedFiltersDropdown } from '@/components/filters/SavedFiltersDropdown';
+import { SourceToolSelect } from '@/components/filters/SourceToolSelect';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { subDays, startOfDay, formatISO } from 'date-fns';
 
@@ -66,9 +67,10 @@ interface SessionListPanelProps {
     dateFrom: string;
     dateTo: string;
     outcome: string;
+    source: string;
   };
   onFilterChange: (
-    key: 'q' | 'character' | 'status' | 'dateRange' | 'dateFrom' | 'dateTo' | 'outcome',
+    key: 'q' | 'character' | 'status' | 'dateRange' | 'dateFrom' | 'dateTo' | 'outcome' | 'source',
     value: string
   ) => void;
   onSetFilters: (updates: Record<string, string>) => void;
@@ -197,7 +199,7 @@ export function SessionListPanel({
 
   const allFiltersForSave = { ...filters } as Record<string, string>;
   const defaultFilterValues: Record<string, string> = {
-    q: '', character: 'all', status: 'all', dateRange: 'all', dateFrom: '', dateTo: '', outcome: 'all',
+    q: '', character: 'all', status: 'all', dateRange: 'all', dateFrom: '', dateTo: '', outcome: 'all', source: 'all',
   };
 
   const dateRangeLabel = useMemo(() => {
@@ -338,6 +340,12 @@ export function SessionListPanel({
               ))}
             </SelectContent>
           </Select>
+
+          <SourceToolSelect
+            value={filters.source || 'all'}
+            onValueChange={(v) => onFilterChange('source', v)}
+            className="h-7 text-xs flex-1"
+          />
 
           <SaveFilterPopover
             activeFilters={allFiltersForSave}

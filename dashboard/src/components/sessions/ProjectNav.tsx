@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { SOURCE_TOOLS } from '@/components/filters/SourceToolSelect';
 import type { Project } from '@/lib/types';
 
 interface ProjectNavProps {
@@ -106,11 +107,9 @@ export function ProjectNav({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sources</SelectItem>
-            <SelectItem value="claude-code">Claude Code</SelectItem>
-            <SelectItem value="cursor">Cursor</SelectItem>
-            <SelectItem value="codex-cli">Codex CLI</SelectItem>
-            <SelectItem value="copilot-cli">Copilot CLI</SelectItem>
-            <SelectItem value="copilot">Copilot</SelectItem>
+            {SOURCE_TOOLS.map((tool) => (
+              <SelectItem key={tool.value} value={tool.value}>{tool.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

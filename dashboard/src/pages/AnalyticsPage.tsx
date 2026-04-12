@@ -10,6 +10,7 @@ import { ErrorCard } from '@/components/ErrorCard';
 import { formatTokenCount, formatModelName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CHART_COLORS } from '@/lib/constants/colors';
+import { SourceToolSelect } from '@/components/filters/SourceToolSelect';
 import {
   BarChart,
   Bar,
@@ -32,7 +33,11 @@ const rangeOptions: { value: AnalyticsRange; label: string }[] = [
 
 export default function AnalyticsPage() {
   const [range, setRange] = useState<AnalyticsRange>('7d');
-  const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError, refetch: refetchSessions } = useSessions({ limit: 500 });
+  const [source, setSource] = useState<string>('all');
+  const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError, refetch: refetchSessions } = useSessions({
+    limit: 500,
+    ...(source !== 'all' && { sourceTool: source }),
+  });
   const { data: insights = [], isLoading: insightsLoading, isError: insightsError, refetch: refetchInsights } = useInsights();
   const { data: projects = [], isLoading: projectsLoading, isError: projectsError, refetch: refetchProjects } = useProjects();
   const { tooltipBg, tooltipBorder } = useThemeColors();
@@ -50,10 +55,16 @@ export default function AnalyticsPage() {
     () => cutoff === 0 ? sessions : sessions.filter((s) => new Date(s.started_at).getTime() >= cutoff),
     [sessions, cutoff]
   );
-  const filteredInsights = useMemo(
-    () => cutoff === 0 ? insights : insights.filter((i) => new Date(i.timestamp).getTime() >= cutoff),
-    [insights, cutoff]
+  // When source filter is active, insights are scoped to session IDs in filteredSessions
+  const filteredSessionIds = useMemo(
+    () => new Set(filteredSessions.map((s) => s.id)),
+    [filteredSessions]
   );
+  const filteredInsights = useMemo(() => {
+    const byDate = cutoff === 0 ? insights : insights.filter((i) => new Date(i.timestamp).getTime() >= cutoff);
+    if (source === 'all') return byDate;
+    return byDate.filter((i) => filteredSessionIds.has(i.session_id));
+  }, [insights, cutoff, source, filteredSessionIds]);
 
   // Build daily stats from filtered sessions
   const dailyStats: DailyStats[] = useMemo(() => {
@@ -213,18 +224,25 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold">Analytics</h1>
           <p className="text-muted-foreground">Visualize your AI coding usage patterns</p>
         </div>
-        <div className="flex gap-1">
-          {rangeOptions.map(({ value, label }) => (
-            <Button
-              key={value}
-              variant={range === value ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 px-2.5 text-xs"
-              onClick={() => setRange(value)}
-            >
-              {label}
-            </Button>
-          ))}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-1">
+            {rangeOptions.map(({ value, label }) => (
+              <Button
+                key={value}
+                variant={range === value ? 'default' : 'ghost'}
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setRange(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <SourceToolSelect
+            value={source}
+            onValueChange={setSource}
+            className="w-[140px] h-7 text-xs"
+          />
         </div>
       </div>
 

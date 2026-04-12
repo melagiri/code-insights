@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 import { useInsights } from '@/hooks/useInsights';
+import { useSessions } from '@/hooks/useSessions';
 import { useLlmConfig } from '@/hooks/useConfig';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sparkles, Target, Lightbulb, GitBranch, Clock } from 'lucide-react';
 import { Link } from 'react-router';
 import { ErrorCard } from '@/components/ErrorCard';
+import { SourceToolSelect } from '@/components/filters/SourceToolSelect';
 import type { Insight } from '@/lib/types';
 
 function getWeekKey(dateStr: string): string {
@@ -33,16 +35,32 @@ function getWeekLabel(weekKey: string): string {
 }
 
 export default function JournalPage() {
+  const [source, setSource] = useState<string>('all');
   const { data: insights = [], isLoading, isError, refetch } = useInsights();
+  const { data: allSessions = [] } = useSessions();
   const { data: llmConfig } = useLlmConfig();
 
   const llmConfigured = !!(llmConfig?.provider && llmConfig?.model);
 
-  // Group learnings and decisions by week for the timeline
+  // Map session_id → source_tool for client-side source filtering
+  const sessionSourceMap = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const s of allSessions) {
+      map.set(s.id, s.source_tool);
+    }
+    return map;
+  }, [allSessions]);
+
+  // Group learnings and decisions by week, optionally filtered by source tool
   const insightsByWeek = useMemo(() => {
-    const relevant = insights.filter(
-      (i) => i.type === 'learning' || i.type === 'decision' || i.type === 'technique'
-    );
+    const relevant = insights.filter((i) => {
+      if (i.type !== 'learning' && i.type !== 'decision' && i.type !== 'technique') return false;
+      if (source !== 'all') {
+        const sourceTool = sessionSourceMap.get(i.session_id);
+        if (sourceTool !== source) return false;
+      }
+      return true;
+    });
     const grouped: Record<string, Insight[]> = {};
     relevant.forEach((insight) => {
       const weekKey = getWeekKey(insight.timestamp);
@@ -50,7 +68,7 @@ export default function JournalPage() {
       grouped[weekKey].push(insight);
     });
     return grouped;
-  }, [insights]);
+  }, [insights, source, sessionSourceMap]);
 
   const sortedWeeks = useMemo(
     () => Object.keys(insightsByWeek).sort((a, b) => b.localeCompare(a)),
@@ -59,11 +77,18 @@ export default function JournalPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Knowledge Journal</h1>
-        <p className="text-muted-foreground">
-          A chronological timeline of your learnings and decisions
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Knowledge Journal</h1>
+          <p className="text-muted-foreground">
+            A chronological timeline of your learnings and decisions
+          </p>
+        </div>
+        <SourceToolSelect
+          value={source}
+          onValueChange={setSource}
+          className="w-[140px] h-8 text-xs"
+        />
       </div>
 
       {isError && (

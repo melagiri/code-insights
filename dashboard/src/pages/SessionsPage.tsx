@@ -84,7 +84,7 @@ export default function SessionsPage() {
   );
 
   const handleFilterChange = useCallback(
-    (key: 'q' | 'character' | 'status' | 'dateRange' | 'dateFrom' | 'dateTo' | 'outcome', value: string) => {
+    (key: 'q' | 'character' | 'status' | 'dateRange' | 'dateFrom' | 'dateTo' | 'outcome' | 'source', value: string) => {
       setFilter(key, value);
     },
     [setFilter]
@@ -98,7 +98,7 @@ export default function SessionsPage() {
   );
 
   const handleClearFilters = useCallback(() => {
-    setFilters({ q: '', character: 'all', status: 'all', dateRange: 'all', dateFrom: '', dateTo: '', outcome: 'all' });
+    setFilters({ q: '', character: 'all', status: 'all', dateRange: 'all', dateFrom: '', dateTo: '', outcome: 'all', source: 'all' });
   }, [setFilters]);
 
   const selectedProjectName = useMemo(() => {
@@ -165,6 +165,7 @@ export default function SessionsPage() {
             dateFrom: filters.dateFrom,
             dateTo: filters.dateTo,
             outcome: filters.outcome,
+            source: filters.source,
           }}
           onFilterChange={handleFilterChange}
           onSetFilters={handleSetFilters}
