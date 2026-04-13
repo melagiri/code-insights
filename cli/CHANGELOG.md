@@ -2,6 +2,18 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.10.0] - 2026-04-13
+
+### Added
+
+- **Source tool filter across all dashboard pages** — A new source tool selector (with color-coded dots for Claude Code, Cursor, Codex CLI, Copilot CLI, and Copilot) is now available on the Sessions, Insights, Analytics, and Knowledge Journal pages. Filter any view to a specific AI coding tool to see only its sessions and insights.
+
+### Fixed
+
+- **Source filter empty state** — The "no results" empty state on the Sessions page now correctly activates when only the source filter is set (previously it would not detect source as an active filter).
+
+- **Insights and Journal session map limit** — Session-to-source lookups on the Insights and Journal pages now fetch up to 500 sessions, consistent with Analytics. The previous server default of 50 would silently miss sessions for users with larger history.
+
 ## [4.9.7] - 2026-04-10
 
 ### Fixed

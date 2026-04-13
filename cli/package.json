@@ -1,6 +1,6 @@
 {
   "name": "@code-insights/cli",
-  "version": "4.9.7",
+  "version": "4.10.0",
   "description": "Turn your AI coding sessions into knowledge",
   "type": "module",
   "main": "dist/index.js",
