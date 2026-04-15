@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://code-insights.app/docs
+    about: Check the docs first — installation, providers, and common issues are all covered.
+  - name: Discussions
+    url: https://github.com/melagiri/code-insights/discussions
+    about: For questions, ideas, or sharing how you use Code Insights.
