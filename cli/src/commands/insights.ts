@@ -346,8 +346,7 @@ export async function insightsCheckCommand(opts: {
 
     // --analyze: process all found sessions with progress output
     if (analyze) {
-      ClaudeNativeRunner.validate();
-      const runner = new ClaudeNativeRunner({ model: opts.model });
+      const runner = ProviderRunner.fromConfig();
       let successCount = 0;
 
       for (let i = 0; i < rows.length; i++) {
@@ -357,7 +356,7 @@ export async function insightsCheckCommand(opts: {
         process.stdout.write(`${position} ${label} ... `);
         const start = Date.now();
         try {
-          await runInsightsCommand({ sessionId: row.id, native: true, quiet: true, _runner: runner });
+          await runInsightsCommand({ sessionId: row.id, native: false, quiet: true, _runner: runner });
           const elapsed = Math.round((Date.now() - start) / 1000);
           process.stdout.write(`done (${elapsed}s)\n`);
           successCount++;
@@ -371,15 +370,14 @@ export async function insightsCheckCommand(opts: {
       return;
     }
 
-    // Auto-analyze silently when 1-2 unanalyzed sessions
+    // Auto-analyse silently when 1-2 unanalysed sessions
     if (count <= 2) {
-      ClaudeNativeRunner.validate();
-      const runner = new ClaudeNativeRunner({ model: opts.model });
+      const runner = ProviderRunner.fromConfig();
       for (const row of rows) {
         try {
-          await runInsightsCommand({ sessionId: row.id, native: true, quiet: true, _runner: runner });
+          await runInsightsCommand({ sessionId: row.id, native: false, quiet: true, _runner: runner });
         } catch {
-          // Silently ignore auto-analyze errors for 1-2 sessions
+          // Silently ignore auto-analyse errors for 1-2 sessions
         }
       }
       return;
