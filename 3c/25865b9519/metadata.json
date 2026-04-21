@@ -3,7 +3,7 @@
   "checkpoint_id": "3c25865b9519",
   "strategy": "manual-commit",
   "branch": "feature/codebase-knowledge-prd",
-  "checkpoints_count": 0,
+  "checkpoints_count": 3,
   "files_touched": [
     "docs/superpowers/specs/2026-04-20-codebase-knowledge-design.md"
   ],
@@ -21,13 +21,20 @@
       "context": "/3c/25865b9519/1/context.md",
       "content_hash": "/3c/25865b9519/1/content_hash.txt",
       "prompt": "/3c/25865b9519/1/prompt.txt"
+    },
+    {
+      "metadata": "/3c/25865b9519/2/metadata.json",
+      "transcript": "/3c/25865b9519/2/full.jsonl",
+      "context": "/3c/25865b9519/2/context.md",
+      "content_hash": "/3c/25865b9519/2/content_hash.txt",
+      "prompt": "/3c/25865b9519/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
-    "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "input_tokens": 103,
+    "cache_creation_tokens": 426215,
+    "cache_read_tokens": 3989702,
+    "output_tokens": 40836,
+    "api_call_count": 59
   }
 }

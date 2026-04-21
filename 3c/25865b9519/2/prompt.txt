@@ -1,0 +1,2866 @@
+So, i wanted to build this code-insights into a platform that can be used to build a historical learnings and decisions for a given product/codebase. How can i use this learnings and decisions we generate from AI session conversations and attach them into the codebase to make the learnings and decisions stick with the repo and not just user's session within code-insights? I am trying to may be replicate entire.io related features but more native to code-insights.. Explore how entire.io works and then also look at our product to analyze how can we do this best.. Invoke multiple agents within our project and some exploratory agents to research into this..
+
+---
+
+Base directory for this skill: /Users/melagiri/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming
+
+# Brainstorming Ideas Into Designs
+
+Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+
+Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+
+<HARD-GATE>
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+</HARD-GATE>
+
+## Anti-Pattern: "This Is Too Simple To Need A Design"
+
+Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+
+## Checklist
+
+You MUST create a task for each of these items and complete them in order:
+
+1. **Explore project context** — check files, docs, recent commits
+2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
+3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+4. **Propose 2-3 approaches** — with trade-offs and your recommendation
+5. **Present design** — in sections scaled to their complexity, get user approval after each section
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+8. **User reviews written spec** — ask user to review the spec file before proceeding
+9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+
+## Process Flow
+
+```dot
+digraph brainstorming {
+    "Explore project context" [shape=box];
+    "Visual questions ahead?" [shape=diamond];
+    "Offer Visual Companion\n(own message, no other content)" [shape=box];
+    "Ask clarifying questions" [shape=box];
+    "Propose 2-3 approaches" [shape=box];
+    "Present design sections" [shape=box];
+    "User approves design?" [shape=diamond];
+    "Write design doc" [shape=box];
+    "Spec self-review\n(fix inline)" [shape=box];
+    "User reviews spec?" [shape=diamond];
+    "Invoke writing-plans skill" [shape=doublecircle];
+
+    "Explore project context" -> "Visual questions ahead?";
+    "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
+    "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
+    "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
+    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Propose 2-3 approaches" -> "Present design sections";
+    "Present design sections" -> "User approves design?";
+    "User approves design?" -> "Present design sections" [label="no, revise"];
+    "User approves design?" -> "Write design doc" [label="yes"];
+    "Write design doc" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "User reviews spec?";
+    "User reviews spec?" -> "Write design doc" [label="changes requested"];
+    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+}
+```
+
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+
+## The Process
+
+**Understanding the idea:**
+
+- Check out the current project state first (files, docs, recent commits)
+- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
+- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
+- For appropriately-scoped projects, ask questions one at a time to refine the idea
+- Prefer multiple choice questions when possible, but open-ended is fine too
+- Only one question per message - if a topic needs more exploration, break it into multiple questions
+- Focus on understanding: purpose, constraints, success criteria
+
+**Exploring approaches:**
+
+- Propose 2-3 different approaches with trade-offs
+- Present options conversationally with your recommendation and reasoning
+- Lead with your recommended option and explain why
+
+**Presenting the design:**
+
+- Once you believe you understand what you're building, present the design
+- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- Ask after each section whether it looks right so far
+- Cover: architecture, components, data flow, error handling, testing
+- Be ready to go back and clarify if something doesn't make sense
+
+**Design for isolation and clarity:**
+
+- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
+- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
+- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
+- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
+
+**Working in existing codebases:**
+
+- Explore the current structure before proposing changes. Follow existing patterns.
+- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
+- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
+
+## After the Design
+
+**Documentation:**
+
+- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+  - (User preferences for spec location override this default)
+- Use elements-of-style:writing-clearly-and-concisely skill if available
+- Commit the design document to git
+
+**Spec Self-Review:**
+After writing the spec document, look at it with fresh eyes:
+
+1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
+2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
+3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
+4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+
+Fix any issues inline. No need to re-review — just fix and move on.
+
+**User Review Gate:**
+After the spec review loop passes, ask the user to review the written spec before proceeding:
+
+> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+
+Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+
+**Implementation:**
+
+- Invoke the writing-plans skill to create a detailed implementation plan
+- Do NOT invoke any other skill. writing-plans is the next step.
+
+## Key Principles
+
+- **One question at a time** - Don't overwhelm with multiple questions
+- **Multiple choice preferred** - Easier to answer than open-ended when possible
+- **YAGNI ruthlessly** - Remove unnecessary features from all designs
+- **Explore alternatives** - Always propose 2-3 approaches before settling
+- **Incremental validation** - Present design, get approval before moving on
+- **Be flexible** - Go back and clarify when something doesn't make sense
+
+## Visual Companion
+
+A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+
+**Offering the companion:** When you anticipate that upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
+> "Some of what we're working on might be easier to explain if I can show it to you in a web browser. I can put together mockups, diagrams, comparisons, and other visuals as we go. This feature is still new and can be token-intensive. Want to try it? (Requires opening a local URL)"
+
+**This offer MUST be its own message.** Do not combine it with clarifying questions, context summaries, or any other content. The message should contain ONLY the offer above and nothing else. Wait for the user's response before continuing. If they decline, proceed with text-only brainstorming.
+
+**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+
+- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
+- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
+
+A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
+
+If they agree to the companion, read the detailed guide before proceeding:
+`skills/brainstorming/visual-companion.md`
+
+---
+
+<task-notification>
+<task-id>a9531452735e9a14e</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a9531452735e9a14e.output</output-file>
+<status>completed</status>
+<summary>Agent "Explore code-insights session data, analysis pipeline, and reflect feature" completed</summary>
+<result>Perfect! Now I have a very comprehensive understanding. Let me create a structured summary report with all the key details found.
+
+## Comprehensive Code Insights Exploration Report
+
+Based on a thorough examination of the codebase, here's a detailed breakdown of the six key areas:
+
+---
+
+## 1. SESSION ANALYSIS PIPELINE (`code-insights insights`)
+
+### Flow Overview
+```
+CLI Command (insights.ts)
+  ↓
+Load Session + Messages from SQLite
+  ↓
+Format Messages for LLM (message-format.ts)
+  ↓
+[PASS 1] Session Analysis + Facets
+  ├─ System Prompt: SHARED_ANALYST_SYSTEM_PROMPT (~100 tokens, cacheable)
+  ├─ Conversation Block: buildCacheableConversationBlock() with Anthropic ephemeral cache
+  ├─ Instructions: buildSessionAnalysisInstructions() with project context + session metadata
+  ├─ LLM Response → parseAnalysisResponse() → saveFacetsToDb() + saveInsightsToDb()
+  └─ Outputs: facets, summary, decisions, learnings
+  ↓
+[PASS 2] Prompt Quality Analysis
+  ├─ Same system prompt + cacheable conversation block
+  ├─ Instructions: buildPromptQualityInstructions() with message counts
+  ├─ LLM Response → parsePromptQualityResponse()
+  └─ Output: efficiency_score, dimension_scores, takeaways, findings
+  ↓
+Save Analysis Usage (token counts, duration, cost)
+```
+
+**Key Files:**
+- `/cli/src/commands/insights.ts` — CLI entry point, resume detection (session_message_count matching), two-pass analysis
+- `/cli/src/analysis/prompts.ts` — Prompt templates with classification guidance and example insights
+- `/cli/src/analysis/response-parsers.ts` — JSON extraction, repair with jsonrepair, validation &amp; monitoring
+- `/cli/src/analysis/message-format.ts` — Format SQLite rows for LLM; classify messages (human/tool-result/system-artifact)
+- `/cli/src/analysis/analysis-db.ts` — Convert LLM response to InsightRow format, save to DB
+- `/cli/src/analysis/analysis-usage-db.ts` — Track per-session analysis costs &amp; token counts
+- `/cli/src/analysis/native-runner.ts` — Use `claude -p` (zero-config, via Claude Code subscription)
+- `/cli/src/analysis/provider-runner.ts` — Use configured LLM provider (OpenAI/Anthropic/Gemini/Ollama)
+
+### Analysis Output Fields
+
+**Facets (extracted first in PART 1):**
+- `outcome_satisfaction`: "high" | "medium" | "low" | "abandoned"
+- `workflow_pattern`: "plan-then-implement" | "iterative-refinement" | "debug-fix-verify" | "explore-then-build" | "direct-execution" | null
+- `had_course_correction`: boolean
+- `course_correction_reason`: string | null
+- `iteration_count`: number
+- `friction_points[]`: Array with fields:
+  - `_reasoning`: CoT scratchpad (decision tree walk-through)
+  - `category`: One of 9 canonical categories (see below)
+  - `attribution`: "user-actionable" | "ai-capability" | "environmental"
+  - `description`: Specific details (file names, error messages)
+  - `severity`: "high" | "medium" | "low"
+  - `resolution`: "resolved" | "workaround" | "unresolved"
+- `effective_patterns[]`: Array with fields:
+  - `_reasoning`: CoT scratchpad
+  - `category`: One of 8 canonical categories (see below)
+  - `description`: Specific technique
+  - `confidence`: 0-100
+  - `driver`: "user-driven" | "ai-driven" | "collaborative"
+
+**Insights (extracted in PART 2):**
+- `summary`: { title, content, outcome, bullets }
+- `decisions[]`: { title, situation, choice, reasoning, alternatives[], trade_offs, revisit_when, confidence, evidence[] }
+- `learnings[]`: { title, symptom, root_cause, takeaway, applies_when, confidence, evidence[] }
+
+**Prompt Quality:**
+- `efficiency_score`: 0-100
+- `message_overhead`: estimated wasted turns
+- `dimension_scores`: { context_provision, request_specificity, scope_management, information_timing, correction_quality }
+- `takeaways[]`: { type, category, label, message_ref, original, better_prompt, why, what_worked, why_effective }
+- `findings[]`: { category, type, description, message_ref, impact, confidence, suggested_improvement }
+
+**Canonical Friction Categories (9):**
+wrong-approach, knowledge-gap, stale-assumptions, incomplete-requirements, context-loss, scope-creep, repeated-mistakes, documentation-gap, tooling-limitation
+
+**Canonical Effective Pattern Categories (8):**
+structured-planning, incremental-implementation, verification-workflow, systematic-debugging, self-correction, context-gathering, domain-expertise, effective-tooling
+
+---
+
+## 2. REFLECT FEATURE (`code-insights reflect`)
+
+### Flow Overview
+```
+CLI reflect command (reflect.ts)
+  ↓
+Call POST /api/reflect/generate via SSE
+  ↓
+Server: Aggregate facets from session_facets table
+  ├─ Friction categories: GROUP BY category, COUNT, AVG(severity)
+  ├─ Effective patterns: GROUP BY category, COUNT(frequency), AVG(confidence), driver breakdown
+  ├─ Prompt quality signals: deficits &amp; strengths aggregated
+  └─ Check: MIN_FACETS_FOR_REFLECT = 8 sessions minimum
+  ↓
+For each ReflectSection:
+  1. friction-wins: Synthesize top friction &amp; effective patterns
+  2. rules-skills: Extract actionable rules &amp; skill recommendations (≥3 friction count, ≥2 pattern frequency)
+  3. working-style: Synthesize archetype tagline &amp; working patterns
+  ↓
+Cache synthesis in reflect_snapshots table
+```
+
+**Key Files:**
+- `/cli/src/commands/reflect.ts` — CLI handler, SSE streaming orchestration
+- `/server/src/routes/reflect.ts` — Aggregation &amp; LLM synthesis, cached snapshots
+- `/server/src/llm/reflect-prompts.ts` — Three synthesis prompts (friction-wins, rules-skills, working-style)
+- `/server/src/routes/shared-aggregation.ts` — Shared facet aggregation logic; ISO week handling
+
+### Reflect Output (`reflect_snapshots` table)
+| Column | Type | Notes |
+|--------|------|-------|
+| period | TEXT | ISO week (YYYY-WNN) or period key (e.g., '30d') |
+| project_id | TEXT | '__all__' for global, else specific project |
+| results_json | TEXT | { friction-wins, rules-skills, working-style, generatedAt } |
+| generated_at | TEXT | ISO 8601 timestamp |
+| window_start | TEXT | Period start boundary |
+| window_end | TEXT | Period end boundary |
+| session_count | INTEGER | Sessions analyzed in this period |
+| facet_count | INTEGER | Total friction/pattern datapoints |
+
+### Reflect Sections Output
+
+**friction-wins:**
+- frictionCategories: [ { category, count, avgSeverity, examples, trend } ]
+- effectivePatterns: [ { category, label, frequency, avgConfidence, descriptions } ]
+- narrative: LLM-generated synthesis
+- pqDeficits/pqStrengths: Prompt quality signals
+
+**rules-skills:**
+- claudeMdRules: [ { rule, description } ] — Actionable rules for .cursorrules/CLAUDE.md
+- skillRecommendations: [ { skill, description, expectedBenefit } ]
+- hookSuggestions: [ { hook, description, trigger } ]
+
+**working-style:**
+- archetype: LLM-generated identity (e.g., "The Methodical Achiever")
+- workflowDistribution: { pattern: frequency }
+- outcomeAnalysis: { satisfaction: distribution }
+- strengthsSummary: narrative
+- growthAreas: narrative
+
+---
+
+## 3. SQLITE SCHEMA
+
+### Location
+`~/.code-insights/data.db` — WAL mode, Schema V9
+
+### Table Structure
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| **projects** | Project metadata | id (git remote hash or path hash), name, path, git_remote_url, session_count, last_activity, token aggregates |
+| **sessions** | Session records | id, project_id, summary (user summary if present), custom_title, generated_title, title_source, session_character (deep_focus\|bug_hunt\|feature_build\|exploration\|refactor\|learning\|quick_task), started_at, ended_at, message_count, user/assistant/tool counts, compact_count, auto_compact_count, slash_commands (JSON array), source_tool, deleted_at (soft-delete) |
+| **messages** | Message content | id, session_id, type (user\|assistant\|system), content, thinking, tool_calls (JSON), tool_results (JSON), usage (JSON), timestamp, parent_id |
+| **insights** | Analysis results | id, session_id, project_id, type (summary\|decision\|learning\|technique\|prompt_quality), title, content, summary, bullets (JSON), confidence, metadata (JSON), timestamp, created_at, scope (session\|project\|overall), analysis_version, linked_insight_ids |
+| **session_facets** | Facet data | session_id (PK), outcome_satisfaction, workflow_pattern, had_course_correction, course_correction_reason, iteration_count, friction_points (JSON), effective_patterns (JSON), extracted_at, analysis_version |
+| **reflect_snapshots** | Cached synthesis | (period, project_id) composite PK, results_json, generated_at, session_count, facet_count, window_start, window_end |
+| **analysis_usage** | LLM cost tracking | (session_id, analysis_type) composite PK, provider, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, estimated_cost_usd, duration_ms, session_message_count (for resume detection), analyzed_at |
+| **analysis_queue** | Async hook queue | session_id (PK), status (pending\|processing\|completed\|failed), runner_type (native\|provider), enqueued_at, started_at, completed_at, error_message, attempt_count, max_attempts |
+| **usage_stats** | Global aggregates | id (singleton 1), total_input_tokens, total_output_tokens, cache_creation_tokens, cache_read_tokens, estimated_cost_usd, sessions_with_usage, last_updated_at |
+
+**Key Features:**
+- Timestamps: ISO 8601 strings
+- JSON storage: Arrays (friction_points, effective_patterns, tool_calls) and objects (metadata) stored as JSON strings
+- Resume detection: analysis_usage.session_message_count compared to sessions.message_count to skip re-analysis
+- Soft-delete: sessions.deleted_at nullable column; soft-deletes are hidden from all queries
+- Prompt caching: supports Anthropic ephemeral cache (5-min TTL, shared across sessions)
+
+---
+
+## 4. EXPORT FEATURE
+
+### Two-Tier Export System
+
+**Session-level Export (POST /api/export/markdown):**
+- Formats 1 session or 100 sessions into markdown
+- Templates: "knowledge-base" (human-readable) or "agent-rules" (imperative CLAUDE.md/.cursorrules format)
+- No LLM involved; pure template formatting
+- Files: `/server/src/export/knowledge-base.ts`, `/server/src/export/agent-rules.ts`
+
+**Cross-Session LLM Export (POST /api/export/generate):**
+- Scopes: 'all', 'project', 'last-7-days'
+- Depths: 'essential' (~25 insights), 'standard' (~80), 'comprehensive' (~200)
+- Formats: 'agent-rules', 'knowledge-brief', 'obsidian', 'notion'
+- LLM synthesizes insights to deduplicate, merge, and present as actionable knowledge
+- SSE streaming with progress phases (loading, synthesizing, formatting)
+- Files: `/server/src/routes/export.ts`, `/server/src/llm/export-prompts.ts`
+
+**Export Command:**
+```bash
+code-insights export &lt;format&gt; [--depth standard] [--project myproject]
+```
+
+Generates markdown/JSON output to stdout or file.
+
+---
+
+## 5. DOCUMENTATION ARTIFACTS
+
+### CLAUDE.md (`/CLAUDE.md`)
+- **Project Overview**: CLI tool + dashboard for multi-tool AI session analysis
+- **Architecture**: Single-repo pnpm workspace (cli/, dashboard/, server/)
+- **Privacy**: Fully local-first, SQLite at `~/.code-insights/data.db`
+- **Supported Tools**: Claude Code, Cursor, Codex CLI, Copilot CLI, VS Code Copilot Chat
+- **Key Patterns**: 7 session characters, friction/pattern taxonomy, attribution model
+- **Configuration Hierarchy**: This project's CLAUDE.md &gt; Session Mode &gt; Global ~/.claude/CLAUDE.md
+- **Development Philosophy**: "No MVPs, no prototypes, no half-measures. Every feature ships complete."
+
+### PRODUCT.md (`/docs/PRODUCT.md`)
+- **Core Features**: Multi-source support, smart titles, classification, LLM analysis, dashboard, CLI stats
+- **Insight Categories**: Summary, Decision, Learning, Technique, Prompt Quality (with 7 deficit + 3 strength categories)
+- **Reflect &amp; Patterns**: Cross-session synthesis with facets; friction/effective patterns aggregation
+- **Export**: Two-tier (session markdown + cross-session LLM synthesis)
+- **Share Card**: Generates 1200×630 PNG with AI Fluency Score, dimension bars, top patterns
+- **Knowledge Journal**: Chronological view of learnings/decisions by ISO week
+- **Chat View Enhancements**: Context breaks, inline event chips, raw message toggle
+- **CLI Commands**: `sync`, `dashboard`, `stats`, `insights`, `reflect`, `export`, `config`, `telemetry`
+
+### ARCHITECTURE.md (`/docs/ARCHITECTURE.md`)
+- **Data Flow**: Source tool files → Provider → SQLite → Dashboard/CLI stats
+- **Repository Structure**: cli/, dashboard/, server/, docs/, .claude/
+- **Provider Architecture**: SessionProvider interface for multi-tool support (6-step guide for adding a new tool)
+- **Database**: SQLite with migrations V1–V9, WAL mode, versioning
+- **Type Architecture**: Single source of truth in `cli/src/types.ts`
+- **Server API Routes**: 40+ REST endpoints covering projects, sessions, insights, analysis, export, reflect, facets, config
+- **Dashboard Pages**: 8 pages (Dashboard, Sessions, Session Detail, Insights, Analytics, Patterns, Export, Journal, Settings)
+- **Share Card Pipeline**: Canvas 2D rendering at 2× DPR, exported as PNG
+- **Known Debt**: Listed with trigger conditions for refactoring
+
+---
+
+## 6. SESSION DATA SHAPE (`ParsedSession`)
+
+### Fields Captured
+
+```typescript
+interface ParsedSession {
+  id: string;                              // UUID
+  projectPath: string;                     // File system path
+  projectName: string;                     // Derived from git remote or folder
+  summary: string | null;                  // User-provided session summary
+  generatedTitle: string | null;           // Smart-generated title
+  titleSource: TitleSource | null;         // 'claude' | 'user_message' | 'insight' | 'character' | 'fallback'
+  sessionCharacter: SessionCharacter | null; // 7 classifications
+  startedAt: Date;
+  endedAt: Date;
+  messageCount: number;
+  userMessageCount: number;
+  assistantMessageCount: number;
+  toolCallCount: number;
+  compactCount: number;                    // User-initiated /compact invocations
+  autoCompactCount: number;                // LLM-initiated context compaction
+  slashCommands: string[];                 // All non-exit slash commands used
+  customTitle?: string;
+  gitBranch: string | null;
+  claudeVersion: string | null;
+  sourceTool?: string;                     // 'claude-code' | 'cursor' | 'codex-cli' | 'copilot-cli' | 'copilot'
+  usage?: SessionUsage;
+  messages: ParsedMessage[];
+}
+
+interface ParsedMessage {
+  id: string;
+  sessionId: string;
+  type: 'user' | 'assistant' | 'system';
+  content: string;
+  thinking: string | null;
+  toolCalls: ToolCall[];
+  toolResults: ToolResult[];
+  usage: MessageUsage | null;
+  timestamp: Date;
+  parentId: string | null;
+}
+```
+
+### Message Classification
+- **Human messages**: Regular user input
+- **Tool-results**: Content is JSON array of tool_result blocks
+- **System artifacts**: Auto-compact summaries (two known prefixes) or slash commands (e.g., `/grep`)
+
+### Session Character Types
+1. **deep_focus** — 50+ messages, concentrated file work
+2. **bug_hunt** — Error patterns + fixes
+3. **feature_build** — Multiple new files created
+4. **exploration** — Heavy Read/Grep, few edits
+5. **refactor** — Many edits, same file count
+6. **learning** — Questions and explanations
+7. **quick_task** — &lt;10 messages, completed
+
+### Title Generation (5-Tier Fallback)
+1. Claude-generated summary (LLM synthesis)
+2. User message (scored by relevance)
+3. Character-based heuristic
+4. Generic fallback ("Session" + date)
+5. Session ID
+
+---
+
+## KEY DESIGN PATTERNS &amp; ARCHITECTURAL NOTES
+
+### Prompt Caching Strategy
+- **System prompt** (~100 tokens): Cacheable, reused across analyses
+- **Conversation block**: Wrapped in Anthropic ephemeral cache (5-min TTL)
+- **Per-session instructions**: NOT cached; contains project-specific context (name, summary, metadata)
+- Result: Cache hits for conversation content across multiple analyses of similar sessions
+
+### Friction &amp; Pattern Normalization
+- **Friction**: 9 canonical categories with Levenshtein distance matching (distance ≤ 2)
+- **Patterns**: 8 canonical categories with matching + alias remapping for legacy categories
+- **Both**: Normalization runs at write time (`saveFacetsToDb()`) and read time (belt-and-suspenders)
+- Files: `/cli/src/analysis/friction-normalize.ts`, `/cli/src/analysis/pattern-normalize.ts`, `/server/src/llm/friction-normalize.ts`, `/server/src/llm/pattern-normalize.ts`
+
+### Attribution Model
+Each friction point carries `attribution: 'user-actionable' | 'ai-capability' | 'environmental'`:
+- **user-actionable**: Better input from the user would have prevented this
+- **ai-capability**: AI failed despite adequate input (e.g., wrong framework API)
+- **environmental**: External constraint (rate limit, tool crash)
+
+### Driver Attribution for Patterns
+Each effective pattern carries optional `driver: 'user-driven' | 'ai-driven' | 'collaborative'`:
+- **user-driven**: User explicitly requested or guided this pattern
+- **ai-driven**: AI exhibited the pattern autonomously
+- **collaborative**: Both contributed or emerged from interaction
+
+### CoT Scratchpad Fields
+- `friction_points[].\_reasoning` and `effective_patterns[].\_reasoning`
+- 2-3 sentences max, walking through decision tree steps
+- Saved in DB but not shown to users — used for observability &amp; monitoring
+- Helps validate that LLM followed classification guidance
+
+### Monitoring &amp; Observability
+- Console.warn monitors for:
+  - Misclassified tooling-limitation friction (Levenshtein + negation context detection)
+  - Missing category/driver fields in effective_patterns
+  - Unexpected driver values
+- Triggers: Response parsing, facet validation
+- Design intent: Early warning system for LLM output quality degradation
+
+### Resume Detection
+- Compares `sessions.message_count` with `analysis_usage.session_message_count`
+- If equal, session hasn't changed since last analysis — skips re-analysis with `--force` flag
+- Prevents redundant LLM calls for unchanged sessions
+
+### Hook System &amp; Async Queue
+- **analysis_queue** table (V9 migration): Async hook-triggered analysis
+- **session-end hook**: Enqueues session, spawns detached queue worker
+- **Worker** (`queue-worker.ts`): Processes 1 item at a time; retries up to 3 attempts; resets stale processing items
+- **Environment guard**: `CODE_INSIGHTS_HOOK_ACTIVE=1` prevents recursive hook triggering
+
+---
+
+## CRITICAL INSIGHTS FOR PRODUCT BRAINSTORMING
+
+### What's Already Captured Per Session
+1. Structured metadata (project, tool, timestamps, message counts, branch, git context)
+2. Full conversation history with thinking/tool calls/results
+3. Outcome satisfaction, workflow pattern, course corrections
+4. Friction taxonomy with attribution model (user vs AI vs environment)
+5. Effective pattern taxonomy with driver attribution (user-driven vs AI-driven vs collaborative)
+6. Session-level insights (summary, decisions, learnings with evidence)
+7. Prompt quality analysis (5 dimensions + deficit/strength categories)
+8. Per-session LLM analysis costs &amp; token counts
+
+### Reflect/Patterns Foundation
+- Cross-session facet aggregation with friction/pattern trends
+- 8-session minimum for meaningful synthesis
+- ISO week-based scoping (not sliding windows)
+- Cached snapshots to avoid re-synthesis
+- Driver-based pattern attribution enables "who drove this?"
+
+### Export Capability Gaps
+- Currently: Session markdown + cross-session LLM synthesis
+- Missing: Direct attachment/linking of learnings to specific code files/functions
+- Missing: Git commit-level attribution (which commit introduced this friction/pattern?)
+- Missing: Cross-codebase knowledge (learnings applicable to similar patterns in other files)
+
+### Potential Extensions for "Attaching Learnings to Codebases"
+1. **Code-learnings linking**: Store friction/pattern references as JSON in git metadata or code comments
+2. **Commit-level insights**: Annotate commits with relevant learnings/decisions from the session that created them
+3. **File-level friction map**: Heatmap of friction density per file (e.g., auth.ts has 5 knowledge-gaps)
+4. **Pattern recommendations**: Suggest effective patterns when the user encounters similar friction
+5. **Knowledge breadcrumbs**: Auto-generate code comments linking to relevant session insights
+6. **Codebase taxonomy**: Map learnings to architectural layers (API, DB, frontend) for cross-module discovery
+
+---
+
+This comprehensive structure provides a strong foundation for attaching learnings to codebases while maintaining the local-first privacy model and supporting multiple AI coding tools.</result>
+<usage><total_tokens>98100</total_tokens><tool_uses>32</tool_uses><duration_ms>108006</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a26376193f702afb9</task-id>
+<tool-use-id>toolu_01Fq9JWAKBKLUYfNV56LWUso</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a26376193f702afb9.output</output-file>
+<status>completed</status>
+<summary>Agent "Strategic product analysis for codebase knowledge persistence" completed</summary>
+<result>Good. I have enough context now. Let me give you the strategic analysis.
+
+---
+
+## Strategic Assessment: Codebase-Attached Knowledge
+
+### 1. Product-Market Fit: Does This Strengthen or Dilute?
+
+This is the central question, and the answer is: **it depends entirely on the framing.**
+
+Code Insights today is a **personal learning tool**. The value prop is clear: "understand your AI coding sessions, get better over time." The product journey is introspective — Sessions, Insights, Reflect, Progress (upcoming). Everything flows from "I had AI sessions" to "I learned something about myself."
+
+Codebase-attached knowledge introduces a fundamentally different value prop: **"this repo knows things about itself."** That is not personal learning. That is institutional knowledge management. Those are different products serving different jobs-to-be-done.
+
+**The dilution risk is real.** The moment you start talking about "attach knowledge to repos," you sound like a documentation tool, a wiki, a knowledge graph. You invite comparison to Notion, Confluence, entire.io, and every "living documentation" startup that has tried and mostly failed over the past decade.
+
+**But there is an additive version.** The key insight is that code-insights already generates repo-scoped knowledge as a side effect. You already have:
+- Per-project friction patterns ("this codebase causes knowledge-gap friction 3x more than others")
+- Per-project decisions captured in session insights
+- Per-project effective patterns ("structured-planning works best in this repo")
+
+The additive version is not "attach arbitrary knowledge to repos." It is: **"surface what code-insights already knows about this project, in a format the project can keep."** That is a natural extension of export — not a new product layer.
+
+The dilutive version is: "let users write, edit, curate, and manage knowledge documents attached to their codebase." That is a content management system. Hard no.
+
+### 2. Differentiation vs. entire.io
+
+Entire.io (from what I can infer from its positioning) is a team-oriented SaaS tool that attaches institutional knowledge to codebases. It likely requires:
+- Team accounts and authentication
+- Cloud infrastructure for knowledge storage and search
+- Manual knowledge creation and curation workflows
+- Integration with code review and onboarding processes
+
+Code Insights' unique angle is that **the knowledge is generated, not authored.** Nobody sits down and writes "here's what this repo has learned." The knowledge emerges automatically from analyzing actual AI coding sessions. This is a fundamentally different acquisition model:
+
+| Dimension | entire.io (likely) | code-insights |
+|-----------|-------------------|---------------|
+| Knowledge source | Humans write it | LLM extracts it from sessions |
+| Freshness | Decays as people forget to update | Auto-refreshes every time you run `reflect` |
+| Effort | High (someone has to write docs) | Zero (side effect of existing workflow) |
+| Coverage | Selective (people write what they think matters) | Comprehensive (captures what actually happened) |
+| Audience | Team onboarding, institutional memory | Individual developer, personal reference |
+
+**The moat is zero-effort generation.** If you can say "run `code-insights` for a month, and your repo will have a living document of architectural decisions, friction hotspots, and effective patterns — all generated automatically," that is genuinely differentiated. Nobody else has that because nobody else parses multi-tool AI session data.
+
+What you cannot do that entire.io can: team knowledge aggregation (multiple developers' sessions into shared knowledge), search across an organization's codebases, structured onboarding flows. And you should not try. Those are team features. That is a different company.
+
+### 3. The Right Primitive
+
+This is where I have the strongest opinion. Let me work through the options:
+
+**Git notes:** Dead on arrival. Almost no developer knows they exist. They do not survive forks. They require separate push/fetch commands. The DX is hostile.
+
+**CLAUDE.md injection:** Tempting but wrong. CLAUDE.md is for agent instructions, not knowledge documentation. Mixing "how to behave" with "what this repo has learned" creates a messy file. Also, you do not own the CLAUDE.md format — Anthropic does, and they may change it.
+
+**ADR-style markdown in a dedicated folder:** This is the right direction but needs refinement.
+
+**.code-insights/ folder at repo root:** This is what I would recommend, with caveats.
+
+**My recommendation: a single file, not a folder.**
+
+The primitive should be: **`.code-insights.md`** — a single markdown file at the project root.
+
+Here is why:
+
+1. **One file is reviewable.** Developers can look at a single PR that adds/updates `.code-insights.md` and make a judgment call. A folder with multiple generated files feels invasive.
+
+2. **One file is deletable.** If you do not want it, `rm .code-insights.md`. Done. No recursive folder cleanup.
+
+3. **One file survives everything.** Clones, forks, shallow clones, zip downloads — a single root-level markdown file is the most portable artifact possible.
+
+4. **One file is `.gitignore`-able.** If you want it personal, add it to `.gitignore`. If you want it shared, commit it. The developer chooses.
+
+5. **Precedent:** `.editorconfig`, `.nvmrc`, `.tool-versions`, `ARCHITECTURE.md` — single root files that describe project properties are well-understood by developers.
+
+The file should be structured with clear sections (Decisions, Friction Hotspots, Effective Patterns, Generated Rules) and a header that says "Auto-generated by code-insights. Edit freely — regeneration will merge, not overwrite."
+
+A folder (`.code-insights/`) could come later if there is demand for multiple documents (per-module knowledge, historical snapshots). But start with one file. Less is more.
+
+### 4. Developer Adoption Risk
+
+Developers are indeed suspicious of files added to their repos. The adoption risk hierarchy, from lowest to highest:
+
+**Low risk (do this):**
+- Explicit opt-in command: `code-insights export --to-repo` or `code-insights attach`
+- File goes to `.code-insights.md` (not buried in a folder)
+- First line of the file: "This file was generated by code-insights. It is safe to delete, gitignore, or edit."
+- Never auto-generated. Never created by a hook. Always a conscious user action.
+- Add `.code-insights.md` to the suggested `.gitignore` patterns in docs, so the default is personal
+
+**Medium risk (proceed with caution):**
+- Auto-updating the file on `code-insights reflect` — only if the user has previously opted in
+- Suggesting the file in PR descriptions or commit messages
+
+**High risk (do not do this):**
+- Creating the file automatically on `code-insights sync` or `code-insights dashboard`
+- Adding multiple files or a folder structure without user initiation
+- Modifying any existing repo files (CLAUDE.md, README, etc.)
+
+**The trust equation:** Value delivered must visibly exceed the cost of a new file. The file needs to be immediately useful the first time a developer reads it. If it is generic boilerplate, they will delete it and never try the feature again.
+
+### 5. Where Does This Fit in the Product Journey?
+
+The current product journey is:
+
+```
+Sessions -&gt; Insights -&gt; Reflect (weekly) -&gt; [Progress (upcoming)]
+```
+
+Codebase-attached knowledge is NOT a 4th layer. It is not a step in the introspective journey. It is an **export target** — a different output format for knowledge that already exists.
+
+Think of it this way:
+
+```
+Sessions -&gt; Insights -&gt; Reflect -&gt; Progress
+                |           |
+                v           v
+            Export      .code-insights.md
+         (Obsidian,     (repo-attached)
+          Notion, etc.)
+```
+
+The Export page already does cross-session LLM synthesis into Agent Rules, Knowledge Brief, Obsidian, and Notion formats. `.code-insights.md` is a 5th export format — one that targets the repo itself rather than an external tool.
+
+The implementation path is:
+1. Add a "Repo Knowledge" format to the Export page (alongside Agent Rules, Knowledge Brief, Obsidian, Notion)
+2. Add a CLI command: `code-insights export --format repo` that writes `.code-insights.md`
+3. The content is project-scoped (already supported via `--project` flag)
+4. The synthesis uses existing LLM-powered export pipeline (SSE streaming, depth presets)
+
+This means: **no new architecture, no new data model, no new product layer.** It is a new output format for an existing capability. That is the right scope.
+
+If it proves valuable, you can later add:
+- Auto-refresh on `reflect` (with opt-in flag)
+- Section-level merge (preserve user edits, update generated sections)
+- `.code-insights/` folder with per-module breakdowns
+
+But start with "it is an export format." If nobody uses it, you have not built a feature nobody wants — you have added one option to an existing dropdown.
+
+### 6. Killer Use Case
+
+Here is the narrative:
+
+---
+
+**Maya is a senior developer who just joined a team.** She inherits a 3-year-old codebase. There is a README from 2023. There is a CLAUDE.md that says "use React" and not much else. The original developer left six months ago.
+
+Maya installs code-insights. She runs `code-insights sync --source claude-code`. The tool discovers that the previous developer had 400+ Claude Code sessions in this project directory over the past year.
+
+She runs `code-insights export --format repo --project my-service --depth comprehensive`.
+
+A `.code-insights.md` file appears at the project root. It contains:
+
+- **8 architectural decisions** extracted from sessions where the developer debated approaches with Claude. "Chose event sourcing over CRUD for the audit log because of compliance requirements (2025-11-14)." "Switched from Prisma to Drizzle after hitting the N+1 query issue in the billing module (2026-01-08)."
+
+- **Top friction hotspots**: "The payment module consistently causes `stale-assumptions` friction — the Stripe API versioning has been a recurring source of bugs across 12 sessions."
+
+- **Effective patterns**: "Structured planning with acceptance criteria before implementation reduced rework by an estimated 40% in sessions after 2025-12."
+
+Maya reads this file in 5 minutes and has more context about this codebase than she would get from a week of code archaeology. She commits it to the repo so the next person gets this too.
+
+---
+
+That is the holy-shit moment: **a codebase that can tell its own story, extracted from the actual work that happened in it, with zero effort from the original developer.**
+
+The key insight: this only works because code-insights already parses the sessions and generates insights. The `.code-insights.md` file is not a new capability — it is a new surface for existing intelligence. The previous developer did not do anything special. They just used Claude Code (or Cursor, or Codex) normally. Code Insights did the rest.
+
+### Where It Could Go Wrong
+
+Three failure modes to watch:
+
+1. **Quality floor.** If the generated `.code-insights.md` is vague, generic, or wrong, developers will never trust it again. The export LLM synthesis needs to be significantly better than "this codebase uses React and has some tests." It needs specific, dated, falsifiable claims. This is a prompt engineering challenge, not an architecture challenge.
+
+2. **Privacy landmine.** AI session data can contain sensitive information — API keys in error messages, internal service names, infrastructure details. If someone commits a `.code-insights.md` to a public repo and it contains "debugging the AWS credentials rotation for prod account 123456789," that is a security incident. The export pipeline MUST strip sensitive patterns, and the file MUST have a prominent "review before committing" warning.
+
+3. **Scope creep toward team features.** "Codebase knowledge" naturally leads to "team knowledge." Resist this. The moment you add "merge knowledge from multiple developers' sessions," you need conflict resolution, attribution, access control, and you have become a different product. The file is generated from one developer's sessions. If a team wants shared knowledge, they each generate their own and the team decides what to keep. That is a social process, not a product feature.
+
+### Bottom Line
+
+**Build it as an export format, not a product layer.** The repo-attached file is a new output target for existing cross-session synthesis. Frame it as "your repo can remember what you learned" — not "codebase knowledge management." Start with a single `.code-insights.md` file, explicit opt-in, and the killer use case of onboarding context. If it gets traction, expand. If it does not, it cost you one new export format — not a major architectural bet.
+
+The entire.io comparison is a red herring. They are building a team knowledge platform. You are building a personal learning tool that happens to produce artifacts useful enough to commit. Those are different products that happen to touch the same noun ("codebase knowledge"). Do not chase their feature set. Your moat is zero-effort generation from real session data across multiple AI tools. Lean into that.</result>
+<usage><total_tokens>42610</total_tokens><tool_uses>5</tool_uses><duration_ms>116141</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a9a8b674c35b3690a</task-id>
+<tool-use-id>toolu_013wYuPHp8yPbVnnKnKd73PF</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a9a8b674c35b3690a.output</output-file>
+<status>completed</status>
+<summary>Agent "Research entire.io and codebase knowledge persistence tools" completed</summary>
+<result>Here is the comprehensive research synthesis:
+
+---
+
+## Research Summary: Codebase-Attached Learnings — Ecosystem &amp; Design Patterns
+
+---
+
+### 1. entire.io — Deep Dive
+
+**What it is:** entire.io is a git-native, MIT-licensed CLI tool (open source at `github.com/entireio/cli`) that captures AI agent sessions alongside git commits. The core pitch: when you push code, the "why it was written this way" — the full agent conversation, prompts, token usage, file diffs — is preserved and searchable.
+
+**The problem it solves:** Three hard problems: (1) lost session context ("why was this written this way?"), (2) agent amnesia between sessions (new sessions have zero knowledge of past decisions), (3) attribution — which lines were human vs. agent-written.
+
+**Technical architecture — storage model:**
+
+The storage model is the most interesting part. Entire uses a **dual-branch git strategy**:
+
+- **Shadow branches** (ephemeral, local-only): `entire/&lt;hash&gt;` — named by combining the first 7 chars of HEAD + a worktree ID. These are temporary working refs during an active session.
+- **Orphan metadata branch** (persistent): `entire/checkpoints/v1` — a disconnected-history branch that accumulates all session metadata and gets pushed alongside your normal branches, keeping main history clean.
+
+Your working branch never gets any Entire commits. The metadata branch carries everything.
+
+**Checkpoint file structure** on `entire/checkpoints/v1`:
+
+```
+entire/checkpoints/v1/a3/b2c4d5e6f7/
+├── metadata.json         # summary, attribution data, token usage
+├── 0/
+│   ├── full.jsonl        # complete conversation transcript
+│   ├── prompt.txt        # user prompts extracted
+│   └── context.md        # context document
+```
+
+Checkpoints are identified by 12-char hex IDs (6 random bytes, sharded into 2-char directories for filesystem performance). A git commit trailer `Entire-Checkpoint: a3b2c4d5e6f7` links each code commit back to its session metadata.
+
+**Configuration files:**
+- `.entire/settings.json` — committed to repo, team-shared settings
+- `.entire/settings.local.json` — personal overrides, gitignored
+
+Each AI tool gets its own hook file (`claude/settings.json`, `.cursor/hooks.json`, `.codex/hooks.json`, `.gemini/settings.json`).
+
+**Data captured per session:** transcripts, user prompts, modified files, token counts, tool calls (parsed from Claude Code's JSONL `tool_use` blocks), and line-level attribution (agent-written vs human lines, with percentages).
+
+**How knowledge is surfaced:**
+- `entire explain` — review a session's checkpoints with original prompts + resulting commits
+- `entire rewind` — interactive picker to restore any checkpoint
+- `entire resume` — continue from a previous save point (switches branch + restores context)
+
+**Integration:** git hooks (`prepare-commit-msg`, `post-commit`, `pre-push`). Works with Claude Code, Gemini CLI, Cursor, GitHub Copilot CLI, Codex, OpenCode, FactoryAI.
+
+**Business model:** MIT open source, free. No hosted service, no external database. Transcripts live in your git repo on the orphan branch — public repos expose session data.
+
+**Weaknesses and criticism:**
+- Reviewer noted: "running a separate CLI adds friction — this should be native to the agent." The hooks + setup mean it's another tool in the stack.
+- Security: automatic secret redaction is best-effort only. Public repos = visible transcripts.
+- The orphan branch strategy means `git clone` alone doesn't bring the metadata — you have to explicitly fetch the `entire/checkpoints/v1` ref (it's not fetched by default).
+- Fork survivability is partial: the orphan branch must be explicitly fetched/pushed — it's not part of normal `git push origin` unless configured.
+
+---
+
+### 2. Adjacent Tools
+
+#### ADRs: adr-tools + MADR
+
+**adr-tools** (npryce, shell script CLI):
+- Default directory: `doc/adr/`
+- File naming: `NNNN-title-with-dashes.md` (e.g., `0005-use-postgresql.md`)
+- Nygard template (minimal, 5 sections):
+
+```markdown
+# NUMBER. TITLE
+
+Date: YYYY-MM-DD
+
+## Status
+Accepted | Proposed | Deprecated | Superseded by [ADR-NNNN]
+
+## Context
+The issue motivating this decision, and any context that influences or constrains it.
+
+## Decision
+The change that we're proposing or have agreed to implement.
+
+## Consequences
+What becomes easier or more difficult, and any risks introduced.
+```
+
+- When one ADR supersedes another, `adr-tools` automatically inserts hyperlinks between them.
+- 100% files in git — survives forks, team rotation, clones natively.
+
+**MADR** (Markdown Any Decision Records, v4.0.0 released 2024-09-17):
+- Directory: `docs/decisions/`
+- Naming: `NNNN-title-with-dashes.md`
+- Richer template adds: Decision Drivers, Considered Options (with pros/cons per option), Validation section, optional metadata frontmatter.
+- Four variants: `adr-template.md`, `adr-template-minimal.md`, `adr-template-bare.md`, `adr-template-bare-minimal.md`.
+
+**log4brains:**
+- Wraps MADR, hosts as a searchable static website.
+- Date-based filenames (`YYYYMMDD-adr-name`) to avoid git merge conflicts.
+- Adds concept of "knowledge bases" per package in monorepos.
+- Status: mostly dormant maintenance mode as of 2025.
+
+**Key insight for code-insights:** ADRs are the most battle-tested "file-in-repo" pattern for institutional decisions. The immutability of ADRs (only status can change) is a deliberate design — it prevents revisionism and creates an audit trail. The critical missing piece: ADRs document decisions made *before* writing code; they don't capture learnings extracted *from* AI sessions *after* the fact.
+
+---
+
+#### Codebase Context Specification (CCS)
+
+Proposed by Agentic Insights, archived October 2025 (meaning it was superseded by CLAUDE.md/AGENTS.md becoming de facto standards).
+
+Directory: `.context/` at project root (and optionally at significant module levels).
+
+Structure:
+```
+.context/
+├── index.md              # YAML frontmatter + narrative overview
+├── docs.md               # guidelines, domain info, integration patterns
+└── diagrams/
+    ├── architecture.mmd
+    └── data-flow.mmd
+```
+
+YAML frontmatter schema in `index.md`:
+```yaml
+module-name: "string"
+description: "string"
+related-modules:
+  - name: "string"
+    path: "string"
+architecture:
+  style: "string"
+  components:
+    - name: "string"
+      description: "string"
+  patterns:
+    - name: "string"
+      usage: "string"
+```
+
+Three-tier hierarchy: root (project-wide) → module (component-specific) → feature (implementation detail), each inheriting from parent.
+
+**Why it was archived:** CLAUDE.md became the winner for this space. Research showed 72.6% of Claude Code projects specify application architecture in a root CLAUDE.md, and presence of AGENTS.md was associated with 29% reduction in median runtime and 17% reduction in output tokens. The format war settled on flat markdown files over structured YAML directories.
+
+---
+
+#### Memory MCP Servers
+
+**Cline Memory Bank:**
+
+The canonical pattern for session-persistent AI context. Structure:
+```
+memory-bank/
+├── projectbrief.md       # Foundation: core requirements, goals
+├── productContext.md     # Why the project exists, UX objectives
+├── activeContext.md      # Current work focus, recent changes, upcoming tasks
+├── systemPatterns.md     # Architecture decisions, design patterns
+├── techContext.md        # Tech stack, constraints, dependencies
+└── progress.md           # Status, known issues, milestones
+```
+
+Cline reads ALL files at the start of EVERY task. Updates fire when new patterns are discovered, after substantial changes, or on explicit "update memory bank" command. Files stay brief (1-2 pages) to minimize context consumption.
+
+**The critical limitation:** memory-bank lives outside the repo (or is gitignored). It does NOT survive team rotation or repo forks by default. It's personal/machine context, not codebase context.
+
+**basic-memory:**
+
+More sophisticated: stores knowledge as local markdown files indexed in SQLite (with optional PostgreSQL). Files use structured frontmatter + semantic observation syntax:
+
+```yaml
+---
+title: "Entity Title"
+type: "note"
+permalink: "entity-slug"
+tags: [optional]
+---
+
+- [method] Pour over extracts more floral notes #brewing
+- [tip] Grind size should be medium-fine for pour over
+- [decision] Chose SQLite over PostgreSQL for local-first simplicity
+```
+
+Relations use WikiLink syntax: `- related_to [[Other Entity]]`
+
+Exposed via MCP tools: `write_note()`, `read_note()`, `build_context(url, depth)`, `search()` (full-text + semantic vector via FastEmbed). The knowledge graph is traversable. Optional cloud sync available.
+
+**Key design insight:** the dual-layer model (Markdown as source of truth + SQLite as query layer) is the right architecture for local-first tools. Markdown is human-readable and git-committable; SQLite is fast and queryable.
+
+**OpenMemory MCP (mem0):**
+
+Docker-first (Postgres + Qdrant + API). Heavy infrastructure. Overkill for local dev tools. Adds ACL between apps and memories. Not repo-attached by design — it's a shared cross-app personal memory layer.
+
+---
+
+#### Greptile
+
+Cloud SaaS, not local. Indexes GitHub repos via AST parsing → generates docstrings for every node → embeds docstrings → builds a graph of file/function/dependency relationships. Retrieval uses semantic similarity + keyword search + "agentic search" (agent traces references to find connections). Provides codebase Q&amp;A via API. No local option. No "attach to repo" model — it's an external indexed service. Doesn't capture learnings from sessions; it indexes existing code.
+
+---
+
+#### Repowise (emerging, 2025)
+
+The most architecturally interesting new entrant. Combines four intelligence layers in one self-hosted tool:
+
+1. **Dependency graph** — tree-sitter AST parsing across 14 languages, file/symbol relationships stored in NetworkX graphs + LanceDB embeddings
+2. **Git history analysis** — classifies files as hotspots (high churn + complexity), computes ownership, detects co-change coupling
+3. **Auto-generated docs** — CLAUDE.md and wiki pages as output
+4. **Architectural decisions** — captured three ways: CLI-guided capture (`repowise decision add`, ~90 seconds), git commit message mining (auto-proposes), and **inline markers** (`# WHY:`, `# DECISION:`, `# TRADEOFF:` in code comments)
+
+Decisions link to specific graph nodes and track staleness as code evolves. Surfaced by `get_why()` whenever the AI agent touches a governed file. Seven MCP tools: `get_overview()`, `get_answer()`, `get_context()`, `search_codebase()`, `get_risk()`, `get_why()`, `get_dead_code()`.
+
+This inline-marker approach is underexplored and powerful: `# WHY: we use polling here because the vendor API has no webhooks` lives in the code itself, is never stale (it decays naturally when the code is deleted/changed), and requires zero tooling to read.
+
+---
+
+#### sourcebook (maroondlabs, 2025)
+
+Convention-inference focused. Samples source files to detect naming, import/export patterns, error handling conventions, and type annotation styles. Outputs to CLAUDE.md / AGENTS.md. Runs as an MCP server. Smart about token budgets: critical constraints at top/bottom of output, supplementary info in the middle (exploiting LLM attention patterns). Generates what agents "keep missing" — conventions not inferable from code, fragile areas, hidden dependencies.
+
+---
+
+### 3. The Four Dominant Approaches
+
+**Approach 1: File-in-Repo (Markdown/YAML committed to git)**
+
+Examples: ADRs (doc/adr/), MADR, CCS (.context/), CLAUDE.md, memory-bank (when committed), repowise decision files.
+
+Pros:
+- Survives team rotation natively (it's in git)
+- Survives repo forks (files come along)
+- Human-readable, diff-able, PR-reviewable
+- Zero extra tooling to read
+- Co-located with the code it describes
+
+Cons:
+- No queryability beyond grep/text search
+- No semantic retrieval (can't ask "what decision covered this pattern?")
+- Gets stale if not maintained actively — "context rot"
+- Monolithic files don't scale past medium codebases
+- Manual capture — requires developer discipline to write
+
+**Best for local-first, open-source developer tools?** YES, this is the foundation layer. It's the only approach that survives all the "stickiness" scenarios (rotation, fork, clone, offline). Treat it as the durable/canonical store.
+
+---
+
+**Approach 2: Sidecar Database (SQLite alongside the repo)**
+
+Examples: basic-memory (SQLite + markdown), repowise (SQLite + LanceDB + NetworkX), sqlite-memory, code-insights itself.
+
+Pros:
+- Rich querying — filter by date, source, confidence, category
+- Semantic search via vector embeddings (FastEmbed, LanceDB)
+- Fast aggregation and analytics
+- Supports complex data types (arrays, JSON, relations)
+- Local-first, no cloud dependency
+
+Cons:
+- Binary file — not human-readable, not git-diff-able
+- Doesn't survive forks cleanly (must rebuild index)
+- Doesn't survive team rotation unless the DB file is explicitly shared/committed (bad idea for binary blobs)
+- Requires tooling to query — can't be read in a terminal or IDE
+
+**Best for local-first, open-source?** YES as the queryable/fast layer, but never as the sole store. The pattern is: markdown files as source of truth (committable, portable), SQLite as the index (local, fast, rebuiltable). This is exactly what basic-memory and sqlite-memory do.
+
+---
+
+**Approach 3: Inline Code Annotations**
+
+Examples: Repowise's `# WHY:` / `# DECISION:` / `# TRADEOFF:` markers, conventional "why comments."
+
+```python
+# WHY: polling instead of webhooks — vendor API doesn't support event subscriptions as of 2025-03
+# DECISION: SQLite over PostgreSQL — local-first constraint, no multi-user requirement
+# TRADEOFF: synchronous DB writes sacrifice throughput for simplicity in the hook path
+```
+
+Pros:
+- Maximum "stickiness" — lives in the code file itself, can't get out of sync
+- Survives forks, team rotation, clones, IDE searches, grep
+- Naturally decays with the code it describes (not a stale doc somewhere)
+- Zero tooling to read
+
+Cons:
+- Not queryable or aggregatable across the codebase
+- Undiscoverable unless you happen to read that file
+- No structured schema — freeform
+- Pollutes code with non-code
+- Doesn't capture session-level learnings, only file-level decisions
+
+**Best for local-first, open-source?** Useful as a complementary layer for point-of-decision capture, not as the primary store. Repowise's approach of extracting these into a structured decision graph is the right amplifier for this pattern.
+
+---
+
+**Approach 4: External Service Layer (API, cloud)**
+
+Examples: Greptile, Sourcegraph Cody, OpenMemory (hosted), GitHub Copilot knowledge bases.
+
+Pros:
+- Rich indexing and semantic search at scale
+- Team-shared by default
+- Powerful RAG retrieval
+
+Cons:
+- Privacy: data leaves the machine
+- Vendor lock-in
+- Not local-first, requires internet and auth
+- Doesn't survive being cut off from the service
+- Cost
+- No fork portability — the index must be rebuilt per organization
+
+**Best for local-first, open-source?** Not applicable. This is the opposite of the design target.
+
+---
+
+### 4. The Stickiness Problem
+
+"Stickiness" = does the knowledge stay with the codebase, not the person?
+
+The scorecard across scenarios:
+
+| Storage Approach | git clone | git fork | Team rotation | Offline | Rebuild-able |
+|---|---|---|---|---|---|
+| Markdown files in repo | YES | YES | YES | YES | N/A |
+| ADRs in `doc/adr/` | YES | YES | YES | YES | N/A |
+| SQLite sidecar (gitignored) | NO | NO | NO | YES | YES (from files) |
+| SQLite committed | YES* | YES* | YES* | YES | N/A |
+| Orphan git branch (entire.io) | PARTIAL** | NO | PARTIAL** | YES | YES |
+| Memory MCP server (local) | NO | NO | NO | YES | NO |
+| External cloud service | NO | NO | NO | NO | NO |
+| Inline code comments | YES | YES | YES | YES | N/A |
+
+*Committing a SQLite binary is technically valid but generally terrible practice — diffs are unreadable, merges are impossible, file size grows unboundedly.
+
+**entire.io's orphan branch: a `git clone` does NOT fetch orphan branches by default. You need `git fetch origin entire/checkpoints/v1` explicitly. This is a significant gap in the model — knowledge doesn't transfer on a standard clone.
+
+**The best-practice answer from the ecosystem:** The tools that solve stickiness best are those that use plain files committed to the repo. ADRs are 15 years old and still the gold standard precisely because they survive everything — a developer reading a 10-year-old `doc/adr/` folder gets the full decision history with zero tooling.
+
+The pattern emerging in 2025 is a **two-layer hybrid:**
+1. **Durable layer:** markdown files committed to git (`docs/learnings/`, `docs/decisions/`, CLAUDE.md updates) — for long-lived institutional knowledge that must survive team rotation and forks
+2. **Fast index layer:** SQLite (local, rebuilt from the durable layer) — for querying, semantic search, aggregation, and surfacing knowledge in dashboards
+
+The tools that conflate these two layers (only SQLite, only orphan branch, only memory server) are solving the wrong half of the problem. Knowledge that isn't committed to the main repo eventually gets lost.
+
+---
+
+### Key Gaps Relevant to code-insights
+
+Given code-insights already captures cross-session patterns and friction points in SQLite, the missing piece for "codebase-attached learnings" is:
+
+1. **No durable export layer** — learnings live only in SQLite, not committed to the repo alongside the code. A developer who clones the repo gets none of the accumulated insights.
+2. **No per-repo knowledge attachment** — code-insights is a global tool (`~/.code-insights/data.db`), but learnings are most useful when repo-scoped and co-located.
+3. **No replay/resume mechanism** — unlike entire.io, there's no way to start a new session and say "show me what I learned last time I worked on this repo."
+4. **No staleness tracking** — there's no mechanism to detect when a captured learning has become stale (the code it referred to has changed significantly).
+
+The opportunity: code-insights is already doing the hard part (extracting structured friction points, effective patterns, and prompt quality insights from AI sessions). The feature gap is surfacing those back as **repo-attached files** — a `docs/ai-learnings/` or `.code-insights/learnings/` directory of committed markdown, generated from the SQLite analysis, that travels with the codebase.
+
+---
+
+Sources:
+- [entire.io](https://entire.io)
+- [GitHub — entireio/cli](https://github.com/entireio/cli)
+- [How Entire Works Under the Hood — julien.danjou.info](https://julien.danjou.info/blog/how-entire-works-under-the-hood/)
+- [Entire CLI — mager.co review](https://www.mager.co/blog/2026-02-10-entire-cli/)
+- [GitHub — adr/madr](https://github.com/adr/madr)
+- [GitHub — thomvaill/log4brains](https://github.com/thomvaill/log4brains)
+- [adr.github.io — ADR Templates](https://adr.github.io/adr-templates/)
+- [GitHub — npryce/adr-tools](https://github.com/npryce/adr-tools)
+- [GitHub — Agentic-Insights/codebase-context-spec](https://github.com/Agentic-Insights/codebase-context-spec)
+- [GitHub — basicmachines-co/basic-memory](https://github.com/basicmachines-co/basic-memory)
+- [Cline Memory Bank docs](https://docs.cline.bot/features/memory-bank)
+- [mem0 — Introducing OpenMemory MCP](https://mem0.ai/blog/introducing-openmemory-mcp)
+- [Greptile — Graph-based Codebase Context](https://www.greptile.com/docs/how-grapes-works/graph-based-codebase-context)
+- [GitHub — repowise-dev/repowise](https://github.com/repowise-dev/repowise)
+- [GitHub — maroondlabs/sourcebook](https://github.com/maroondlabs/sourcebook)
+- [GitHub — sqliteai/sqlite-memory](https://github.com/sqliteai/sqlite-memory)
+- [Codified Context: Infrastructure for AI Agents in a Complex Codebase — arxiv](https://arxiv.org/html/2602.20478v1)
+- [CLAUDE.md, AGENTS.md, GEMINI.md Explained — copymarkdown.com](https://copymarkdown.com/agents-md-explained/)
+- [Context rot — DEV Community](https://dev.to/stevewondersen/what-is-context-rot-and-why-your-ai-keeps-forgetting-467h)</result>
+<usage><total_tokens>56465</total_tokens><tool_uses>42</tool_uses><duration_ms>441038</duration_ms></usage>
+</task-notification>
+
+---
+
+I'd say both.. It should help both AI Agents and Humans who want to know why we built what we built and how we built it..
+
+---
+
+C might be better.. In fact, i want to post this on LinkedIn and ask for user feedback.. Build a post talking about my message and your research insights and converge at this point seeking feedback and put out my opinion as well instead of leaving it blindly on user feedback.. Build a draft for LinkedIn and save the research insights into docs somewhere and commit
+
+---
+
+the post feels too large.. shorten it.. don't use jargon - keep it natural and conversational
+
+---
+
+this is good. but now, design the solution for this.. seek inputs from @"ux-engineer (agent)" and @"technical-architect (agent)" and design a product requirement so it can be reviewed with @"devtools-cofounder (agent)" and @"technical-architect (agent)" again before starting any implementation work..
+
+---
+
+<task-notification>
+<task-id>a56e76aa29d634eb6</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a56e76aa29d634eb6.output</output-file>
+<status>completed</status>
+<summary>Agent "Technical architecture design for codebase-attached knowledge feature" completed</summary>
+<result>Good -- the template-based exports (knowledge-base, agent-rules) are in `server/src/export/`. Now I have everything I need.
+
+---
+
+# Technical Architecture: Codebase-Attached Knowledge (`.code-insights.md`)
+
+## 1. Export Pipeline Extension
+
+### Recommendation: Reuse the existing `/api/export/generate` endpoint with `format: 'repo'`
+
+The `repo` format fits cleanly into the existing pipeline. The endpoint already supports multiple formats, SSE streaming, scope/depth/projectId parameters, and LLM synthesis. The only difference is that the **CLI writes the output to a file** instead of displaying it in the dashboard -- but that is a CLI-side concern, not a server concern.
+
+**What changes on the server:**
+
+Add `'repo'` to the `ExportFormat` union in `server/src/llm/export-prompts.ts`:
+
+```typescript
+export type ExportFormat = 'agent-rules' | 'knowledge-brief' | 'obsidian' | 'notion' | 'repo';
+```
+
+Update the format validation in `server/src/routes/export.ts` (both POST and GET handlers) to accept `'repo'`.
+
+Add a new system prompt pair in `export-prompts.ts` and wire it into `getExportSystemPrompt()`.
+
+**Why not a separate endpoint:** The data fetching logic (`fetchScopedInsights`, `fetchSessionContext`, `applyDepthCap`, `buildInsightContext`) is identical. The only novel part is the system prompt and a post-processing step to prepend YAML frontmatter. Creating a separate endpoint would duplicate ~100 lines of identical query and orchestration code.
+
+**The `repo` format needs additional data beyond insights.** The existing export pipeline only sends insights to the LLM. For `.code-insights.md`, we also need:
+- Friction aggregations (from `session_facets`)
+- Effective patterns (from `session_facets`)  
+- CLAUDE.md rules (from `reflect_snapshots.results_json`)
+
+This means the `repo` format requires a **richer context builder** that supplements insight data with facet aggregations. The cleanest approach is a new function `buildRepoExportContext()` in `export-prompts.ts` that fetches this additional data, called only when `format === 'repo'`.
+
+**New server-side code:**
+
+1. `server/src/llm/export-prompts.ts` -- new `REPO_PROJECT_SYSTEM_PROMPT` and `REPO_ALL_SYSTEM_PROMPT`, new `buildRepoExportContext()` function
+2. `server/src/routes/export.ts` -- format validation update, conditional call to `buildRepoExportContext()` when format is `repo`
+
+**New LLM prompt structure:**
+
+The `repo` prompt is distinctive because the LLM does not produce the entire file. The YAML frontmatter is deterministic (generated in code from aggregated data). The LLM produces only the markdown body sections. This keeps the machine-readable portion exact and avoids LLM hallucination in structured data.
+
+```
+SYSTEM: You are a technical writer producing a codebase knowledge document from 
+AI coding session analysis for the project "{projectName}". This document travels 
+with the repository and serves two audiences:
+
+1. AI coding agents — who read the YAML frontmatter for structured context
+2. Human developers — who read the markdown sections for project knowledge
+
+Produce markdown sections ONLY (no frontmatter, no preamble). Structure:
+- ## Key Decisions (with trade-offs, alternatives rejected, revisit conditions)
+- ## Learnings (grouped by topic, not by session)
+- ## Common Friction Points (what keeps causing problems and why)
+- ## Effective Patterns (what works well in this codebase)
+- ## Rules for AI Agents (imperative instructions derived from patterns)
+
+Rules:
+- Deduplicate overlapping items — merge into single entries
+- Be specific to THIS codebase, not generic advice
+- Decisions must include WHY, not just WHAT
+- Friction and patterns must be actionable, not observational
+- Rules must be imperative mood: "DO X", "NEVER Y", "WHEN Z, do W"
+- Do NOT include session IDs, timestamps, or any data that identifies specific sessions
+- Do NOT include file paths from the user's machine
+- Do NOT include API keys, tokens, passwords, or any credential-like strings
+- Output clean markdown only — no meta-commentary
+```
+
+**USER prompt** feeds the same insight context (decisions, learnings, techniques) plus supplementary aggregated friction/pattern data and any existing CLAUDE.md rules from reflect snapshots.
+
+
+## 2. Project Root Detection
+
+### How the CLI resolves `--project` to a filesystem path
+
+The `projects` table already stores `path TEXT NOT NULL` for every project. The `sessions` table stores `project_path TEXT NOT NULL` per session. Both are populated during sync from the session file's `cwd` field.
+
+**Resolution chain:**
+
+```
+--project "code-insights"
+    |
+    v
+1. Fuzzy-match project name against projects.name (reuse stats/data/fuzzy-match.ts)
+    |
+    v
+2. Look up projects.path for the matched project_id
+    |
+    v
+3. Verify path exists on disk (existsSync)
+    |
+    v
+4. Walk up to find .git directory (project root confirmation)
+    |
+    v
+5. Write .code-insights.md at that root
+```
+
+**Edge cases:**
+
+| Scenario | Handling |
+|----------|----------|
+| Project has multiple paths (monorepo sub-paths) | Query `SELECT DISTINCT project_path FROM sessions WHERE project_id = ? AND deleted_at IS NULL`. If multiple paths share a common ancestor with a `.git` directory, use that ancestor. If truly disjoint, prompt user to pick via `--path` override. |
+| Path no longer exists on disk | Error with clear message: `"Project path /old/path no longer exists. Use --path /new/path to specify the current location."` |
+| `--project` not provided | Auto-detect from `process.cwd()` -- look up sessions whose `project_path` starts with the current directory, then resolve to the git root. If no match, error. |
+| No git root found | Write to the project path directly (some projects are not git repos). Warn that the file will not be version-controlled. |
+
+**New `--path` flag:**
+
+```typescript
+.option('--path &lt;dir&gt;', 'Override output directory for .code-insights.md')
+```
+
+This takes precedence over all detection logic. Useful when the project moved or for monorepo sub-projects.
+
+**Code sketch for project root detection:**
+
+```typescript
+// cli/src/utils/project-root.ts
+
+import { existsSync } from 'fs';
+import { dirname, join, resolve } from 'path';
+
+/**
+ * Walk up from startPath to find the nearest directory containing .git.
+ * Returns the directory path, or null if no .git found up to filesystem root.
+ */
+export function findGitRoot(startPath: string): string | null {
+  let current = resolve(startPath);
+  while (true) {
+    if (existsSync(join(current, '.git'))) return current;
+    const parent = dirname(current);
+    if (parent === current) return null; // filesystem root
+    current = parent;
+  }
+}
+
+/**
+ * Resolve the target directory for .code-insights.md given a project's known paths.
+ * Priority: --path override &gt; git root of stored path &gt; stored path directly.
+ */
+export function resolveProjectRoot(
+  storedPaths: string[],
+  pathOverride?: string
+): { root: string; source: 'override' | 'git-root' | 'stored-path' } {
+  if (pathOverride) {
+    const resolved = resolve(pathOverride);
+    if (!existsSync(resolved)) {
+      throw new Error(`Specified path does not exist: ${resolved}`);
+    }
+    return { root: resolved, source: 'override' };
+  }
+
+  // Find the longest common prefix with a .git directory
+  for (const storedPath of storedPaths) {
+    if (!existsSync(storedPath)) continue;
+    const gitRoot = findGitRoot(storedPath);
+    if (gitRoot) return { root: gitRoot, source: 'git-root' };
+    return { root: storedPath, source: 'stored-path' };
+  }
+
+  throw new Error(
+    `None of the known project paths exist on disk: ${storedPaths.join(', ')}. ` +
+    `Use --path to specify the current location.`
+  );
+}
+```
+
+
+## 3. File Generation &amp; Structure
+
+### YAML Frontmatter Schema (machine-readable, deterministic)
+
+The frontmatter is **generated entirely in code** from SQLite data. The LLM never touches it. This guarantees structural correctness and parseability.
+
+```yaml
+---
+# Machine-readable metadata for AI coding agents.
+# Generated by code-insights. Do not edit this section manually.
+schema_version: 1
+generated_at: "2026-04-20T14:30:00Z"
+project:
+  name: "code-insights"
+  id: "a1b2c3d4e5f6g7h8"
+
+stats:
+  sessions_analyzed: 142
+  date_range:
+    from: "2026-01-15"
+    to: "2026-04-20"
+  source_tools:
+    - claude-code
+    - cursor
+
+friction_summary:
+  - category: "wrong-approach"
+    frequency: 12
+    severity: 2.4
+    attribution_breakdown:
+      user_actionable: 8
+      ai_capability: 3
+      environmental: 1
+  - category: "knowledge-gap"
+    frequency: 7
+    severity: 1.9
+    attribution_breakdown:
+      user_actionable: 5
+      ai_capability: 2
+
+effective_patterns:
+  - category: "structured-planning"
+    frequency: 18
+    confidence: 0.82
+    driver_breakdown:
+      user_driven: 12
+      ai_driven: 3
+      collaborative: 3
+  - category: "verification-workflow"
+    frequency: 14
+    confidence: 0.78
+
+rules:
+  - "USE WAL mode for SQLite — concurrent reads during CLI sync require it"
+  - "ALWAYS run pnpm build from repo root after merging dashboard/server changes"
+  - "NEVER add non-nullable columns without migration — existing data will crash"
+---
+```
+
+**Data sources for frontmatter fields:**
+
+| Field | Source |
+|-------|--------|
+| `project.name` | `projects.name` |
+| `project.id` | `projects.id` |
+| `stats.sessions_analyzed` | `COUNT(*) FROM sessions WHERE project_id = ? AND deleted_at IS NULL` |
+| `stats.date_range` | `MIN(started_at), MAX(ended_at) FROM sessions WHERE ...` |
+| `stats.source_tools` | `DISTINCT source_tool FROM sessions WHERE ...` |
+| `friction_summary` | `getAggregatedData()` from `shared-aggregation.ts` -- reuse existing aggregation |
+| `effective_patterns` | `getAggregatedData()` -- reuse existing aggregation |
+| `rules` | `reflect_snapshots.results_json` -&gt; parse -&gt; `rules-skills` section -&gt; `claudeMdRules[].rule` |
+
+### Markdown Sections (LLM-generated, human-readable)
+
+```markdown
+&lt;!-- code-insights:generated-start --&gt;
+
+## Key Decisions
+
+### SQLite over Firestore for local-first architecture
+**Choice:** SQLite with WAL mode via better-sqlite3
+**Reasoning:** Fully local, no cloud dependency, synchronous API avoids async overhead...
+**Alternatives rejected:** Firestore (cloud dependency), Supabase (requires account)
+**Revisit when:** Multi-device sync becomes a requirement
+
+### Commander.js over yargs for CLI framework
+...
+
+## Learnings
+
+### Tailwind v4 + shadcn/ui Integration
+- Requires `@custom-variant dark`, `@theme inline`, `@import "tw-animate-css"`
+- Radix UI Sheet requires SheetDescription for ARIA compliance
+...
+
+## Common Friction Points
+
+### Wrong Approach (12 occurrences, avg severity: high)
+Repeatedly starting with an approach that needs to be abandoned mid-session...
+**Root cause:** Jumping to implementation without reading existing patterns first.
+
+### Knowledge Gap (7 occurrences)
+...
+
+## Effective Patterns
+
+### Structured Planning (18 occurrences, 82% confidence)
+Planning the approach before implementation, creating task breakdowns...
+**Primarily user-driven** — works best when the user provides clear structure upfront.
+
+### Verification Workflow (14 occurrences)
+...
+
+## Rules for AI Agents
+
+&gt; These rules are derived from recurring patterns across 142 analyzed sessions.
+&gt; Add them to your CLAUDE.md or .cursorrules file.
+
+- USE WAL mode for SQLite — concurrent reads during CLI sync require it
+- ALWAYS run `pnpm build` from repo root after merging dashboard/server changes
+- NEVER add non-nullable columns without a migration plan — existing data will crash
+- WHEN adding a new source tool provider, follow the 6-step checklist in docs/ARCHITECTURE.md
+...
+
+&lt;!-- code-insights:generated-end --&gt;
+```
+
+### Generation pipeline (code-side)
+
+```
+1. CLI resolves project → projectId
+2. CLI calls POST /api/export/generate { format: 'repo', scope: 'project', projectId }
+3. Server fetches:
+   a. Scoped insights (existing fetchScopedInsights)
+   b. Aggregated facets (getAggregatedData with project filter)
+   c. Latest reflect snapshot's claudeMdRules (if exists)
+4. Server builds:
+   a. YAML frontmatter (deterministic, from aggregated data)
+   b. Supplemented insight+facet context for LLM
+5. Server sends context to LLM → LLM returns markdown body
+6. Server combines: frontmatter + sentinel-start + LLM body + sentinel-end
+7. Server returns complete file content to CLI
+8. CLI writes to {projectRoot}/.code-insights.md
+```
+
+
+## 4. Update / Merge Strategy
+
+### Recommendation: Sentinel-based section-aware merge
+
+**Why not overwrite:** Users will add project-specific notes, onboarding tips, or team conventions below the generated sections. Destroying those on re-run would make the file feel hostile. Nobody will adopt a tool that eats their edits.
+
+**Why not git diff approach:** Requires interactive confirmation, which breaks hook-based automation. The sentinel approach is fully automatable while being safe.
+
+**Sentinel pattern:**
+
+```markdown
+&lt;!-- code-insights:generated-start --&gt;
+... all generated content ...
+&lt;!-- code-insights:generated-end --&gt;
+```
+
+The merge algorithm:
+
+```typescript
+function mergeGeneratedContent(existingContent: string, newGenerated: string): string {
+  const START = '&lt;!-- code-insights:generated-start --&gt;';
+  const END = '&lt;!-- code-insights:generated-end --&gt;';
+  
+  const startIdx = existingContent.indexOf(START);
+  const endIdx = existingContent.indexOf(END);
+  
+  if (startIdx === -1 || endIdx === -1 || endIdx &lt;= startIdx) {
+    // No valid sentinel pair found — treat as first-time write.
+    // Preserve existing content by appending below the generated block.
+    return newGenerated + '\n\n' + existingContent;
+  }
+  
+  // Replace only the sentinel-bounded region
+  const before = existingContent.slice(0, startIdx);
+  const after = existingContent.slice(endIdx + END.length);
+  
+  return before + newGenerated + after;
+}
+```
+
+The YAML frontmatter lives **inside** the sentinel block (above the markdown sections), so it also gets refreshed. Anything the user writes outside the sentinels is preserved exactly.
+
+The `schema_version` field in frontmatter enables future format migrations: if a future version changes the YAML schema, the code can detect old versions and handle them.
+
+**`--overwrite` flag:** For users who want a clean regeneration (no merge), provide `--overwrite` that skips the merge logic and writes the full file. Default behavior is merge.
+
+**`--dry-run` flag:** Prints the file content to stdout instead of writing to disk. Combined with merge, shows what the file would look like after the merge.
+
+
+## 5. Sensitive Data Scrubbing
+
+Scrubbing happens at two layers: pre-LLM (input scrubbing) and post-LLM (output scrubbing).
+
+### Layer 1: Pre-LLM scrubbing (before sending to LLM)
+
+The insight `content` and `summary` fields are the primary payload sent to the LLM. These are already LLM-generated summaries of sessions -- they rarely contain raw credentials. However, they can contain:
+- Internal service names / URLs
+- File paths from the user's machine
+- Package names that reveal internal tooling
+
+**Approach:** Scrub the insight content before building the LLM prompt context. This runs in `buildRepoExportContext()`.
+
+```typescript
+const SCRUB_PATTERNS: Array&lt;{ pattern: RegExp; replacement: string }&gt; = [
+  // API keys and tokens (common formats)
+  { pattern: /(?:sk|pk|api[_-]?key|token|secret|password|bearer)[_-]?[=: ]+['"]?[A-Za-z0-9_\-/.]{20,}['"]?/gi, replacement: '[REDACTED_CREDENTIAL]' },
+  // AWS account IDs (12 digits)
+  { pattern: /\b\d{12}\b(?=.*(?:aws|arn|account))/gi, replacement: '[AWS_ACCOUNT]' },
+  // AWS ARNs
+  { pattern: /arn:aws:[a-z0-9\-]+:[a-z0-9\-]*:\d{12}:[^\s'",)}\]]+/gi, replacement: '[AWS_ARN]' },
+  // IPv4 addresses (not localhost)
+  { pattern: /\b(?!127\.0\.0\.1)(?!0\.0\.0\.0)\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, replacement: '[IP_ADDRESS]' },
+  // Private URLs (internal domains)
+  { pattern: /https?:\/\/(?:internal|staging|dev|localhost|10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.)[^\s'",)}\]]+/gi, replacement: '[INTERNAL_URL]' },
+  // Home directory paths
+  { pattern: /(?:\/Users\/|\/home\/|C:\\Users\\)[^\s'",)}\]]+/g, replacement: '[USER_PATH]' },
+  // .env file contents pattern
+  { pattern: /[A-Z_]{3,}=["']?[^\s'",)}\]]{8,}["']?/g, replacement: '[ENV_VAR]' },
+];
+
+export function scrubSensitiveData(text: string): string {
+  let scrubbed = text;
+  for (const { pattern, replacement } of SCRUB_PATTERNS) {
+    scrubbed = scrubbed.replace(pattern, replacement);
+  }
+  return scrubbed;
+}
+```
+
+### Layer 2: Post-LLM scrubbing (before writing to disk)
+
+The LLM output gets the same scrub pass applied. This catches cases where the LLM echoes back sensitive data or synthesizes realistic-looking credentials in examples.
+
+```typescript
+// In the CLI, after receiving the response from the server:
+const serverContent = response.content;
+const scrubbedContent = scrubSensitiveData(serverContent);
+```
+
+### Layer 3: Prompt-level instruction
+
+The system prompt explicitly instructs the LLM to not include credentials, session IDs, user paths, or machine-specific data (already shown in section 1's prompt). This is the first line of defense but not sufficient alone -- LLMs don't reliably follow negative instructions.
+
+### `--dry-run` mode
+
+Yes. Before writing to disk, `--dry-run` outputs the complete file to stdout with a header:
+
+```
+[dry-run] Would write to /Users/me/projects/code-insights/.code-insights.md
+[dry-run] File size: 4.2 KB
+---
+&lt;full file content&gt;
+```
+
+This lets the user inspect for any sensitive data that slipped through scrubbing before committing the file.
+
+
+## 6. Schema Changes
+
+### Recommendation: No schema change needed (V10 not required)
+
+This feature is **stateless from SQLite's perspective**. Here is why:
+
+- The generated file is a derived artifact -- always regenerable from existing data (insights, session_facets, reflect_snapshots)
+- There is no need to track "when was the last repo export" because the YAML frontmatter contains `generated_at` and the file itself is the record
+- The sentinel-based merge strategy means the CLI reads the existing `.code-insights.md` from disk (if it exists) and merges -- no database tracking needed
+- Deduplication is handled by the merge algorithm (sentinels), not by tracking export history
+
+**Why not a `repo_exports` table:** Adding a table to track "when was the last export for project X" would be useful only if we needed to show export history in the dashboard or trigger conditional re-exports. Neither is needed for the initial feature. If a dashboard "Export History" view is later desired, that would be the right time for a V10 migration. Think of it like a build artifact -- you don't need a database to track every time you ran `npm run build`.
+
+**If we later need export tracking** (e.g., "show me all repo exports"), a V10 migration would look like:
+
+```typescript
+function applyV10(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS repo_exports (
+      id              TEXT PRIMARY KEY,
+      project_id      TEXT NOT NULL REFERENCES projects(id),
+      file_path       TEXT NOT NULL,
+      schema_version  INTEGER NOT NULL DEFAULT 1,
+      generated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      session_count   INTEGER NOT NULL,
+      insight_count   INTEGER NOT NULL,
+      file_hash       TEXT
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_repo_exports_project ON repo_exports(project_id)`);
+  db.prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)').run(10);
+}
+```
+
+But I recommend deferring this. Ship stateless first.
+
+
+## 7. AI Agent Consumption
+
+### How `.code-insights.md` gets consumed
+
+There are two consumption paths, and we should support both.
+
+**Path A: Direct file discovery (recommended default)**
+
+AI coding agents that read repository files will naturally encounter `.code-insights.md` at the project root. The file header tells them how to use it:
+
+```markdown
+---
+# ... YAML frontmatter ...
+---
+
+&lt;!-- 
+  This file contains codebase knowledge extracted from AI coding sessions by code-insights.
+  
+  FOR AI AGENTS: Parse the YAML frontmatter above for structured data about this project's
+  friction patterns, effective practices, and rules. The `rules` array contains imperative
+  instructions to follow when working in this codebase.
+  
+  FOR HUMANS: Read the markdown sections below for a narrative summary of project knowledge.
+  
+  Regenerate: code-insights export repo --project "{projectName}"
+  Sections between code-insights:generated markers are auto-updated on regeneration.
+  Content outside those markers is preserved.
+--&gt;
+```
+
+Claude Code already auto-reads `CLAUDE.md` and many agents scan for convention files at project root. `.code-insights.md` follows this established pattern.
+
+**Path B: Explicit import into CLAUDE.md**
+
+For users who want the rules injected into their existing `CLAUDE.md`:
+
+```bash
+code-insights export repo --project "code-insights" --inject-rules
+```
+
+This appends a `@import .code-insights.md` directive (or the rules section content directly) to the project's `CLAUDE.md`. However, this is a secondary feature that should be deferred to a follow-up PR. The primary value is the standalone `.code-insights.md` file.
+
+**Why not `code-insights init --import-learnings`:** The `init` command is for first-time setup of code-insights configuration (`~/.code-insights/config.json`). Injecting knowledge into a project's CLAUDE.md is a different concern -- it belongs on the `export` command since it is generating/exporting content.
+
+### Recommended `.gitignore` guidance
+
+The CLI should print guidance after writing:
+
+```
+Written: /Users/me/projects/code-insights/.code-insights.md
+
+This file is designed to be committed to your repository.
+Review the contents before committing to ensure no sensitive data is included.
+```
+
+
+## 8. Implementation Touchpoints
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `cli/src/commands/export.ts` | New CLI command: `code-insights export repo` |
+| `cli/src/utils/project-root.ts` | `findGitRoot()`, `resolveProjectRoot()` |
+| `cli/src/utils/scrub.ts` | `scrubSensitiveData()` with regex patterns |
+| `server/src/llm/repo-export-prompts.ts` | `REPO_PROJECT_SYSTEM_PROMPT`, `REPO_ALL_SYSTEM_PROMPT`, `buildRepoExportContext()`, `buildRepoFrontmatter()`, `mergeGeneratedContent()` |
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `cli/src/index.ts` | Register new `export` command (lazy import) |
+| `cli/src/types.ts` | Add `RepoExportFormat` type alias or extend `ExportTemplate` union |
+| `server/src/llm/export-prompts.ts` | Add `'repo'` to `ExportFormat` union type |
+| `server/src/routes/export.ts` | Accept `'repo'` in format validation, call `buildRepoExportContext()` when format is `repo`, invoke scrubbing on insight content before LLM, combine frontmatter + LLM body in response |
+| `server/src/routes/export.ts` | New endpoint `POST /api/export/repo-context` -- returns aggregated facets + reflect rules for frontmatter generation (or handle entirely in `generate` endpoint) |
+
+### New Types in `cli/src/types.ts`
+
+```typescript
+// Add to ExportTemplate union (or keep separate)
+export type ExportTemplate = 'knowledge-base' | 'agent-rules';
+
+// No change to ExportTemplate -- repo format uses the LLM pipeline, not the template pipeline.
+// The 'repo' format is handled via ExportFormat on the server side.
+```
+
+Actually, no new types are needed in `cli/src/types.ts`. The `ExportFormat` type lives in `server/src/llm/export-prompts.ts` and just needs `'repo'` added. The CLI command will be a standalone Commander command that talks to the server API.
+
+### New API Endpoints
+
+None strictly required. The existing `POST /api/export/generate` and `GET /api/export/generate/stream` endpoints are extended to accept `format: 'repo'`. However, the `repo` format needs additional data beyond insights (facet aggregations, reflect rules), so the endpoint handler needs a conditional branch.
+
+Optionally, one new convenience endpoint:
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `GET /api/projects/:id/paths` | GET | Returns distinct `project_path` values for a project -- needed by CLI to resolve write location |
+
+But this can also be handled by the CLI querying SQLite directly (it has DB access).
+
+### New CLI Flags
+
+```
+code-insights export repo [options]
+  --project &lt;name&gt;     Project to export (fuzzy matched, required)
+  --path &lt;dir&gt;         Override output directory
+  --depth &lt;level&gt;      essential | standard | comprehensive (default: standard)
+  --dry-run            Print output to stdout without writing
+  --overwrite          Replace entire file instead of merging
+  --no-llm             Generate frontmatter only (skip LLM synthesis for markdown body)
+```
+
+The `--no-llm` flag is a deliberate escape hatch. It generates a valid `.code-insights.md` with full YAML frontmatter and placeholder markdown sections. Useful for users without an LLM configured, or for CI pipelines that only need the machine-readable frontmatter.
+
+### CLI Command Registration
+
+In `cli/src/index.ts`:
+
+```typescript
+program
+  .command('export')
+  .description('Export project knowledge')
+  .command('repo')
+  .description('Write .code-insights.md to the project repository')
+  .requiredOption('--project &lt;name&gt;', 'Project name')
+  .option('--path &lt;dir&gt;', 'Override output directory')
+  .option('--depth &lt;level&gt;', 'Detail level: essential, standard, comprehensive', 'standard')
+  .option('--dry-run', 'Print to stdout without writing')
+  .option('--overwrite', 'Replace entire file instead of merging')
+  .option('--no-llm', 'Frontmatter only (skip LLM)')
+  .action(async (opts) =&gt; {
+    const { exportRepo } = await import('./commands/export.js');
+    await exportRepo(opts);
+  });
+```
+
+---
+
+## Summary of Key Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Reuse `/api/export/generate` endpoint | Avoids duplicating ~100 lines of query/orchestration code |
+| YAML frontmatter is code-generated, not LLM-generated | Guarantees structural correctness for machine parsing |
+| Sentinel-based merge (not overwrite) | Preserves user-added content while refreshing generated sections |
+| No schema change (V10 deferred) | Feature is stateless -- file on disk is the artifact, always regenerable |
+| Scrubbing at 3 layers (prompt instruction + pre-LLM regex + post-LLM regex) | Defense in depth -- no single layer is reliable alone |
+| `--project` required, `--path` optional override | Explicit opt-in per the spec; path override handles edge cases (moved repos, monorepos) |
+| `.code-insights.md` at git root | Standard convention file location (like `.editorconfig`, `.prettierrc`) |
+| `--no-llm` escape hatch | Frontmatter-only mode for users without LLM config or CI pipelines |</result>
+<usage><total_tokens>73881</total_tokens><tool_uses>18</tool_uses><duration_ms>219500</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a25de8bf42508c906</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a25de8bf42508c906.output</output-file>
+<status>completed</status>
+<summary>Agent "UX design for codebase-attached knowledge feature" completed</summary>
+<result>I now have a complete picture. Here is the full UX design.
+
+---
+
+# UX Design: Codebase-Attached Knowledge (`.code-insights.md`)
+
+## Design Rationale
+
+The core insight shaping every decision below: this file serves **two audiences simultaneously** -- AI agents (which need structured, parseable rules in YAML) and humans (who need narrative context about *why* those rules exist). The existing Export pipeline already handles scope selection, depth control, LLM synthesis, and SSE streaming. This format slots in as a 5th option, reusing all of that infrastructure, with one critical difference: the output writes to the filesystem instead of downloading to ~/Downloads.
+
+---
+
+## 1. CLI Experience
+
+### Command Design: `code-insights export --format repo`
+
+**Not** a dedicated `code-insights attach` command. Rationale:
+
+1. The Export pipeline already exists with scope, format, depth, and LLM synthesis. This is a format, not a different operation.
+2. A separate command fragments the mental model. "Export" is already the verb for "synthesize knowledge out of code-insights."
+3. The `--format repo` value makes the destination self-documenting.
+
+```
+code-insights export --format repo [--project &lt;name&gt;] [--depth standard] [--output &lt;path&gt;]
+```
+
+But there is no CLI export command today -- the export flow is dashboard-only (SSE through the server). The CLI would need a new `export` command. Given that the dashboard wizard is the primary path, I recommend:
+
+**Primary path:** Dashboard Export page (wizard, preview, write-to-disk).
+**CLI shortcut:** `code-insights export` command that hits the same server endpoint.
+
+```
+code-insights export --format repo                          # All projects
+code-insights export --format repo --project code-insights  # Single project  
+code-insights export --format repo --depth comprehensive    # All 200 insights
+code-insights export --format repo --output ./docs/         # Custom output path
+code-insights export --format repo --dry-run                # Preview without writing
+```
+
+### Terminal Output: Generation Flow
+
+```
+  Generating .code-insights.md...
+
+  Scope: code-insights (142 sessions)
+  Depth: standard (80 of 217 insights)
+
+  ✔ Loading insights
+  ◐ Synthesizing with AI...                    ← spinner, 10-30s
+  ✔ Synthesis complete
+
+  Sections:
+    Rules (YAML)       12 rules
+    Decisions           8 entries
+    Friction Hotspots   5 categories
+    Proven Patterns     6 categories
+
+  ⚠  REVIEW BEFORE COMMITTING
+  The generated file may contain project-specific details from your
+  AI sessions. Review the content before adding to version control.
+
+  Written to: /Users/dev/code-insights/.code-insights.md (4.2 KB)
+
+  Next steps:
+    cat .code-insights.md                  # Review the file
+    git add .code-insights.md              # Add to version control
+    code-insights export --format repo     # Re-generate after more sessions
+```
+
+### Re-run Behavior
+
+On re-run when `.code-insights.md` already exists:
+
+```
+  Found existing .code-insights.md (generated 2026-03-15, 12 rules)
+
+  Options:
+    [R] Regenerate  — overwrite with fresh synthesis (user edits will be lost)
+    [D] Diff        — generate and show diff before writing
+    [C] Cancel
+
+  Choice [R/D/C]:
+```
+
+**Default: Diff.** The file is regenerated fully each time (no merge), but the user sees what changed before committing. This is the right trade-off because:
+- Merge is fragile (YAML + markdown mixed format, user edits in unknown locations)
+- Diff is familiar to developers (they already think in diffs)
+- The file has a clear "this is auto-generated" header, discouraging inline edits
+
+If the user picks `[D]`, show a unified diff:
+
+```
+  --- .code-insights.md (current)
+  +++ .code-insights.md (regenerated)
+  @@ -12,6 +12,7 @@
+   rules:
+     - id: use-wal-mode
+       rule: "USE WAL mode for all SQLite connections"
+  +  - id: avoid-orm-migrations
+  +    rule: "DO NOT use ORM migration tools — write raw SQL migrations"
+       category: database
+  ...
+
+  Apply changes? [y/N]:
+```
+
+### Privacy Warning
+
+The privacy warning appears on *every* generation (not just first run). It is a single line, not a wall of text -- developers will ignore anything longer.
+
+```
+  ⚠  REVIEW BEFORE COMMITTING — file may contain project-specific details from AI sessions.
+```
+
+---
+
+## 2. The `.code-insights.md` File Structure
+
+### Design Principles
+
+- **YAML frontmatter** = machine-readable. AI agents parse this block for rules and metadata.
+- **Markdown body** = human-readable. Developers scan this for context.
+- **No user-editable sections.** The entire file is regenerated on each run. If users want to add custom rules, they put them in CLAUDE.md (which is already the convention). The `.code-insights.md` file is a *read-only knowledge artifact*, not a config file.
+- **Deterministic structure.** Every section appears in the same order every time. Sections with no data are omitted entirely (not shown as empty).
+
+### Realistic Example
+
+```markdown
+&lt;!--
+  AUTO-GENERATED by Code Insights (v4.10.2)
+  Do not edit — regenerate with: code-insights export --format repo
+  Review before committing to version control.
+  
+  Generated: 2026-04-20
+  Project: code-insights
+  Sessions: 142 (2026-01-15 to 2026-04-20)
+  Insights synthesized: 80 of 217
+--&gt;
+
+---
+version: 1
+generated: "2026-04-20"
+project: code-insights
+sessions: 142
+source: code-insights-cli
+
+rules:
+  - id: sqlite-wal-mode
+    rule: "USE WAL mode for all SQLite connections"
+    category: database
+    confidence: 95
+    context: "Prevents SQLITE_BUSY under concurrent reads from dashboard + CLI sync"
+
+  - id: migration-raw-sql
+    rule: "Write SQLite migrations as raw SQL in applyVN() functions, never use ORM migration tools"
+    category: database
+    confidence: 92
+    context: "ORM migrations failed silently on schema V6 upgrade; raw SQL is auditable"
+
+  - id: insert-or-ignore-schema
+    rule: "ALWAYS use INSERT OR IGNORE INTO schema_version, not bare INSERT"
+    category: database
+    confidence: 90
+    context: "UNIQUE constraint on version column; bare INSERT crashes on re-run"
+
+  - id: hono-deps-in-cli
+    rule: "@hono/node-server and hono must be in cli/package.json dependencies, not devDependencies"
+    category: packaging
+    confidence: 88
+    context: "npm-installed users get runtime errors when these are devDeps"
+
+  - id: pnpm-build-after-merge
+    rule: "Run pnpm build from repo root after merging dashboard or server changes"
+    category: workflow
+    confidence: 85
+    context: "Embedded dashboard serves pre-built assets; stale builds cause blank pages"
+
+  - id: tailwind-v4-shadcn
+    rule: "Tailwind v4 + shadcn/ui requires @custom-variant dark, @theme inline, @import tw-animate-css"
+    category: frontend
+    confidence: 85
+    context: "Missing any of these three causes silent dark mode or animation failures"
+
+  - id: no-mermaid-client-render
+    rule: "DO NOT render Mermaid diagrams client-side in static sites — pre-render as images"
+    category: frontend
+    confidence: 82
+    context: "Client-side Mermaid in Next.js static export is unreliable across browsers"
+
+  - id: fouc-sync-theme
+    rule: "FOUC prevention script in index.html must stay in sync with ThemeProvider logic"
+    category: frontend
+    confidence: 80
+    context: "Theme flash on load when the two diverge"
+
+  - id: radix-sheet-description
+    rule: "Radix UI Sheet components require SheetDescription for ARIA compliance"
+    category: accessibility
+    confidence: 78
+    context: "Accessibility audit flagged missing landmark descriptions"
+
+  - id: snake-case-dashboard-types
+    rule: "Dashboard types use snake_case matching SQLite column names and API responses"
+    category: conventions
+    confidence: 75
+    context: "Camel/snake mismatch caused silent data drops in InsightCard rendering"
+
+  - id: prompt-cache-content-blocks
+    rule: "Use ContentBlock[] with cache_control for Anthropic prompt caching; flattenContent() for non-Anthropic"
+    category: llm
+    confidence: 75
+    context: "Prompt caching reduces cost 80-90% on repeated analysis calls"
+
+  - id: sse-abort-handling
+    rule: "SSE streaming endpoints must handle AbortError gracefully — return 422, don't log as error"
+    category: api
+    confidence: 72
+    context: "Client cancellations flooded error logs before explicit abort handling"
+
+friction_hotspots:
+  - category: stale-assumptions
+    severity: high
+    frequency: 23
+    description: "Outdated mental models about schema versions, API shapes, or component APIs"
+    mitigation: "Run sync after every schema change; check ARCHITECTURE.md before modifying shared types"
+
+  - category: knowledge-gap
+    severity: medium
+    frequency: 18
+    description: "Unfamiliarity with SQLite internals (WAL, PRAGMA), Tailwind v4 breaking changes, Hono middleware"
+    mitigation: "Documented in decisions below; key references linked"
+
+  - category: scope-creep
+    severity: medium
+    frequency: 14
+    description: "Feature PRs expanding beyond original scope, especially during refactors"
+    mitigation: "Strict PR scope enforcement; 'note and defer' for discovered improvements"
+
+  - category: wrong-approach
+    severity: medium
+    frequency: 11
+    description: "Initial implementation direction reversed after discovery (ORM to raw SQL, client to server render)"
+    mitigation: "Spike/prototype in isolated branch before committing to approach"
+
+  - category: context-loss
+    severity: low
+    frequency: 8
+    description: "Returning to a feature after days and re-discovering constraints already solved"
+    mitigation: "This file; also see decision log below"
+
+proven_patterns:
+  - category: incremental-implementation
+    frequency: 34
+    description: "Building features in small, testable phases rather than big-bang PRs"
+
+  - category: verification-workflow
+    frequency: 28
+    description: "pnpm build gate before every PR; triple-layer code review"
+
+  - category: structured-planning
+    frequency: 22
+    description: "Written specs (docs/ux/*.md, docs/plans/*.md) before implementation"
+
+  - category: context-gathering
+    frequency: 19
+    description: "Extensive codebase reading (5+ files, cross-module) before modifying shared contracts"
+
+  - category: systematic-debugging
+    frequency: 15
+    description: "Reproducing issues with minimal cases before attempting fixes"
+
+  - category: self-correction
+    frequency: 12
+    description: "AI reversing initial approach mid-session after discovering constraints"
+---
+
+# Code Insights — Project Knowledge
+
+&gt; Extracted from 142 AI coding sessions (Jan 15 – Apr 20, 2026).
+&gt; Generated by [Code Insights](https://github.com/melagiri/code-insights).
+&gt; Regenerate: `code-insights export --format repo`
+
+## Key Decisions
+
+### SQLite over Postgres/Supabase (Jan 2026)
+**Choice:** Local SQLite with WAL mode, no cloud database.
+**Reasoning:** Privacy-first architecture — no data leaves the machine. SQLite handles the read/write patterns (single-writer CLI sync, multi-reader dashboard) well with WAL. Eliminated sign-up friction entirely.
+**Trade-off:** No cross-device sync. Accepted — personal tool, single machine is the 95% case.
+**Revisit if:** Users request team/shared features (currently a non-goal per VISION.md).
+
+### Raw SQL migrations over ORM (Feb 2026)
+**Choice:** Hand-written `applyVN()` functions with raw SQL, no Prisma/Drizzle.
+**Reasoning:** Schema V6 migration failed silently with an ORM tool — the generated SQL didn't match SQLite's ALTER TABLE limitations. Raw SQL is auditable and predictable. Currently at V9 with zero migration failures.
+**Trade-off:** More verbose migration code. Worth it for reliability.
+
+### Embedded dashboard over separate app (Jan 2026)
+**Choice:** Vite + React SPA bundled into the CLI package, served by Hono at localhost:7890.
+**Reasoning:** Zero-config experience — `code-insights dashboard` starts everything. No separate install, no port config, no CORS. The SPA is pre-built at publish time.
+**Trade-off:** Larger npm package size (~2MB). Acceptable for the UX gain.
+
+### Multi-provider LLM abstraction (Mar 2026)
+**Choice:** Unified `createLLMClient()` that wraps OpenAI, Anthropic, Gemini, Ollama, and llama.cpp behind a common interface.
+**Reasoning:** Users have different API keys and local model preferences. The abstraction is thin — `chat()` method with messages array. Provider-specific features (prompt caching for Anthropic) handled via `ContentBlock[]` format with `flattenContent()` fallback.
+**Trade-off:** Lowest-common-denominator API. Anthropic-specific features require conditional paths.
+
+### ISO week-based navigation over sliding windows (Mar 2026)
+**Choice:** Reflect uses `YYYY-WNN` ISO weeks instead of `7d/30d/90d/all` sliding windows.
+**Reasoning:** Sliding windows are amnesiac — "last 7 days" changes meaning every day, making progress tracking impossible. Fixed weeks create stable snapshots that can be compared week-over-week.
+**Trade-off:** Less intuitive for new users. Mitigated by defaulting to current week.
+
+### Two-layer prompt quality output (Mar 2026)
+**Choice:** Separate "takeaways" (user-facing before/after examples) from "findings" (categorized data for Reflect aggregation).
+**Reasoning:** A single format can't serve both "show me how to improve this prompt" and "aggregate my prompting weaknesses across 50 sessions." Takeaways are narrative; findings are structured.
+**Trade-off:** More complex analysis prompt and parsing. Worth it for both use cases.
+
+### snake_case for dashboard types (Feb 2026)
+**Choice:** Dashboard TypeScript interfaces use `snake_case` matching SQLite columns and API JSON.
+**Reasoning:** Eliminated a class of bugs where camelCase/snake_case mismatch caused silent `undefined` values. The API returns what SQLite returns; the dashboard consumes it directly.
+**Trade-off:** Non-idiomatic TypeScript. Team agreed consistency with data layer wins.
+
+### Session character classification (Feb 2026)
+**Choice:** 7 character types based on tool call patterns: deep_focus, bug_hunt, feature_build, exploration, refactor, learning, quick_task.
+**Reasoning:** Users wanted to filter sessions by "what kind of work was this" without reading every conversation. Tool call distributions (ratio of Read/Edit/Bash/Grep) are strong signals.
+**Trade-off:** Classification is heuristic, not perfect. Acceptable — it's a filter aid, not a judgment.
+
+## Friction Hotspots
+
+The most common sources of friction across sessions, ranked by frequency:
+
+**Stale assumptions** (23 occurrences, high severity) — The most persistent friction source. Typically manifests as assuming a schema is still V7 when it's V9, or that a component API hasn't changed since last touch. Mitigation: always `grep` for current usage before modifying shared types. The `docs/ARCHITECTURE.md` file is the canonical reference.
+
+**Knowledge gaps** (18 occurrences, medium severity) — SQLite WAL semantics, Tailwind v4 breaking changes from v3, Hono middleware ordering, and Radix UI accessibility requirements were the main gaps. Most were resolved once and captured as rules above.
+
+**Scope creep** (14 occurrences, medium severity) — Feature PRs expanding during implementation. The "while I was here, I also..." pattern. Mitigated by strict PR scope discipline and the "note and defer" convention in CLAUDE.md.
+
+**Wrong initial approach** (11 occurrences, medium severity) — Starting with an approach that gets reversed after discovering constraints. ORM-to-raw-SQL and client-to-server Mermaid rendering are the canonical examples. Mitigated by spiking in isolated branches for unfamiliar territory.
+
+**Context loss** (8 occurrences, low severity) — Returning to a feature after a gap and rediscovering constraints. This file is part of the mitigation.
+
+## Proven Patterns
+
+Patterns that consistently led to successful session outcomes:
+
+**Incremental implementation** (34 sessions) — Small, testable phases with `pnpm build` gates between each. The sessions-insights redesign (3 commits) and tier-2 redesign (10 commits) both used this pattern successfully.
+
+**Verification workflow** (28 sessions) — `pnpm build` must pass before any PR. Triple-layer code review (TA insider + outsider + synthesis). No exceptions.
+
+**Structured planning** (22 sessions) — Written specs in `docs/ux/` or `docs/plans/` before implementation. UX wireframes as ASCII art. The plan-first pattern catches scope issues before code is written.
+
+**Context gathering** (19 sessions) — Extensive codebase reading (5+ files, cross-module exploration) before modifying shared contracts like types, schemas, or API routes. Prevents the "stale assumptions" friction pattern.
+
+**Systematic debugging** (15 sessions) — Reproducing issues with minimal test cases before attempting fixes. Particularly effective for SQLite migration issues and SSE streaming bugs.
+```
+
+### Format Notes
+
+**YAML frontmatter fields explained:**
+
+| Field | Purpose | Consumer |
+|-------|---------|----------|
+| `version` | Schema version for the YAML structure (start at 1) | AI agents, tooling |
+| `generated` | ISO date of generation | Humans (staleness check) |
+| `project` | Project name or "multiple" | AI agents (scope awareness) |
+| `sessions` | Session count that fed this synthesis | Humans (coverage signal) |
+| `source` | Always `code-insights-cli` | Provenance |
+| `rules[].id` | Kebab-case stable identifier | AI agents (dedup across regenerations) |
+| `rules[].rule` | Imperative instruction text | AI agents (direct consumption) |
+| `rules[].category` | Topic grouping | AI agents (filtering) |
+| `rules[].confidence` | 0-100 score | AI agents (priority ordering) |
+| `rules[].context` | One-line rationale | AI agents + humans |
+| `friction_hotspots[].category` | From the 9-category taxonomy | Cross-reference with Reflect |
+| `friction_hotspots[].severity` | high/medium/low | AI agents (triage) |
+| `friction_hotspots[].frequency` | Occurrence count | Humans (impact signal) |
+| `proven_patterns[].category` | From the 8-category taxonomy | Cross-reference with Reflect |
+
+**Why rules are in YAML, not in the markdown body:** AI agents like Claude Code parse YAML frontmatter reliably. Putting rules in markdown headings requires fragile regex parsing. The YAML block is a machine-readable API; the markdown body is the human-readable documentation.
+
+**Why `id` on rules:** Enables diffing across regenerations. If rule `sqlite-wal-mode` exists in both the old and new file, a diff tool can show "rule text changed" vs "new rule added." Without IDs, every regeneration looks like a full rewrite.
+
+---
+
+## 3. Dashboard UX
+
+### Export Page: Adding the 5th Format
+
+The existing Step 2 "Output Format" grid currently shows 4 cards in a `lg:grid-cols-4` layout. Adding a 5th card breaks this grid.
+
+**Solution:** Promote the "Repo" format to a visually distinct position -- it is fundamentally different from the other four (writes to filesystem vs. downloads/copies to clipboard).
+
+```
++------------------------------------------------------------------+
+|  EXPORT                                          [STATUS: draft]  |
+|  Context: /export page, Step 2 (Configure)                        |
+|  Breakpoint: desktop                                              |
++------------------------------------------------------------------+
+
+Step 2: Configure
+─────────────────
+
+Output Format
+                                                                     
++---------------------------+  +---------------------------+
+| (FileCode)                |  | (BookOpen)                |
+| Repo File                 |  | Agent Rules               |
+| .code-insights.md with    |  | Imperative instructions   |
+| YAML rules + narrative    |  | for CLAUDE.md or          |
+| sections. Lives in your   |  | .cursorrules              |
+| repo, readable by AI      |  |                           |
+| agents AND humans.        |  |                           |
++--[*SELECTED*]-------------+  +---------------------------+
+                                                                     
++---------------------------+  +---------------------------+
+| (BookOpen)                |  | (NotebookPen)             |
+| Knowledge Brief           |  | Obsidian                  |
+| Readable markdown —       |  | Markdown with YAML        |
+| decisions, learnings,     |  | frontmatter and           |
+| and techniques            |  | wikilinks                 |
++---------------------------+  +---------------------------+
+                                                                     
++---------------------------+
+| (StickyNote)              |
+| Notion                    |
+| Notion-compatible         |
+| markdown with toggle      |
+| blocks and callouts       |
++---------------------------+
+
+TAILWIND MAPPING:
+- Grid: grid gap-3 md:grid-cols-2 lg:grid-cols-2 (NOT 5-col)
+- Repo card: same ExportTypeCard component, new icon
+- First row: Repo + Agent Rules (the two "for AI agents" formats)
+- Second row: Knowledge Brief + Obsidian
+- Third row: Notion (alone, left-aligned)
+
+ANNOTATIONS:
+- @A: Repo card selected -&gt; Step 3 button changes to "Generate &amp; Preview"
+       (not "Generate with AI" — signals the different output flow)
+- @B: When Repo format selected, depth selector still applies (controls
+       how many insights feed the synthesis)
+```
+
+### Step 3: Generation (same as existing)
+
+No changes to the generation spinner/progress UI. The SSE flow is identical.
+
+### Step 4: Review &amp; Write (repo format only)
+
+When format is `repo`, Step 4 changes significantly. Instead of Copy/Download, it shows a preview with a "Write to Repo" action.
+
+```
++------------------------------------------------------------------+
+|  EXPORT                                          [STATUS: draft]  |
+|  Context: /export page, Step 4 (Review) — repo format             |
+|  Breakpoint: desktop                                              |
++------------------------------------------------------------------+
+
+ 1 Scope  &gt;  2 Configure  &gt;  3 Generate  &gt;  [4 Review]
+
++--------------------------------------------------------------+
+| Generated .code-insights.md                                  |
+|                                                              |
+|   code-insights  ·  142 sessions  ·  80 insights synthesized |
+|                                                              |
+|   &lt;badge:repo-file&gt; .code-insights.md                        |
++--------------------------------------------------------------+
+|                                                              |
+| +----------------------------------------------------------+ |
+| | (ShieldAlert)                                            | |
+| | Review before committing                                 | |
+| | This file is generated from your AI session history.     | |
+| | Check for sensitive details before adding to version     | |
+| | control.                                                 | |
+| +--[muted bg, border-yellow-500/30]------------------------+ |
+|                                                              |
+| +----------------------------------------------------------+ |
+| | &lt;!--                                                     | |
+| |   AUTO-GENERATED by Code Insights (v4.10.2)              | |
+| |   Do not edit — regenerate with:                         | |
+| |     code-insights export --format repo                   | |
+| |   Review before committing to version control.           | |
+| | --&gt;                                                      | |
+| |                                                          | |
+| | ---                                                      | |
+| | version: 1                                               | |
+| | generated: "2026-04-20"                                  | |
+| | project: code-insights                                   | |
+| | ...                                                      | |
+| +--[pre, mono, scrollable, max-h-[32rem]]------------------+ |
+|                                                              |
++--------------------------------------------------------------+
+
++--------------------------------------------------------------+
+| [Start Over]                [Copy]  [Download]  [Write to    |
+|                                                  Repo (i)]   |
++--------------------------------------------------------------+
+
+ANNOTATIONS:
+- @A: "Write to Repo" button is primary (filled). Tooltip (i):
+      "Writes .code-insights.md to the project root"
+- @B: Copy and Download remain as secondary actions (outline buttons)
+- @C: Privacy warning (ShieldAlert) uses same pattern as the
+      analysis cost warning — yellow-tinted muted card
+- @D: When project scope, "Write to Repo" writes to that project's
+      root. When "all projects", writes to CWD (the code-insights
+      repo root).
+
+INTERACTION:
+| Element           | Action | Result                              |
+|-------------------|--------|-------------------------------------|
+| Write to Repo     | Click  | POST /api/export/write-repo         |
+|                   |        | -&gt; toast "Written to &lt;path&gt;"        |
+|                   |        | -&gt; button changes to checkmark      |
+| Write (file       | Click  | Show confirmation dialog:           |
+|  exists)          |        | "Overwrite existing file?"          |
+|                   |        | [Cancel] [Overwrite]                |
+| Copy              | Click  | Copy to clipboard (same as today)   |
+| Download          | Click  | Browser download (same as today)    |
+```
+
+### Server Endpoint for Write
+
+The "Write to Repo" action needs a new server endpoint:
+
+```
+POST /api/export/write-repo
+Body: { content: string, projectId?: string }
+Response: { path: string, existed: boolean }
+```
+
+The server resolves the project's filesystem path from the `sessions.cwd` column (the working directory where sessions were started), writes the file, and returns the absolute path. If the file already existed, `existed: true` lets the dashboard show "Overwritten" vs "Created" in the toast.
+
+---
+
+## 4. Discoverability
+
+### Where Users First Learn About It
+
+**Primary discovery: Export page itself.** The Repo format card has a slightly longer description than the others, explaining the dual-audience value prop. No separate announcement, no modal, no banner.
+
+**Secondary: After Reflect generates rules.** On the Patterns page, where CLAUDE.md Rules are shown, add a one-line hint below the rules card:
+
+```
++--------------------------------------------------------------+
+| CLAUDE.md Rules                                              |
+| Add these to your AI assistant configuration                 |
++--------------------------------------------------------------+
+| &gt; USE WAL mode for all SQLite connections                    |
+| &gt; Write SQLite migrations as raw SQL...                      |
+| ...                                                          |
++--------------------------------------------------------------+
+| (info) Want these rules in your repo? Export as Repo File    |
+|        to generate .code-insights.md     {Go to Export -&gt;}   |
++--------------------------------------------------------------+
+```
+
+This is a single `&lt;p&gt;` with a link, not a card or CTA block. It appears only when rules exist (not an empty state).
+
+**Tertiary: CLI hint after `code-insights reflect`.** After the Rules &amp; Hooks section in the CLI reflect output:
+
+```
+  Rules &amp; Hooks
+  CLAUDE.md rules:
+    → USE WAL mode for all SQLite connections
+    → Write SQLite migrations as raw SQL...
+
+  Tip: Run `code-insights export --format repo` to write these
+  rules (and more) to .code-insights.md in your project.
+```
+
+This hint appears only on the first reflect run (tracked via a config flag `hints.repoExportShown`). After that, it is silent.
+
+### When to Suggest
+
+**Do not proactively suggest.** The user finds it when they visit Export or Patterns. No pop-ups, no badges, no notification dots. The feature is discoverable through normal navigation, not interruption.
+
+The one exception is the first-time CLI hint after reflect, which is the natural moment when the user is already thinking about rules and where they go.
+
+---
+
+## 5. Update Flow UX
+
+### Design Decision: Full Regeneration with Diff
+
+The file is **fully regenerated every time**. No merge, no user-editable sections, no conflict resolution.
+
+**Why no merge:**
+- The file mixes YAML frontmatter and narrative markdown. Merging structured YAML with free-form text is a recipe for corruption.
+- "User-editable sections" sounds good but creates a maintenance trap. Which sections can the user edit? How do we detect their edits during merge? What if they edit the YAML? Every boundary between "auto" and "manual" sections is a bug surface.
+- Developers already have a file for custom rules: CLAUDE.md. The `.code-insights.md` file is the *extracted knowledge artifact*, not a configuration file. If you want to add a custom rule, put it in CLAUDE.md.
+
+**Why diff on re-run:**
+- Shows the developer exactly what changed (new rules, updated decisions, revised friction counts).
+- Familiar mental model -- it's a `git diff` before committing.
+- Low complexity -- generate the new file, diff against the old file, show the diff.
+
+### Dashboard Update Flow
+
+When the user picks Repo format and a `.code-insights.md` already exists (detected by the server checking the filesystem):
+
+```
++--------------------------------------------------------------+
+| Step 4: Review &amp; Write                                       |
++--------------------------------------------------------------+
+|                                                              |
+| +----------------------------------------------------------+ |
+| | (info) Existing .code-insights.md detected                | |
+| |                                                          | |
+| | Generated: 2026-03-15  ·  10 rules  ·  3.8 KB           | |
+| |                                                          | |
+| | The new version has 12 rules (+2), updated friction      | |
+| | counts, and 1 new decision.                              | |
+| +--[muted bg, border-blue-500/30]-------------------------+ |
+|                                                              |
+| Tab: [Preview] [Diff]                                        |
+|                                                              |
+| +--[when Diff tab selected]-------------------------------+ |
+| | --- .code-insights.md (2026-03-15)                      | |
+| | +++ .code-insights.md (2026-04-20)                      | |
+| | @@ -14,6 +14,12 @@                                     | |
+| |    - id: sqlite-wal-mode                                | |
+| |      rule: "USE WAL mode for all SQLite connections"     | |
+| | +  - id: avoid-orm-migrations                           | |
+| | +    rule: "DO NOT use ORM migration tools"              | |
+| | +    category: database                                  | |
+| | ...                                                     | |
+| +--[pre, mono, green/red highlighting]-------------------+ |
+|                                                              |
+| [Start Over]                  [Copy]  [Download]  [Overwrite]|
++--------------------------------------------------------------+
+
+ANNOTATIONS:
+- @A: Tab toggle between "Preview" (full file) and "Diff" (unified diff)
+- @B: Diff generated client-side (simple line-by-line diff, no dep needed
+       for basic unified diff rendering — or use the `diff` npm package
+       if already available)
+- @C: "Write to Repo" button text changes to "Overwrite" when file exists
+- @D: Info card summarizes what changed (rule count delta, new sections)
+       — computed by comparing YAML frontmatter of old vs new
+```
+
+### CLI Update Flow (same idea, simpler UI)
+
+```
+  Found existing .code-insights.md
+    Generated: 2026-03-15  ·  10 rules  ·  3.8 KB
+    Current:   2026-04-20  ·  12 rules  ·  4.2 KB
+
+  Changes:
+    + 2 new rules (avoid-orm-migrations, prompt-cache-content-blocks)
+    ~ 3 rules updated (confidence scores changed)
+    + 1 new decision (Two-layer prompt quality output)
+    ~ Friction counts updated (stale-assumptions: 19 → 23)
+
+  Overwrite? [y/N]:
+```
+
+---
+
+## Summary of Key Design Decisions
+
+| Decision | Choice | Alternative Considered | Rationale |
+|----------|--------|----------------------|-----------|
+| Command name | `export --format repo` | Dedicated `attach` command | Reuses existing pipeline; one verb for all exports |
+| File name | `.code-insights.md` | `KNOWLEDGE.md`, `.ai-context.md` | Clear provenance; dot-prefix signals "generated/config" |
+| User-editable sections | None | Auto/manual split | Merge complexity not worth it; use CLAUDE.md for custom rules |
+| Re-run behavior | Full regenerate + diff | Merge, append, section-level update | Diff is familiar, predictable, low-complexity |
+| Dashboard placement | 5th format card on Export page | Separate page, floating action | Consistent with existing patterns; no new navigation |
+| Write action | Server writes to filesystem | Client-side download only | The whole point is "lives in the repo," not in ~/Downloads |
+| Privacy | Warning on every generation | First-time only, or opt-in flag | Developers skip things once; per-run reminder is low-friction |
+| Discoverability | Passive (Export page + Patterns hint + one-time CLI tip) | Onboarding modal, notification badge | Developers skip tutorials; feature is found naturally |
+| YAML structure | Flat rule list with IDs | Nested by category, no IDs | IDs enable stable diffing; flat list is simpler to parse |
+
+### Files That Would Need Changes
+
+| File | Change |
+|------|--------|
+| `server/src/routes/export.ts` | Add `repo` format to validation; new `POST /api/export/write-repo` endpoint |
+| `server/src/llm/export-prompts.ts` | Add `'repo'` to `ExportFormat` type; new system prompt for repo format |
+| `dashboard/src/lib/api.ts` | Add `ExportGenerateFormat` value `'repo'`; add `writeRepoFile()` API function |
+| `dashboard/src/pages/ExportPage.tsx` | Add Repo format card; modify Step 4 for write-to-repo flow; diff tab |
+| `dashboard/src/hooks/useExport.ts` | No changes (SSE flow is format-agnostic) |
+| `cli/src/commands/` | New `export.ts` command file |
+| `cli/src/types.ts` | Add `'repo'` to relevant format types |</result>
+<usage><total_tokens>67556</total_tokens><tool_uses>22</tool_uses><duration_ms>272987</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a7d8250ae09352ee9</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a7d8250ae09352ee9.output</output-file>
+<status>completed</status>
+<summary>Agent "Strategic PRD review by devtools-cofounder" completed</summary>
+<result>## Cofounder Design Review: Codebase-Attached Knowledge (`.code-insights.md`)
+
+---
+
+### 1. Value Proposition Clarity
+
+**Strong.** The "why" is well-articulated and the killer use case (onboarding developer inheriting a codebase) is genuinely compelling. The research doc nails the competitive gap: entire.io stores raw transcripts, ADRs require manual authoring, memory MCPs don't survive git clone. Code Insights does zero-effort extraction from sessions that already happened, across multiple tools. That is a real moat.
+
+One concern: the killer use case implies the *original* developer runs the export before handing off the codebase. But it's framed as zero-authoring-effort. This is slightly dishonest — someone still has to invoke the command and review/commit the file. The PRD should be explicit: "Zero *authoring* effort, one deliberate *generation* step." That's still compelling but more honest.
+
+The dual-audience pitch (AI agents parse YAML, humans read markdown) is smart and well-precedented (`.editorconfig` serves editors and humans; `package.json` serves npm and humans). This framing should be in marketing, not just the PRD.
+
+---
+
+### 2. Scope Discipline
+
+**Well-scoped overall. Two flags:**
+
+**Cut candidate:** The `--depth` flag (`essential | standard | comprehensive`). This adds complexity to the LLM prompt, the CLI UX, and the mental model — and I suspect 90%+ of users will use the default. Ship without depth levels. If users ask for more or less detail, add it then. Convention over configuration.
+
+**Pull-in candidate:** The PRD says nothing about `.gitignore` guidance. When the file is first generated, the CLI should explicitly ask or suggest: "Add .code-insights.md to .gitignore? [y/N]" — with the default being NO (share it). This is the privacy-sensitive moment and it deserves an explicit UX touchpoint, not just a "review before committing" warning. The research doc mentions "suggest `.gitignore` entry, make sharing explicit opt-in" but the PRD dropped this in implementation. Pick it back up.
+
+---
+
+### 3. The "Full Regeneration, No Merge" Decision
+
+**Strongly agree.** This is the correct call and the rationale in Section 4.5 is persuasive. Three reasons I back it:
+
+1. **Precedent:** `package-lock.json`, `yarn.lock`, compiled assets — generated artifacts that you don't hand-edit work well in practice. Developers understand "this file is regenerated, don't touch it."
+
+2. **Complexity avoidance:** YAML/markdown boundary merging is a bug factory. I have seen this fail in tools like `all-contributors` (`.all-contributorsrc` + README injection with sentinels). It is fragile and creates support burden disproportionate to value.
+
+3. **Clear mental model:** `.code-insights.md` = extracted knowledge (read-only). `CLAUDE.md` = your instructions (editable). No overlap, no confusion.
+
+**One risk to acknowledge:** If a developer manually tweaks the narrative in `.code-insights.md` (fixes a factual error in a decision record), their edit gets blown away on next regeneration. The HTML comment "Do not edit" mitigates this, but some users will ignore it. Consider: on re-run, if the file's content doesn't match what the previous generation would have produced (i.e., it was hand-edited), show a warning: "File appears to have been manually modified. Overwrite will lose those changes." This is a low-cost safety net.
+
+---
+
+### 4. Adoption Friction
+
+**Three friction points:**
+
+| Step | Friction | Severity | Fix |
+|------|----------|----------|-----|
+| Command invocation | `code-insights export --format repo --project my-service` is 7 tokens of muscle memory | Medium | Add alias: `code-insights attach [project]`. Keep `export --format repo` as the canonical form, but `attach` is discoverable and memorable. WakaTime uses `wakatime-cli --write-summary` — short, verb-first. |
+| Project matching | "fuzzy matched; required if multiple projects" — what does fuzzy mean? Levenshtein? Contains? | Low | Specify: if ambiguous, show numbered list and let user pick. Don't silently pick the closest match. |
+| Re-run confirmation | The `Overwrite? [y/N]` prompt (line 248) blocks CI/automation | Medium | Add `--yes` / `-y` flag to skip confirmation. Precedent: `npm init -y`, `rm -f`. Needed for any automation use case. |
+
+The dashboard flow (Section 4.3) is well-designed — the diff tab on re-run is the right UX. No friction there.
+
+---
+
+### 5. The Privacy Warning
+
+The PRD shows the warning in three places:
+1. In the generated file header (HTML comment)
+2. In the CLI terminal output after generation
+3. In the dashboard Step 4 review panel
+
+**Assessment: This is the right level.** It is not too noisy because:
+- The HTML comment is invisible in rendered markdown (only appears when viewing raw)
+- The CLI warning appears once per invocation, which is appropriate
+- The dashboard warning is contextual (in the review step)
+
+**One improvement:** The warning text ("file may contain project-specific details from your AI sessions") is vague. Make it specific: "May contain: internal service names, architecture details, error messages from sessions. Does NOT contain: API keys, tokens, or credentials (scrubbed automatically)." This tells the developer what to actually look for during review, rather than a generic "be careful."
+
+---
+
+### 6. Missing Requirements
+
+**Six gaps:**
+
+1. **Token budget for LLM call.** The PRD specifies no max input/output tokens for the synthesis prompt. A project with 400 sessions and 217 insights could produce a massive context. What is the input cap? How are insights prioritized when they exceed it? The `--depth` levels hint at this but don't specify the mechanism. Even if you cut `--depth`, you need a "standard" budget defined.
+
+2. **File size governance.** What happens when a project has 50 architectural decisions, 30 friction hotspots, and 40 rules? The file becomes unreadable. The PRD should specify maximum counts per section (e.g., top 10 rules by confidence, top 5 friction by frequency, top 8 decisions by recency). This is a hard cap in the prompt and/or frontmatter builder.
+
+3. **Multi-project monorepo.** The PRD handles "monorepo with multiple paths" (line 441: "Use common ancestor with `.git`") but doesn't address the case where a developer uses Code Insights for multiple distinct projects within one git repo (e.g., `apps/frontend` and `apps/backend` as separate Code Insights projects). Should they get one file at the git root or two files? The "require `--path`" fallback is insufficient UX for this real scenario.
+
+4. **No versioning strategy.** The frontmatter has `version: 1` but no discussion of what triggers `version: 2`. When you change the YAML schema (add fields, rename keys), old files become unparseable by new agents. Define the compatibility contract now, even if V2 is far away.
+
+5. **Cost transparency.** The LLM call for synthesis will cost money. The PRD doesn't mention estimated cost or whether to show it before/after. Given that other Code Insights features show cost (insights analysis), this should be consistent. Show estimated cost before running, actual cost after.
+
+6. **Offline/no-LLM experience.** The `--no-llm` mode "generates YAML frontmatter only" — but the YAML frontmatter `rules` array requires LLM synthesis (the rules come from reflect snapshots, which are LLM-generated). Clarify: does `--no-llm` skip the *export* LLM call but use previously-generated rules from reflect? Or does it produce a file with friction/patterns from aggregation but no rules? The distinction matters for the zero-config use case.
+
+---
+
+### 7. Overall Verdict
+
+**PROCEED WITH CHANGES.**
+
+This PRD is 85% ready for implementation planning. The core concept is sound, the architecture is elegant (5th export format, no schema change, stateless), and the competitive positioning is strong. The research doc demonstrates genuine strategic thinking.
+
+**Required changes before handing to engineering:**
+
+1. Specify token budget and section count caps (gap #1 and #2 above)
+2. Add `--yes` flag for non-interactive overwrite (friction #3)
+3. Clarify `--no-llm` behavior with respect to pre-existing reflect rules (gap #6)
+4. Add `.gitignore` suggestion UX touchpoint after first generation (scope pull-in)
+
+**Recommended but non-blocking:**
+
+- Cut `--depth` flag from V1 (ship standard only, add later if asked)
+- Add `code-insights attach` alias for discoverability
+- Add "file was hand-edited" detection on re-run
+- Specify version compatibility contract for frontmatter schema
+
+The feature strengthens Code Insights' unique position as the neutral knowledge extraction layer across AI tools. No competitor does multi-tool retrospective knowledge synthesis to a repo-portable artifact. Ship this.</result>
+<usage><total_tokens>39850</total_tokens><tool_uses>2</tool_uses><duration_ms>74848</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a3f47b25fad29b91c</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/78347fc1-8653-4093-87db-1af2a0a9f77d/tasks/a3f47b25fad29b91c.output</output-file>
+<status>completed</status>
+<summary>Agent "Technical PRD review by technical-architect" completed</summary>
+<result>I now have enough context to deliver the review.
+
+---
+
+## Technical Architecture Review: Codebase-Attached Knowledge PRD
+
+### 1. Architecture Soundness — "5th Export Format on Existing Pipeline"
+
+**Verdict: The approach is sound, but the PRD oversimplifies the integration.**
+
+The PRD states (Section 5.1):
+&gt; "Extend the existing `POST /api/export/generate` endpoint to accept `format: 'repo'`. Do not create a separate endpoint — the data fetching, SSE streaming, and LLM orchestration logic is identical across formats."
+
+Looking at the actual `export.ts`, the pipeline is:
+1. `fetchScopedInsights()` — fetches insights only
+2. `applyDepthCap()` — caps by depth
+3. `buildInsightContext()` / `getExportSystemPrompt()` / `buildExportUserPrompt()` — format-specific prompt assembly
+4. `client.chat()` — single LLM call
+5. Return content
+
+The `repo` format needs **additional data** beyond insights (friction aggregations, pattern aggregations, reflect snapshot rules). This means the "identical data fetching" claim is **false**. The route handler will need a conditional branch:
+
+```typescript
+if (format === 'repo') {
+  // fetch insights + facets + reflect rules
+} else {
+  // existing insights-only path
+}
+```
+
+This is achievable but makes the endpoint less uniform than the PRD suggests. Not a blocker, but the implementation should be honest about this being a conditional branch, not a pure format swap.
+
+**The validation lists in export.ts will need updating.** Currently line 211:
+```typescript
+if (!['agent-rules', 'knowledge-brief', 'obsidian', 'notion'].includes(format))
+```
+This appears in both the sync endpoint (line 211) and the stream endpoint (line 309). Both need `'repo'` added.
+
+**The `ExportFormat` type** in `export-prompts.ts` (line 5):
+```typescript
+export type ExportFormat = 'agent-rules' | 'knowledge-brief' | 'obsidian' | 'notion';
+```
+Needs `'repo'` added. The `ExportContext` interface and `getExportSystemPrompt()` switch statement both need the new case. Straightforward.
+
+---
+
+### 2. YAML Frontmatter + LLM Markdown Body Split
+
+**Verdict: Clean design, but the streaming model needs clarification.**
+
+The PRD says (Section 5.1):
+&gt; "The server combines: HTML comment header + YAML frontmatter + LLM markdown body = final file content."
+
+Looking at the actual export flow, `client.chat()` returns `response.content` as a single string. The server currently returns this directly:
+```typescript
+return c.json({ content: response.content, metadata }, 200);
+```
+
+For `repo` format, the server would need to:
+1. Build frontmatter deterministically (before LLM call)
+2. Call LLM for markdown body
+3. Concatenate: `comment + frontmatter + llmBody`
+4. Return the combined string as `content`
+
+This fits cleanly. The `content` field in the response already carries the full output — the client (dashboard or CLI) doesn't need to know about the split. The split is an internal server concern.
+
+**For the SSE stream variant:** The stream currently sends one `complete` event with the full content. Same approach works — concatenate before sending the `complete` event. No architectural issue.
+
+**One concern:** The frontmatter includes data like `sessions: 142` and friction/pattern counts. If these are computed from the same queries used to build the LLM context, they should be computed once and shared. The PRD doesn't explicitly state this, but it's implied. Implementation should compute aggregations once, use them for both frontmatter and LLM context.
+
+---
+
+### 3. Project Root Detection
+
+**Verdict: Adequate for v1, with caveats.**
+
+The PRD proposes (Section 5.2):
+```typescript
+export function findGitRoot(startPath: string): string | null {
+  let current = resolve(startPath);
+  while (true) {
+    if (existsSync(join(current, '.git'))) return current;
+    const parent = dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+```
+
+**Platform concerns:**
+- **Windows:** `dirname('C:\\')` returns `'C:\\'` — the termination condition works.
+- **Symlinks:** `resolve()` resolves symlinks, so if `project_path` is a symlink, this walks up from the real path. This is correct behavior.
+- **`.git` as a file (worktrees):** Git worktrees use a `.git` file (not directory) pointing to the main repo's `.git/worktrees/`. `existsSync` catches this — a `.git` file still means "this is a git root." Correct.
+
+**The real concern is stale paths.** The PRD handles this:
+&gt; "Path no longer exists — Error: Project path /old/path no longer exists."
+
+Good. But there's a subtler case: the path exists but the `.git` was removed (repo moved, or the directory is now part of a different repo). The walk-up would find an ancestor's `.git`. This is edge-case enough to accept for v1.
+
+**Monorepo case** is the trickiest:
+&gt; "Monorepo (multiple paths, common ancestor) — Use common ancestor with `.git`; if disjoint, require `--path`"
+
+This logic (finding common ancestors across multiple `project_path` values) needs explicit implementation. The PRD acknowledges it but doesn't show the algorithm. Implementation plan should detail this.
+
+---
+
+### 4. `POST /api/export/write-repo` Endpoint
+
+**Verdict: This is the highest-risk item in the PRD. Needs stronger guardrails.**
+
+The PRD proposes:
+```
+POST /api/export/write-repo
+Body:  { content: string, projectId?: string }
+Response: { path: string, existed: boolean }
+```
+
+**Security concerns:**
+
+1. **Path traversal.** The server resolves the write path from `sessions.project_path` in the database, not from user input. This is safe — the attacker would need to inject a malicious path into the SQLite database first.
+
+2. **Arbitrary write.** The endpoint writes `content` (user-controlled string from the request body) to a path derived from the database. If the dashboard is compromised (XSS, extension injection), an attacker could write arbitrary content to `.code-insights.md` at the project root. This is acceptable risk given the server runs locally.
+
+3. **Remote scenario.** The PRD doesn't address this, and it matters:
+   &gt; "What happens if the server is running but the project path is on a different machine?"
+   
+   The server always runs locally (`localhost:7890`). The dashboard is also accessed locally. There is no remote scenario in the current architecture — the server, database, and filesystem are all on the same machine. This is fine.
+
+4. **Validation needed:**
+   - Verify the resolved path ends with `.code-insights.md` (never write to arbitrary filenames)
+   - Verify the target directory exists
+   - Reject if `content` is empty or exceeds a reasonable size limit (e.g., 100KB)
+   - The endpoint should NOT accept a `path` parameter from the client — always resolve from DB
+
+The PRD's design (resolve from DB, not from user input) is the right call. But these validation rules should be explicit in the implementation plan.
+
+---
+
+### 5. `buildRepoExportContext()` Function
+
+**Verdict: Data path exists, minor concern about scope filtering.**
+
+The PRD says:
+&gt; "Friction aggregations from `session_facets` (reusing `getAggregatedData()` from `shared-aggregation.ts`)"
+
+`getAggregatedData()` takes `(db, where, params, project?, source?)`. It returns friction categories, effective patterns, outcome distribution, and more. The function already exists and is battle-tested in `facets.ts` and `reflect.ts`.
+
+**Concern: scope alignment.** The existing export pipeline filters by `projectId` using the `insights` table. The `getAggregatedData()` function filters `session_facets` joined to `sessions`. These are different filter paths:
+- Insights: `WHERE i.project_id = ?`
+- Facets: `WHERE s.project_id = ?` (via the `where` clause passed in)
+
+For `repo` format, both must use the same project scope. The implementation needs to ensure the `where` clause passed to `getAggregatedData()` matches the project filter used for insights. This is straightforward but must be explicit.
+
+**Performance concern:** Adding `getAggregatedData()` to the export pipeline adds 4-5 SQLite queries (friction, patterns, outcomes, streak, etc.). These are fast (indexed, small result sets for a single project), but it's worth noting that the `repo` format will be slightly slower than other formats due to this extra data fetch. Not a blocker.
+
+**Reflect snapshot rules:** The PRD mentions fetching `claudeMdRules[]` from `reflect_snapshots.results_json`. This is a separate query not covered by `getAggregatedData()`. Implementation needs to add this fetch explicitly (likely a simple `SELECT results_json FROM reflect_snapshots WHERE project = ? ORDER BY created_at DESC LIMIT 1`).
+
+---
+
+### 6. Type System Impact
+
+**Verdict: Minimal, well-contained.**
+
+Changes needed:
+
+1. **`cli/src/types.ts` line 368:** `ExportTemplate` union — does NOT need changing. `ExportTemplate` is for the old markdown export (`'knowledge-base' | 'agent-rules'`). The new `repo` format uses the `ExportFormat` type in `export-prompts.ts`.
+
+2. **`server/src/llm/export-prompts.ts` line 5:** `ExportFormat` needs `'repo'` added. This type is server-internal (not in `cli/src/types.ts`), so no cross-boundary propagation concern.
+
+3. **New types for the CLI `export` command:** The CLI command (`cli/src/commands/export.ts`) will need to call the server's `/api/export/generate` endpoint with `format: 'repo'`. The CLI doesn't import `ExportFormat` from the server — it just sends a string. No type propagation issue.
+
+4. **No new types needed in `cli/src/types.ts`** — the PRD is correct that this feature is stateless from the CLI's type perspective.
+
+**One gap:** The PRD proposes a new `cli/src/commands/export.ts` file. Currently there is no CLI `export` command — the export functionality only exists as server API endpoints consumed by the dashboard. The PRD should acknowledge this is a new CLI command registration, not just a format addition. It does list `cli/src/index.ts` as modified (to register the command), so this is covered.
+
+---
+
+### 7. Missing Technical Details
+
+**Items that would block implementation:**
+
+1. **CLI command calling the server.** The PRD describes a CLI command (`code-insights export --format repo`) but doesn't specify whether it:
+   - Starts a server instance (like `code-insights dashboard` does), calls the API, then stops it
+   - Calls the server directly using internal modules (bypassing HTTP)
+   - Requires the server to already be running
+   
+   Given the existing pattern (`code-insights reflect` calls the server), the answer is likely "start server, call API, stop server." But this should be explicit.
+
+2. **Reflect snapshot rules query.** The PRD mentions fetching `claudeMdRules[]` from `reflect_snapshots` but doesn't show the query or how to handle the case where no reflect has been run (no snapshots exist). Should `--no-llm` mode still include rules in YAML frontmatter if reflect snapshots exist?
+
+3. **Diff generation for re-run.** The PRD describes a "Diff tab" in the dashboard and "Changes from last generation" in CLI output. How is the diff computed? The server would need to:
+   - Read the existing file from disk (requires filesystem access)
+   - Compute a unified diff
+   - Return it to the dashboard
+   
+   This implies either: (a) a separate endpoint like `GET /api/export/repo-diff?projectId=x`, or (b) the `write-repo` endpoint returns the diff alongside the content. Neither is specified.
+
+4. **The `--depth` flag interaction with facet data.** `applyDepthCap()` limits insights sent to the LLM. But the YAML frontmatter friction/pattern data comes from `getAggregatedData()`, which has no depth cap — it aggregates ALL session facets for the project. Should `--depth` also limit frontmatter data? The PRD is silent on this.
+
+5. **Error handling for LLM-less YAML generation.** `--no-llm` mode generates "YAML frontmatter only." This means the `rules` array in the frontmatter must be generated WITHOUT LLM synthesis. Where do the rules come from? The PRD says rules are "derived from recurring session patterns" — but if the LLM isn't doing the derivation, are they pulled from `reflect_snapshots.claudeMdRules`? This needs to be explicit.
+
+---
+
+### 8. Implementation Sequencing
+
+**Recommended order (safest, minimizing rework):**
+
+1. **`cli/src/utils/project-root.ts`** — Pure utility, no dependencies. Testable in isolation.
+
+2. **`cli/src/utils/scrub.ts`** — Pure utility, no dependencies. Testable in isolation.
+
+3. **`server/src/llm/repo-export-prompts.ts`** — New file with system prompt, `buildRepoExportContext()`, `buildRepoFrontmatter()`. Depends on understanding `getAggregatedData()` return type.
+
+4. **`server/src/llm/export-prompts.ts`** — Add `'repo'` to `ExportFormat` union, add `ExportContext` case. Small change, unlocks route changes.
+
+5. **`server/src/routes/export.ts`** — Add `'repo'` to validation, conditional branch for repo context, new `POST /api/export/write-repo` endpoint. Depends on steps 3-4.
+
+6. **`cli/src/commands/export.ts` + `cli/src/index.ts`** — New CLI command. Depends on steps 1-2 and the server endpoints from step 5.
+
+7. **Dashboard changes** (`ExportPage.tsx`, `api.ts`) — Last, because they depend on the server API being stable.
+
+**Hidden dependency:** Step 3 depends on knowing the exact shape of `getAggregatedData()` return value (`AggregatedData` type from `shared-aggregation.ts`). The implementation plan should read that type definition first.
+
+---
+
+### 9. Verdict
+
+**The PRD is 85% complete for implementation planning.** The architecture is sound, the approach is pragmatic (reusing existing pipeline), and the scope is well-contained. The YAML/markdown split and stateless design are good calls.
+
+**Gaps that need resolution before implementation:**
+
+| Gap | Severity | Resolution needed |
+|-----|----------|-------------------|
+| CLI-to-server invocation model | HIGH | Explicit: does CLI start its own server or use internal modules? |
+| Diff computation mechanism | MEDIUM | Define: separate endpoint? Inline in write-repo response? Client-side diff? |
+| `--no-llm` rules source | MEDIUM | Explicit: pull from reflect_snapshots? Or empty rules array if no reflect? |
+| Reflect snapshot query (missing) | LOW | Add query specification for fetching latest claudeMdRules |
+| `--depth` interaction with frontmatter | LOW | Clarify: depth caps insights to LLM only, frontmatter always uses full data |
+
+**Recommendation:** Resolve the HIGH item (CLI invocation model) and the two MEDIUM items, then this PRD is implementation-ready. The LOW items can be resolved during implementation with sensible defaults (empty rules if no reflect, frontmatter always uses full data).</result>
+<usage><total_tokens>50123</total_tokens><tool_uses>9</tool_uses><duration_ms>129476</duration_ms></usage>
+</task-notification>
+
+---
+
+commit and store this PRD in a feature branch and create PR.. i will review later and ask for implementation
