@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "366f2f335063",
+  "strategy": "manual-commit",
+  "branch": "feature/codebase-knowledge-redesign",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/superpowers/specs/2026-04-22-codebase-knowledge-redesign-brainstorm.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/36/6f2f335063/0/metadata.json",
+      "transcript": "/36/6f2f335063/0/full.jsonl",
+      "context": "/36/6f2f335063/0/context.md",
+      "content_hash": "/36/6f2f335063/0/content_hash.txt",
+      "prompt": "/36/6f2f335063/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
