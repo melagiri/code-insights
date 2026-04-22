@@ -99,10 +99,50 @@ Zero-config first run: `code-insights` with no args auto-syncs and opens the das
 
 ## Non-Goals
 
-- **Not a business** — No monetization, no paywall, no premium tier
+- **Not a business** — No monetization, no paywall, no premium tier ⚠ *see discussion below*
 - **Not a central platform** — No central database for user session data
 - **Not a dependency** — Users can stop using it anytime, data remains theirs
-- **Not a team tool** — This is a personal learning tool; no org/team features
+- **Not a team tool** — This is a personal learning tool; no org/team features ⚠ *see discussion below*
+
+---
+
+## Under Active Discussion — May Override Non-Goals
+
+> **Status:** Brainstorming phase. No implementation decisions made. This section documents a direction being explored before any code changes are committed. The founder must make an explicit decision before Phase 3 of the roadmap below begins.
+>
+> Branch: `feature/codebase-knowledge-redesign`  
+> Full brainstorm notes: `docs/superpowers/specs/2026-04-22-codebase-knowledge-redesign-brainstorm.md`
+
+### Team Knowledge Sync — Optional Team Tier
+
+A brainstorming session (2026-04-22) explored adding an optional **team tier** that would allow multiple developers on the same codebase to pool their extracted knowledge — without ever sharing raw session transcripts.
+
+**The core insight:** The LLM synthesis step is a natural privacy boundary. Raw sessions stay local forever. Only the already-processed, already-scrubbed extracted knowledge (decisions, learnings, patterns, friction) would sync to a team-owned database.
+
+**What this would look like:**
+
+- **Free tier**: unchanged — fully local SQLite, personal only, everything as it is today
+- **Team tier**: Bring-Your-Own Supabase PostgreSQL — teams configure their own Supabase project; Code Insights never runs the infrastructure
+- **Privacy-preserving sync**: only LLM-extracted structured knowledge syncs; raw transcripts never leave the machine
+- **`code-insights context <topic>`**: a new retrieval command that queries both your local DB and the team's shared knowledge base, with attribution per entry (`@alice · Jan 14, 2026`)
+- **`.code-insights.md`**: generated from the full team's knowledge (not just one person's sessions) — solving the single-author blindspot
+
+**What this would require overriding:**
+
+| Current non-goal | Proposed override |
+|-----------------|-------------------|
+| Not a team tool | Optional team tier — free personal tier unchanged |
+| Not a business | Possible seat-based pricing for team tier (BYOS means no hosted infra cost) |
+| No Supabase | BYOS model — teams own their Supabase instance, not us |
+
+**What stays unchanged regardless:**
+
+- Free personal tier is identical to today — no degradation, no feature gating
+- Raw session data never leaves the machine under any tier
+- MIT-licensed open source codebase
+- No Code Insights central server — team data lives in the team's own Supabase
+
+**Decision required:** Before Phase 3 implementation begins, this file must be explicitly updated to either (a) accept the team tier direction and revise the non-goals, or (b) reject it and keep the current non-goals intact. The brainstorm notes document records all design decisions, TA review, and UX review for reference.
 
 ## Success Looks Like
 
