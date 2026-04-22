@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "366f2f335063",
+  "session_id": "c5880169-2167-416f-bd97-e928d22c7b71",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-22T01:45:18.03979Z",
+  "branch": "feature/codebase-knowledge-redesign",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "docs/superpowers/specs/2026-04-22-codebase-knowledge-redesign-brainstorm.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cf9d1dc565fa",
+  "token_usage": {
+    "input_tokens": 60,
+    "cache_creation_tokens": 176554,
+    "cache_read_tokens": 2626929,
+    "output_tokens": 38907,
+    "api_call_count": 38
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-22T01:45:17.876497Z",
+    "agent_lines": 294,
+    "human_added": 147,
+    "human_modified": 6,
+    "human_removed": 0,
+    "total_committed": 447,
+    "agent_percentage": 65.77181208053692
+  }
+}
