@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "8cc9e4a5bc60",
+  "session_id": "61c2c82b-be5b-472f-92e1-1064bbea43ec",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-22T02:01:33.847923Z",
+  "branch": "feature/codebase-knowledge-redesign",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "docs/VISION.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d7d211073099",
+  "checkpoint_transcript_start": 4,
+  "transcript_lines_at_start": 4,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-22T02:01:33.835393Z",
+    "agent_lines": 0,
+    "human_added": 40,
+    "human_modified": 2,
+    "human_removed": 0,
+    "total_committed": 40,
+    "agent_percentage": 0
+  }
+}
