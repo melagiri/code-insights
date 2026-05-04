@@ -1,0 +1,859 @@
+I have many posthog errors, here is one such stacktrace:
+
+{
+  "uuid": "019df379-8c96-7171-9599-0845e7504847",
+  "event": "$exception",
+  "properties": {
+    "$cymbal_errors": [
+      "Invalid properties on event 019df379-8c96-7171-9599-0845e7504847, serde error: missing field `type`"
+    ],
+    "$exception_list": [
+      {
+        "mechanism": {
+          "handled": true,
+          "type": "generic"
+        },
+        "stacktrace": {
+          "frames": [
+            {
+              "colno": 30,
+              "filename": "/C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/server-dist/routes/route-helpers.js",
+              "function": "<anonymous>",
+              "in_app": false,
+              "lineno": 127
+            },
+            {
+              "colno": 5,
+              "filename": "/C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/node_modules/hono/dist/helper/streaming/sse.js",
+              "function": "async run",
+              "in_app": false,
+              "lineno": 30
+            }
+          ]
+        },
+        "type": "Error",
+        "value": "Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve"
+      }
+    ],
+    "$exception_message": "Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve",
+    "$exception_stack_trace_raw": "Error: Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve\n    at file:///C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/server-dist/routes/route-helpers.js:127:30\n    at async run (file:///C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/node_modules/hono/dist/helper/streaming/sse.js:30:5)",
+    "$exception_type": "Error",
+    "$geoip_disable": true,
+    "$ip": "186.4.171.244",
+    "$lib": "posthog-node",
+    "$lib_version": "4.18.0",
+    "$sent_at": "2026-05-04T14:52:02.582Z",
+    "duration_ms": 306107,
+    "error_message": "Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve",
+    "error_type": "api_error",
+    "llm_model": "gemma4:26b",
+    "llm_provider": "ollama",
+    "success": false,
+    "type": "session",
+    "$transformations_succeeded": [
+      "GeoIP (019cad81-b34f-0000-8cca-78e5873bf67d)"
+    ]
+  },
+  "timestamp": "2026-05-04T20:22:03.340000+05:30",
+  "team_id": 328708,
+  "distinct_id": "42faedf2f0e5318c",
+  "elements_chain": "",
+  "created_at": "2026-05-04T20:22:09.710000+05:30",
+  "person_mode": "full"
+}
+
+Investigate this and tell me what is wrong..
+
+---
+
+create feature branch and work on it.. but before that, try looking for similar errors that we may have introduced recently due the changes we made to codebase
+
+---
+
+ok, create PR and run a review and ask my final approval and PR merge
+
+---
+
+Base directory for this skill: /Users/melagiri/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/finishing-a-development-branch
+
+# Finishing a Development Branch
+
+## Overview
+
+Guide completion of development work by presenting clear options and handling chosen workflow.
+
+**Core principle:** Verify tests → Present options → Execute choice → Clean up.
+
+**Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
+
+## The Process
+
+### Step 1: Verify Tests
+
+**Before presenting options, verify tests pass:**
+
+```bash
+# Run project's test suite
+npm test / cargo test / pytest / go test ./...
+```
+
+**If tests fail:**
+```
+Tests failing (<N> failures). Must fix before completing:
+
+[Show failures]
+
+Cannot proceed with merge/PR until tests pass.
+```
+
+Stop. Don't proceed to Step 2.
+
+**If tests pass:** Continue to Step 2.
+
+### Step 2: Determine Base Branch
+
+```bash
+# Try common base branches
+git merge-base HEAD main 2>/dev/null || git merge-base HEAD master 2>/dev/null
+```
+
+Or ask: "This branch split from main - is that correct?"
+
+### Step 3: Present Options
+
+Present exactly these 4 options:
+
+```
+Implementation complete. What would you like to do?
+
+1. Merge back to <base-branch> locally
+2. Push and create a Pull Request
+3. Keep the branch as-is (I'll handle it later)
+4. Discard this work
+
+Which option?
+```
+
+**Don't add explanation** - keep options concise.
+
+### Step 4: Execute Choice
+
+#### Option 1: Merge Locally
+
+```bash
+# Switch to base branch
+git checkout <base-branch>
+
+# Pull latest
+git pull
+
+# Merge feature branch
+git merge <feature-branch>
+
+# Verify tests on merged result
+<test command>
+
+# If tests pass
+git branch -d <feature-branch>
+```
+
+Then: Cleanup worktree (Step 5)
+
+#### Option 2: Push and Create PR
+
+```bash
+# Push branch
+git push -u origin <feature-branch>
+
+# Create PR
+gh pr create --title "<title>" --body "$(cat <<'EOF'
+## Summary
+<2-3 bullets of what changed>
+
+## Test Plan
+- [ ] <verification steps>
+EOF
+)"
+```
+
+Then: Cleanup worktree (Step 5)
+
+#### Option 3: Keep As-Is
+
+Report: "Keeping branch <name>. Worktree preserved at <path>."
+
+**Don't cleanup worktree.**
+
+#### Option 4: Discard
+
+**Confirm first:**
+```
+This will permanently delete:
+- Branch <name>
+- All commits: <commit-list>
+- Worktree at <path>
+
+Type 'discard' to confirm.
+```
+
+Wait for exact confirmation.
+
+If confirmed:
+```bash
+git checkout <base-branch>
+git branch -D <feature-branch>
+```
+
+Then: Cleanup worktree (Step 5)
+
+### Step 5: Cleanup Worktree
+
+**For Options 1, 2, 4:**
+
+Check if in worktree:
+```bash
+git worktree list | grep $(git branch --show-current)
+```
+
+If yes:
+```bash
+git worktree remove <worktree-path>
+```
+
+**For Option 3:** Keep worktree.
+
+## Quick Reference
+
+| Option | Merge | Push | Keep Worktree | Cleanup Branch |
+|--------|-------|------|---------------|----------------|
+| 1. Merge locally | ✓ | - | - | ✓ |
+| 2. Create PR | - | ✓ | ✓ | - |
+| 3. Keep as-is | - | - | ✓ | - |
+| 4. Discard | - | - | - | ✓ (force) |
+
+## Common Mistakes
+
+**Skipping test verification**
+- **Problem:** Merge broken code, create failing PR
+- **Fix:** Always verify tests before offering options
+
+**Open-ended questions**
+- **Problem:** "What should I do next?" → ambiguous
+- **Fix:** Present exactly 4 structured options
+
+**Automatic worktree cleanup**
+- **Problem:** Remove worktree when might need it (Option 2, 3)
+- **Fix:** Only cleanup for Options 1 and 4
+
+**No confirmation for discard**
+- **Problem:** Accidentally delete work
+- **Fix:** Require typed "discard" confirmation
+
+## Red Flags
+
+**Never:**
+- Proceed with failing tests
+- Merge without verifying tests on result
+- Delete work without confirmation
+- Force-push without explicit request
+
+**Always:**
+- Verify tests before offering options
+- Present exactly 4 options
+- Get typed confirmation for Option 4
+- Clean up worktree for Options 1 & 4 only
+
+## Integration
+
+**Called by:**
+- **subagent-driven-development** (Step 7) - After all tasks complete
+- **executing-plans** (Step 5) - After all batches complete
+
+**Pairs with:**
+- **using-git-worktrees** - Cleans up worktree created by that skill
+
+---
+
+# /start-review — Triple-Layer Code Review Team
+
+**PR**: 290
+
+You are setting up a triple-layer code review for PR `290`. This can be used standalone or as part of a `/start-feature` team workflow. The review loops until all FIX NOW items are resolved — it does NOT end after a single pass.
+
+---
+
+## Step 1: Get PR Details
+
+Fetch the PR details:
+
+```bash
+# Get the correct owner from git remote
+git remote get-url origin | sed 's/.*[:/]\([^/]*\)\/[^/]*\.git/\1/'
+```
+
+Use `gh pr view 290` to get PR title, description, and diff stats.
+Use `gh pr diff 290` to get the diff.
+
+Determine the PR scope:
+- Count files changed and lines changed per file
+- Identify if it touches schema concerns (types.ts, SQLite schema, server API)
+- Classify changed files into domains for specialist selection (Step 2)
+
+---
+
+## Step 2: Select Domain Specialists
+
+Instead of fixed generalist reviewers, select 1-2 **domain specialists** based on what the PR actually changes. Each specialist combines deep domain expertise with general engineering awareness. See `docs/REVIEW-SPECIALISTS.md` for the full specialist registry and prompt templates.
+
+### Domain Classification
+
+Classify each changed file into a domain based on file patterns:
+
+| Domain | File Pattern Triggers |
+|--------|----------------------|
+| **SQL/Database** | `server/src/routes/*.ts` (when containing SQL keywords), `cli/src/db/*.ts` |
+| **React/Frontend** | `dashboard/src/**/*.tsx`, `dashboard/src/**/*.ts` |
+| **Node/CLI** | `cli/src/commands/*.ts`, `cli/src/utils/*.ts`, `server/src/*.ts` (non-route, non-LLM) |
+| **Parser/Provider** | `cli/src/providers/**/*.ts`, `cli/src/parser/*.ts` |
+| **LLM** | `server/src/llm/**/*.ts` — handled by LLM Expert (separate, unchanged) |
+
+Files that don't match any domain (e.g., `package.json`, `tsconfig.json`, `.gitignore`, `CLAUDE.md`) are ignored during classification.
+
+### Selection Algorithm
+
+1. For each domain, sum the lines changed across all files in that domain
+2. **Primary specialist** = domain with the most lines changed
+3. **Secondary specialist** = next domain IF it has >= 30% of total changed lines AND is a different domain
+4. Cap at **2 domain specialists** (LLM Expert is a separate conditional reviewer)
+5. If a PR changes ONLY non-domain files, use the **Node/CLI Specialist** as general-purpose
+
+### LLM Expert (Conditional — Unchanged)
+
+**Invoke LLM Expert if ANY of these apply:**
+- PR touches `server/src/llm/` (prompts, providers, export-prompts)
+- PR adds or modifies LLM API calls
+- PR changes structured output schemas or SSE streaming
+- PR modifies token budgets or model selection logic
+- PR adds new LLM-powered features
+
+**Skip LLM Expert if ALL of these apply:**
+- No LLM code touched
+- Pure UI, CLI, or schema changes
+- Provider (source tool) implementations only
+
+---
+
+## Step 2.5: Pre-Review Gates
+
+Before launching reviewers, check these gates. If any gate fails, the review CANNOT proceed — send the PR back to the dev agent (or inform the user if standalone) with what's missing.
+
+### Gate A: New Dependency Audit
+
+Check if `package.json` (any workspace) was modified in the PR diff.
+
+If new dependencies were added:
+
+```
+Task {
+  name: "dep-auditor",
+  subagent_type: "Explore",
+  prompt: "Research the following new npm dependencies added in PR #290. For EACH dependency:
+
+  1. Search the library's GitHub issues for known limitations, gotchas, and common pitfalls
+  2. Read the library's README for caveats, browser compatibility notes, and unsupported features
+  3. Check if the library has specific CSS, rendering, or serialization constraints
+  4. Check the library's weekly downloads and last publish date (is it maintained?)
+
+  Output a structured report:
+  ## Dependency Audit: [package-name]
+  ### Known Limitations
+  ### Gotchas for Our Use Case
+  ### Risk Level (low/medium/high)
+  ### Recommendation
+
+  Be thorough — silent failures from library limitations are the hardest bugs to catch in code review.",
+  mode: "bypassPermissions"
+}
+```
+
+Include the dependency audit findings in the context given to ALL reviewers.
+
+### Gate B: Functional Verification Evidence
+
+Check the PR description for a **Verification** section. The dev agent is required to include:
+
+- **For all PRs**: Build passes (`pnpm build` output or confirmation)
+- **For UI/visual features**: Screenshot of the feature rendering in the browser
+- **For features that produce output** (image export, PDF, file download): The actual output artifact or proof it's non-empty (file size, screenshot of result)
+- **For API changes**: curl output showing the endpoint returns the expected response shape
+
+If the PR description lacks verification evidence:
+- **If part of /start-feature**: Message the dev agent via SendMessage: "PR is missing verification evidence. Add a Verification section to the PR description with [specific evidence needed]. See the pre-PR verification protocol."
+- **If standalone**: Inform the user the PR needs verification evidence before review can proceed.
+
+**Do NOT proceed to Step 3 until verification evidence is present.**
+
+### Gate C: Visual Output Check (Conditional)
+
+If the PR produces visual output (images, PDFs, charts, OG cards, share cards, exports):
+- The exported/generated artifact MUST be attached to or linked from the PR description
+- A reviewer must be able to visually inspect the output without running the code
+- If missing, send PR back with: "This PR produces visual output — attach the generated artifact to the PR description."
+
+---
+
+## Step 3: Run Parallel Independent Reviews (Round N)
+
+**CRITICAL**: All reviews run in parallel. No reviewer sees another's comments. This prevents bias.
+
+Track the current round number. Round 1 is the initial review. Round 2+ are follow-up reviews after fixes.
+
+**For Round 1**: Launch all applicable reviewers (TA Insider, Domain Specialist(s), LLM Expert if applicable).
+**For Round 2+**: Launch only targeted reviewers — those whose prior findings had FIX NOW or VERIFY AT RUNTIME items that were addressed. Skip reviewers whose prior findings were all resolved or NOT APPLICABLE.
+
+### Launch TA Insider Review (Always)
+
+```
+Task {
+  name: "ta-reviewer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing a Phase 1 INSIDER review of PR #290 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 290
+  Also fetch the PR details: gh pr view 290
+
+  Follow your Phase 1 review protocol:
+  1. Read the PR description and any linked GitHub Issue
+  2. Check if the change touches schema concerns (types.ts, SQLite schema)
+  3. Review code against existing patterns in the codebase
+  4. Check existing CLAUDE.md conventions compliance
+  5. Verify data contract patterns are followed (if data flow changed)
+  6. Check shadcn/ui and component conventions (if UI changes)
+
+  ADDITIONAL CHECKS:
+  7. If new dependencies were added, review the dependency audit findings: [INSERT DEP AUDIT IF APPLICABLE]
+  8. If the PR produces visual output, verify the attached artifact looks correct
+  9. Check that verification evidence in the PR description is credible (not just 'it works')
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## TA Review (Phase 1 - Insider): [PR Title] — Round [N]
+  ### Architecture Alignment
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Phase 1 Verdict
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+### Launch Domain Specialist Reviews (1-2, Dynamic)
+
+For each selected specialist from Step 2, launch a review agent using the prompt template from `docs/REVIEW-SPECIALISTS.md`. Use the `superpowers:code-reviewer` subagent type for all domain specialists.
+
+**Important:** Copy the full prompt template from the specialist registry, including:
+- The domain-specific checks (80% focus)
+- The general engineering checks (20% focus)
+- The **Runtime Verification Rule** (shared instruction — include verbatim)
+- The Round 2+ fix verification instructions (if applicable)
+
+```
+Task {
+  name: "[domain]-specialist",          // e.g., "sql-specialist", "react-specialist"
+  subagent_type: "superpowers:code-reviewer",
+  prompt: "[FULL PROMPT FROM docs/REVIEW-SPECIALISTS.md FOR THE SELECTED DOMAIN]",
+  mode: "bypassPermissions"
+}
+```
+
+**Example:** If Step 2 selected SQL/Database (primary) and React/Frontend (secondary), launch:
+
+```
+Task { name: "sql-specialist", subagent_type: "superpowers:code-reviewer", prompt: "[SQL/Database prompt]", mode: "bypassPermissions" }
+Task { name: "react-specialist", subagent_type: "superpowers:code-reviewer", prompt: "[React/Frontend prompt]", mode: "bypassPermissions" }
+```
+
+### Launch LLM Expert Review (If Applicable — Unchanged)
+
+```
+Task {
+  name: "llm-expert-reviewer",
+  subagent_type: "llm-expert",
+  prompt: "You are performing an independent LLM EXPERT review of PR #290 in the code-insights repo. This is review ROUND [N].
+
+  Fetch the PR diff using: gh pr diff 290
+  Also fetch the PR details: gh pr view 290
+
+  Review all LLM-related code for:
+  - Prompt quality: clarity, specificity, output format constraints
+  - Token efficiency: redundant instructions, over-prompting, prompt stuffing
+  - Output consistency: structured output schemas, JSON mode, enum enforcement
+  - Model selection: is the chosen model appropriate for the task complexity?
+  - Resilience: handling malformed LLM output, timeouts, retries, rate limits
+  - Cross-model compatibility: prompts that only work with one model family
+  - Cost implications: token budget estimates, unnecessary Opus/GPT-4 usage for simple tasks
+  - Streaming patterns: SSE implementation, partial response handling
+
+  Rate each prompt on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+  RUNTIME VERIFICATION RULE:
+  When you encounter code where the runtime behavior is NOT self-evident from
+  reading — flag it as 🟠 VERIFY AT RUNTIME instead of reasoning about correctness.
+  1. State what you THINK the behavior is
+  2. State what the RISK is if you're wrong
+  3. Require the dev to paste actual runtime output proving correctness
+
+  [FOR ROUND 2+: Focus on verifying the fixes for these specific items from Round [N-1]: [LIST PRIOR FIX NOW ITEMS]. Also check that fixes didn't introduce new issues.]
+
+  Output your review in the structured format:
+  ## LLM Expert Review: [PR Title] — Round [N]
+  ### Prompt Quality Assessment
+  ### Token Efficiency
+  ### Model Selection
+  ### Issues Found (with priority markers: 🔴 FIX NOW, 🟠 VERIFY AT RUNTIME, 🟡 SUGGESTION, 🔵 NOTE)
+  ### Recommendations
+
+  DO NOT look at any other review comments. Your review must be independent.",
+  mode: "bypassPermissions"
+}
+```
+
+Wait for ALL reviews to complete before proceeding.
+
+---
+
+## Step 4: TA Synthesis
+
+After all reviews are collected, launch the TA synthesis pass:
+
+```
+Task {
+  name: "ta-synthesizer",
+  subagent_type: "technical-architect",
+  prompt: "You are performing Phase 2 SYNTHESIS for PR #290. This is review ROUND [N].
+
+  The orchestrator will provide you with the independent review outputs (outsider, wild card if applicable, and LLM expert if applicable).
+
+  Follow your Phase 2 synthesis protocol:
+  1. Read all review comments (outsider, wild card, LLM expert)
+  2. Re-review the PR with all reviews in context
+  3. For each outsider/wild card/LLM expert comment, evaluate:
+     - Does this conflict with project patterns or conventions?
+     - Is this a valid point that should be applied?
+     - Did you miss this in Phase 1?
+  4. For each comment: AGREE or PUSHBACK WITH REASON
+  5. Create the consolidated final list
+
+  Output in the structured format:
+  ## TA Synthesis (Phase 2): [PR Title] — Round [N]
+  ### Review of Outsider Comments
+  ### Second Pass Findings
+  ### Consolidated Review (For Dev Agent)
+  - 🔴 FIX NOW items (MUST be resolved before merge)
+  - ❌ NOT APPLICABLE items with technical rationale
+  - ⚠️ ESCALATE TO FOUNDER items with reason
+  - 🟡 SUGGESTIONS (non-blocking, dev's discretion)
+  ### Final Verdict: [PASS — ready for merge | CHANGES REQUIRED — Round [N+1] needed]",
+  mode: "bypassPermissions"
+}
+```
+
+---
+
+## Step 5: Deliver Results & Loop Decision
+
+After synthesis is complete, check the Final Verdict:
+
+### If PASS (0 FIX NOW items):
+
+1. **Post final review summary to GitHub PR** (see template below)
+2. **If part of /start-feature**: Message the PM agent that review is complete and PR is ready for founder merge.
+3. **If standalone**: Inform the user the PR is approved.
+
+### If CHANGES REQUIRED (1+ FIX NOW or VERIFY AT RUNTIME items):
+
+1. **Post round summary to GitHub PR** (see template below)
+2. **Send actionable items to dev agent** (or user if standalone):
+   - List each FIX NOW item with clear description of what needs to change
+   - List each VERIFY AT RUNTIME item with the specific runtime output needed
+   - Reference specific files and line numbers where possible
+3. **Wait for fixes to be pushed** — dev agent pushes fix commits to the PR branch
+4. **Post-fix re-verification gate (MANDATORY):**
+   - Dev MUST re-run ALL functional verification commands from the original PR body
+   - Dev MUST paste updated verification output as a PR comment
+   - If the PR had curl examples, re-run them and paste the responses
+   - If the PR had screenshot evidence, re-capture after fixes
+   - For VERIFY AT RUNTIME items, dev MUST paste the specific runtime output requested
+   - **Fixes without re-verification evidence are not considered complete**
+5. **Go back to Step 3** with Round N+1, targeting only the reviewers whose areas were affected
+
+### Loop Safety
+
+- **Max 4 rounds** — if FIX NOW items remain after 4 rounds, ESCALATE TO FOUNDER with full context
+- **Round 2+ is targeted** — only re-invoke reviewers whose prior FIX NOW items were addressed (don't re-run all 4 reviewers for a one-line fix)
+- **New issues found during fix verification count as new FIX NOW items** — the loop continues
+
+### PR Comment Template
+
+```bash
+gh pr comment 290 --body "$(cat <<'EOF'
+## Triple-Layer Code Review — Round [N] of [TOTAL]
+
+### Reviewers
+| Role | Domain | This Round |
+|------|--------|------------|
+| TA (Insider) | Architecture, types, schema | [Active/Skipped] |
+| [Specialist 1 name] | [Domain] | [Active/Skipped] |
+| [Specialist 2 name] | [Domain] | [Active/Skipped/N/A] |
+| LLM Expert | Prompt quality, token efficiency | [Active/Skipped/N/A] |
+
+### Pre-Review Gates
+- [ ] New dependency audit: [PASS/N/A]
+- [ ] Functional verification evidence: [PASS — describe what was verified]
+- [ ] Visual output attached: [PASS/N/A]
+
+### Issues Found & Resolution
+#### 🔴 FIX NOW
+[List from synthesis — empty if PASS]
+
+#### 🟠 VERIFY AT RUNTIME
+[Items requiring runtime evidence — empty if none]
+
+#### ❌ NOT APPLICABLE
+[List with technical rationale]
+
+#### 🟡 SUGGESTIONS
+[Non-blocking items]
+
+### Post-Fix Verification
+[For Round 2+: paste re-run of original functional verification commands + VERIFY AT RUNTIME evidence]
+
+**Round [N] verdict: [PASS — Ready for merge | CHANGES REQUIRED — see FIX NOW / VERIFY AT RUNTIME items]**
+EOF
+)"
+```
+
+---
+
+## Important Rules
+
+- **NEVER merge the PR** — founder-only
+- **Reviews MUST be independent** — no reviewer sees another's output during Phase 1
+- **TA synthesis is authoritative** — TA can mark specialist comments as "NOT APPLICABLE" with technical justification, EXCEPT for VERIFY AT RUNTIME items (see below)
+- **VERIFY AT RUNTIME items cannot be dismissed** — TA synthesis MUST NOT mark these as NOT APPLICABLE. They require runtime evidence from the dev before they can be resolved
+- **Domain specialists are selected dynamically** — see Step 2 and `docs/REVIEW-SPECIALISTS.md` for the registry
+- **Always post summary to GitHub PR** — this creates the audit trail
+- **Review loops until 0 FIX NOW and 0 VERIFY AT RUNTIME items** — a single pass is not sufficient if blocking issues exist
+- **Post-fix re-verification is mandatory** — after Round N fixes, dev must re-run ALL functional verification from the PR body and paste updated output
+- **Pre-review gates are mandatory** — missing verification evidence blocks the review from starting
+- **Max 4 rounds** — escalate to founder if review doesn't converge
+- **Round 2+ is targeted** — don't waste reviewer cycles re-reviewing areas with no changes
+
+---
+
+<task-notification>
+<task-id>a53ac9f5a0da57b09</task-id>
+<tool-use-id>toolu_01Hp7B8DyQ5TkuTe1STQMHCu</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/ba74384a-b8ae-4e8a-9ba9-64e45e17f972/tasks/a53ac9f5a0da57b09.output</output-file>
+<status>completed</status>
+<summary>Agent "LLM Expert Review — PR #290" completed</summary>
+<result>Now I have all the context needed for a thorough review. Here is the independent LLM Expert Review:
+
+---
+
+## LLM Expert Review: fix(telemetry): stop captureError on expected LLM failures — Round 1
+
+### Ollama Provider Analysis
+
+The PR makes two categories of changes: (1) trimming the `baseUrl` in both Ollama entry points and (2) removing `captureError` from structured failure paths in `route-helpers.ts` and `export.ts`, plus fixing a `type` → `analysis_type` property name collision in a `captureError` call.
+
+**URL trim coverage:** Both `createOllamaClient` (used for `chat`) and `discoverOllamaModels` (used for model discovery) each independently resolve `url` via `(baseUrl || DEFAULT_OLLAMA_URL).trim()`. The `DEFAULT_OLLAMA_URL` constant `'http://localhost:11434'` has no whitespace, so the trim is a no-op on the default path — correct. The `config.ts` route passes `baseUrl` as a raw query string parameter directly to `discoverOllamaModels(baseUrl)`, meaning URL normalization happens at the point of use in `ollama.ts`, which is the right location.
+
+**Telemetry semantic fix:** The `!result.success` path in `trackAnalysisResult` and `streamSessionAnalysis` previously called both `trackEvent('analysis_run', ...)` and `captureError(...)`. The PR correctly identifies this as a semantic error: `captureError` is for unexpected exceptions (bugs/crashes that produce PostHog `$exception` events), not for structured failure returns from analysis functions. The `analysis_run` event with `success: false` already captures all the context needed. The removal is correct.
+
+---
+
+### Error Detection Robustness
+
+The connection-refused heuristic in `createOllamaClient` is:
+
+```typescript
+cause?.code === 'ECONNREFUSED' || (err instanceof TypeError &amp;&amp; err.message.includes('fetch'))
+```
+
+This is the **only** place that translates a raw network error into the user-friendly "is Ollama running?" message. `discoverOllamaModels` uses a bare `catch { return []; }` — silent swallow, acceptable for model discovery.
+
+---
+
+### Issues Found
+
+**🟠 VERIFY AT RUNTIME — Error detection heuristic on Windows**
+
+The `cause?.code === 'ECONNREFUSED'` arm works correctly on macOS and Linux when Node's native fetch (or undici) wraps a failed TCP connect: `err.cause.code === 'ECONNREFUSED'`. On Windows, the equivalent error code is `ECONNREFUSED` as well in most cases, but there is a second relevant scenario: when no process is listening on the port, Windows can also produce `ENOENT` (for named pipes) or, with some Node/undici versions, a raw `AggregateError` wrapping the `ECONNREFUSED`. The `cause?.code` access is safe due to optional chaining, but if undici wraps the error in an `AggregateError`, `err.cause` would be the `AggregateError` and `err.cause.code` would be `undefined` — the check would fall through to the `TypeError` arm.
+
+I THINK the `TypeError + 'fetch'` fallback arm is the safety net for this: undici wraps connection failures as a `TypeError` with a message like `"fetch failed"`. This should catch the Windows `AggregateError` case too because the outer error is still a `TypeError`.
+
+RISK if wrong: On Windows, when Ollama is not running, the user sees a raw generic error (`fetch failed`) instead of the friendly "is it running? Start it with: ollama serve" message. This is a UX degradation, not a crash.
+
+**Action required:** Verify on Windows by intentionally running `createOllamaClient` with Ollama stopped and confirming the friendly error message appears.
+
+---
+
+**🟡 SUGGESTION — `.trim()` is necessary but not sufficient for URL normalization**
+
+The `.trim()` fix correctly handles leading/trailing whitespace. However, there are two other common user input mistakes that will silently produce broken URLs:
+
+1. **Trailing slash:** A user who configures `http://localhost:11434/` will produce `http://localhost:11434//api/chat` and `http://localhost:11434//api/tags`. Ollama's HTTP server may or may not accept double-slash paths; the Ollama Go server likely normalizes this, but a proxy in front of it may not.
+
+2. **Missing protocol:** A user who configures `localhost:11434` (without `http://`) will cause `fetch` to throw with a `TypeError: Failed to parse URL` or similar. This will NOT match the `cause?.code === 'ECONNREFUSED'` arm. It WILL match the `TypeError` arm if the message contains `'fetch'`, but may instead produce a message like `"Invalid URL"` — which would bypass the friendly error and fall through to a bare `throw err`.
+
+These are not regressions introduced by this PR — they existed before. However, since the PR is touching URL normalization, noting them is appropriate.
+
+Suggestion: Add a trailing-slash strip after the trim: `(baseUrl || DEFAULT_OLLAMA_URL).trim().replace(/\/$/, '')`. This is a one-liner and prevents the double-slash case with zero risk.
+
+---
+
+**🟡 SUGGESTION — `AbortSignal.timeout(3000)` in `discoverOllamaModels` is adequate but tight**
+
+3 seconds is a reasonable timeout for a localhost endpoint. However, users with heavy Ollama model loads (model is being pulled or swapped) may experience genuine latency on `/api/tags` even when Ollama is running. The consequence of a false negative is just that the model picker shows no models — the user can still type a model name manually. Silent `catch { return [] }` is the right behavior. This is not an issue to fix, just confirming it's acceptable.
+
+---
+
+**🔵 NOTE — `type` → `analysis_type` rename in the `catch` block `captureError` call**
+
+The fix in `route-helpers.ts` line 235:
+
+```typescript
+captureError(err, {
+  analysis_type: `${telemetryType}_stream`,  // was: type
+  llm_provider: llmConfig?.provider,
+  llm_model: llmConfig?.model,
+});
+```
+
+This is the correct fix for the PostHog cymbal schema collision. PostHog's `$exception` event schema requires `type` to be the exception class name (populated via `$exception_list[0].type`). Passing a user-defined `type` property at the top level conflicted with that reserved field, causing the `"serde error: missing field 'type'"` PostHog-side deserialization error. Renaming to `analysis_type` avoids the collision. Correct.
+
+---
+
+**🔵 NOTE — `captureError` import retained in `route-helpers.ts` but removed from `export.ts`**
+
+`export.ts` no longer uses `captureError` after the PR — the import removal (`import { trackEvent } from ...` without `captureError`) is clean. In `route-helpers.ts`, `captureError` is still imported and still used in the `catch` block of `streamSessionAnalysis` (line 237). That remaining usage is intentional and correct: that catch block catches unexpected exceptions (thrown directly from within the SSE stream, not structured `result.success = false` returns), which IS the right use case for `captureError`.
+
+---
+
+### Recommendations
+
+1. **Ship as-is** — the core changes (trim fix, telemetry semantic fix, type rename) are all correct.
+
+2. **Trailing slash normalization** — consider adding `.replace(/\/$/, '')` alongside the existing `.trim()` to prevent double-slash URLs when users configure a base URL with a trailing slash. Low-risk, one line, prevents a subtle failure mode.
+
+3. **Windows ECONNREFUSED path** — 🟠 requires runtime verification on Windows before marking the Ollama error heuristic as cross-platform safe. If confirmed working, no code change needed.
+
+4. The `discoverOllamaModels` 3-second timeout is acceptable for a local discovery call that fails silently.</result>
+<usage><total_tokens>37566</total_tokens><tool_uses>14</tool_uses><duration_ms>70875</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a242dfba9e36953be</task-id>
+<tool-use-id>toolu_01FkAmvJioB61YNSM1ujQwyY</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/ba74384a-b8ae-4e8a-9ba9-64e45e17f972/tasks/a242dfba9e36953be.output</output-file>
+<status>completed</status>
+<summary>Agent "Node/CLI Specialist Review — PR #290" completed</summary>
+<result>Now I have all the information needed for a thorough review.
+
+---
+
+## Node/CLI Specialist Review: fix(telemetry): stop captureError on expected LLM failures — Round 1
+
+### Async Safety
+
+The changes do not introduce any new async operations and do not alter existing async patterns. The existing `void stream.writeSSE(...).catch(() =&gt; {})` fire-and-forget pattern in the `onProgress` callback is pre-existing and unchanged. The catch block in `streamSessionAnalysis` at line 232 still properly `await`s the error SSE write. No concerns here.
+
+### Error Handling &amp; Observability
+
+The core logic of the fix is correct. `captureError` emitting `$exception` to PostHog is semantically wrong for structured failure returns (`!result.success`). These represent expected, handled states — a bad API key, Ollama not running, model not found — not bugs. The `trackEvent('analysis_run', { success: false, error_type, ... })` that already fires captures full context for analytics. The removal is appropriate.
+
+The distinction preserved in `route-helpers.ts` is important: the `catch` block at line 232 retains `captureError` because that path represents a genuinely unexpected exception — the `analysisFn` promise rejecting rather than resolving to a failure result. That is the correct semantic boundary.
+
+### Issues Found
+
+**🔵 NOTE — `llamacpp` provider does not get the same `baseUrl` trim fix**
+
+The PR fixes `ollama.ts` in both `createOllamaClient` (line 9) and `discoverOllamaModels` (line 83). The `llamacpp.ts` provider has the identical pattern — `createLlamaCppClient` at line 27 and `discoverLlamaCppModels` at line 196 both do `const url = baseUrl || DEFAULT_LLAMACPP_URL` without trimming. Since the root cause (user-typed URL with leading/trailing whitespace) applies equally to any user-configured URL field, llamacpp has the same latent bug. This is not introduced by this PR but was not fixed either.
+
+The relevant lines in `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/llm/providers/llamacpp.ts` are 27 and 196.
+
+**🟡 SUGGESTION — No negative assertion for `captureError` in the failure-path test**
+
+The test at `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/routes/analysis.test.ts` line 161 ("returns 422 when analysis fails") validates the HTTP response shape but does not assert that `captureError` is NOT called. The mock is set up at line 18 as `captureError: vi.fn()` but is never interrogated.
+
+Adding `expect(captureError).not.toHaveBeenCalled()` to the `!result.success` test cases would codify the intent of this PR and prevent regression if `captureError` is accidentally re-added in future. The same gap exists in the export test file at `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/routes/export.test.ts`.
+
+**🔵 NOTE — The `type` collision fix is correct and self-evident**
+
+The rename from `type` to `analysis_type` in the catch-block `captureError` at route-helpers.ts line 238 is correct. The `$exception_list` schema inside `captureError` already emits a `type` field at the object level (telemetry.ts line 215), so passing `type` as a custom property in the spread at line 221 (`...(properties ?? {})`) would have overwritten or collided with PostHog's cymbal-reserved field. The rename to `analysis_type` avoids that at the call site. This is straightforward and does not need runtime verification.
+
+**🔵 NOTE — `captureError` import retained in `route-helpers.ts` is correct**
+
+The import at line 9 of route-helpers.ts still includes `captureError` alongside `trackEvent`. This is correct — `captureError` is still used in the catch block at line 237. No unused import issue.
+
+### Verdict
+
+APPROVE. The changes are focused, mechanically correct, and well-reasoned. The semantic distinction between structured failure returns (`!result.success` → `trackEvent` only) and genuine unexpected throws (catch block → `captureError`) is properly preserved. All 1065 tests pass. The build is clean.
+
+The two items above worth tracking separately: (1) apply `.trim()` to `llamacpp.ts` in a follow-up (one-line fix in two places), and (2) add `expect(captureError).not.toHaveBeenCalled()` assertions to the failure-path test cases to lock in the behavioral contract this PR establishes.</result>
+<usage><total_tokens>42184</total_tokens><tool_uses>30</tool_uses><duration_ms>96833</duration_ms></usage>
+</task-notification>
+
+---
+
+<task-notification>
+<task-id>a8aa277633262cafb</task-id>
+<tool-use-id>REDACTED</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-melagiri-Workspace-codeInsights-code-insights/ba74384a-b8ae-4e8a-9ba9-64e45e17f972/tasks/a8aa277633262cafb.output</output-file>
+<status>completed</status>
+<summary>Agent "TA Insider Review — PR #290" completed</summary>
+<result>Review posted to PR #290.
+
+## Summary
+
+**Phase 1 INSIDER review verdict: Changes Required**
+
+The architectural intent of PR #290 is correct. The route-helpers refactor incorrectly conflated `captureError` (for unexpected exceptions / `$exception`) with structured `!result.success` returns (handled failures with full context). Removing `captureError` from those paths is the right call — `trackEvent('analysis_run', { success: false, error_type, error_message })` already carries everything observability needs.
+
+**Blocking finding (FIX NOW):** The `.trim()` fix on Ollama `baseUrl` is incomplete. Three other sites have the identical bug:
+- `server/src/llm/providers/llamacpp.ts:27` (`createLlamaCppClient`)
+- `server/src/llm/providers/llamacpp.ts:196` (`discoverLlamaCppModels`)
+- `cli/src/analysis/provider-runner.ts:153` (`makeOllamaChat`)
+- `cli/src/analysis/provider-runner.ts:179` (`makeLlamaCppChat`)
+
+All four read `baseUrl || DEFAULT_X` without trimming. Same root cause, same symptom (double-space in error messages, potential fetch failures with leading whitespace). Either fix all four in this PR or the bug ships half-fixed.
+
+**Non-blocking suggestions:**
+- The `type:` baseProperty in `route-helpers.ts:85` and `:185` (still on regular `trackEvent`) is a latent foot-gun; recommend a code comment marking it safe-on-trackEvent / unsafe-on-captureError.
+- export.ts loses stack traces for genuinely unexpected non-LLM errors. Acceptable trade-off given the over-firing problem, but flagged.
+
+**Verified:**
+- Build clean
+- 1065 tests passing locally
+- Runtime PostHog verification (test plan items 3 &amp; 4) is next-day post-merge work
+
+Relevant files inspected:
+- `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/routes/route-helpers.ts`
+- `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/routes/export.ts`
+- `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/routes/analysis.ts`
+- `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/llm/providers/ollama.ts`
+- `/Users/melagiri/Workspace/codeInsights/code-insights/server/src/llm/providers/llamacpp.ts`
+- `/Users/melagiri/Workspace/codeInsights/code-insights/cli/src/analysis/provider-runner.ts`
+- `/Users/melagiri/Workspace/codeInsights/code-insights/cli/src/utils/telemetry.ts`
+
+PR comment: https://github.com/melagiri/code-insights/pull/290#issuecomment-4372281194</result>
+<usage><total_tokens>76923</total_tokens><tool_uses>18</tool_uses><duration_ms>154954</duration_ms></usage>
+</task-notification>
+
+---
+
+fix all of it and run second round of review

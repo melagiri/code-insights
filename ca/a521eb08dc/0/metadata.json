@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "caa521eb08dc",
+  "session_id": "ba74384a-b8ae-4e8a-9ba9-64e45e17f972",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-04T15:31:32.17413Z",
+  "branch": "fix/telemetry-captureError-noise",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/llm/providers/ollama.ts",
+    "server/src/routes/route-helpers.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "322e6a4bf872",
+  "checkpoint_transcript_start": 293,
+  "transcript_lines_at_start": 293,
+  "token_usage": {
+    "input_tokens": 54,
+    "cache_creation_tokens": 130855,
+    "cache_read_tokens": 4286343,
+    "output_tokens": 20066,
+    "api_call_count": 40
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-04T15:31:32.011001Z",
+    "agent_lines": 0,
+    "human_added": 23,
+    "human_modified": 3,
+    "human_removed": 0,
+    "total_committed": 23,
+    "agent_percentage": 0
+  }
+}

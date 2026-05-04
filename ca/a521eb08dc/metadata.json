@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "caa521eb08dc",
+  "strategy": "manual-commit",
+  "branch": "fix/telemetry-captureError-noise",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "server/src/llm/providers/ollama.ts",
+    "server/src/routes/route-helpers.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ca/a521eb08dc/0/metadata.json",
+      "transcript": "/ca/a521eb08dc/0/full.jsonl",
+      "context": "/ca/a521eb08dc/0/context.md",
+      "content_hash": "/ca/a521eb08dc/0/content_hash.txt",
+      "prompt": "/ca/a521eb08dc/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 54,
+    "cache_creation_tokens": 130855,
+    "cache_read_tokens": 4286343,
+    "output_tokens": 20066,
+    "api_call_count": 40
+  }
+}
