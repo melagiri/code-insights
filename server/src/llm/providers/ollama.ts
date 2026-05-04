@@ -6,7 +6,7 @@ import { flattenContent } from '../types.js';
 const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 
 export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
-  const url = baseUrl || DEFAULT_OLLAMA_URL;
+  const url = (baseUrl || DEFAULT_OLLAMA_URL).trim();
 
   return {
     provider: 'ollama',
@@ -80,7 +80,7 @@ export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
 export async function discoverOllamaModels(
   baseUrl?: string
 ): Promise<Array<{ name: string; size: number; modifiedAt: string }>> {
-  const url = baseUrl || DEFAULT_OLLAMA_URL;
+  const url = (baseUrl || DEFAULT_OLLAMA_URL).trim();
   try {
     const response = await fetch(`${url}/api/tags`, {
       signal: AbortSignal.timeout(3000),
