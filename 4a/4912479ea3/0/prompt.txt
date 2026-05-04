@@ -1,0 +1,273 @@
+I have many posthog errors, here is one such stacktrace:
+
+{
+  "uuid": "019df379-8c96-7171-9599-0845e7504847",
+  "event": "$exception",
+  "properties": {
+    "$cymbal_errors": [
+      "Invalid properties on event 019df379-8c96-7171-9599-0845e7504847, serde error: missing field `type`"
+    ],
+    "$exception_list": [
+      {
+        "mechanism": {
+          "handled": true,
+          "type": "generic"
+        },
+        "stacktrace": {
+          "frames": [
+            {
+              "colno": 30,
+              "filename": "/C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/server-dist/routes/route-helpers.js",
+              "function": "<anonymous>",
+              "in_app": false,
+              "lineno": 127
+            },
+            {
+              "colno": 5,
+              "filename": "/C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/node_modules/hono/dist/helper/streaming/sse.js",
+              "function": "async run",
+              "in_app": false,
+              "lineno": 30
+            }
+          ]
+        },
+        "type": "Error",
+        "value": "Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve"
+      }
+    ],
+    "$exception_message": "Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve",
+    "$exception_stack_trace_raw": "Error: Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve\n    at file:///C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/server-dist/routes/route-helpers.js:127:30\n    at async run (file:///C:/Users/juan.solorzano/AppData/Roaming/npm/node_modules/@code-insights/cli/node_modules/hono/dist/helper/streaming/sse.js:30:5)",
+    "$exception_type": "Error",
+    "$geoip_disable": true,
+    "$ip": "186.4.171.244",
+    "$lib": "posthog-node",
+    "$lib_version": "4.18.0",
+    "$sent_at": "2026-05-04T14:52:02.582Z",
+    "duration_ms": 306107,
+    "error_message": "Cannot connect to Ollama at  http://10.10.10.67:11434 — is it running? Start it with: ollama serve",
+    "error_type": "api_error",
+    "llm_model": "gemma4:26b",
+    "llm_provider": "ollama",
+    "success": false,
+    "type": "session",
+    "$transformations_succeeded": [
+      "GeoIP (019cad81-b34f-0000-8cca-78e5873bf67d)"
+    ]
+  },
+  "timestamp": "2026-05-04T20:22:03.340000+05:30",
+  "team_id": 328708,
+  "distinct_id": "42faedf2f0e5318c",
+  "elements_chain": "",
+  "created_at": "2026-05-04T20:22:09.710000+05:30",
+  "person_mode": "full"
+}
+
+Investigate this and tell me what is wrong..
+
+---
+
+create feature branch and work on it.. but before that, try looking for similar errors that we may have introduced recently due the changes we made to codebase
+
+---
+
+ok, create PR and run a review and ask my final approval and PR merge
+
+---
+
+Base directory for this skill: /Users/melagiri/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/finishing-a-development-branch
+
+# Finishing a Development Branch
+
+## Overview
+
+Guide completion of development work by presenting clear options and handling chosen workflow.
+
+**Core principle:** Verify tests → Present options → Execute choice → Clean up.
+
+**Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
+
+## The Process
+
+### Step 1: Verify Tests
+
+**Before presenting options, verify tests pass:**
+
+```bash
+# Run project's test suite
+npm test / cargo test / pytest / go test ./...
+```
+
+**If tests fail:**
+```
+Tests failing (<N> failures). Must fix before completing:
+
+[Show failures]
+
+Cannot proceed with merge/PR until tests pass.
+```
+
+Stop. Don't proceed to Step 2.
+
+**If tests pass:** Continue to Step 2.
+
+### Step 2: Determine Base Branch
+
+```bash
+# Try common base branches
+git merge-base HEAD main 2>/dev/null || git merge-base HEAD master 2>/dev/null
+```
+
+Or ask: "This branch split from main - is that correct?"
+
+### Step 3: Present Options
+
+Present exactly these 4 options:
+
+```
+Implementation complete. What would you like to do?
+
+1. Merge back to <base-branch> locally
+2. Push and create a Pull Request
+3. Keep the branch as-is (I'll handle it later)
+4. Discard this work
+
+Which option?
+```
+
+**Don't add explanation** - keep options concise.
+
+### Step 4: Execute Choice
+
+#### Option 1: Merge Locally
+
+```bash
+# Switch to base branch
+git checkout <base-branch>
+
+# Pull latest
+git pull
+
+# Merge feature branch
+git merge <feature-branch>
+
+# Verify tests on merged result
+<test command>
+
+# If tests pass
+git branch -d <feature-branch>
+```
+
+Then: Cleanup worktree (Step 5)
+
+#### Option 2: Push and Create PR
+
+```bash
+# Push branch
+git push -u origin <feature-branch>
+
+# Create PR
+gh pr create --title "<title>" --body "$(cat <<'EOF'
+## Summary
+<2-3 bullets of what changed>
+
+## Test Plan
+- [ ] <verification steps>
+EOF
+)"
+```
+
+Then: Cleanup worktree (Step 5)
+
+#### Option 3: Keep As-Is
+
+Report: "Keeping branch <name>. Worktree preserved at <path>."
+
+**Don't cleanup worktree.**
+
+#### Option 4: Discard
+
+**Confirm first:**
+```
+This will permanently delete:
+- Branch <name>
+- All commits: <commit-list>
+- Worktree at <path>
+
+Type 'discard' to confirm.
+```
+
+Wait for exact confirmation.
+
+If confirmed:
+```bash
+git checkout <base-branch>
+git branch -D <feature-branch>
+```
+
+Then: Cleanup worktree (Step 5)
+
+### Step 5: Cleanup Worktree
+
+**For Options 1, 2, 4:**
+
+Check if in worktree:
+```bash
+git worktree list | grep $(git branch --show-current)
+```
+
+If yes:
+```bash
+git worktree remove <worktree-path>
+```
+
+**For Option 3:** Keep worktree.
+
+## Quick Reference
+
+| Option | Merge | Push | Keep Worktree | Cleanup Branch |
+|--------|-------|------|---------------|----------------|
+| 1. Merge locally | ✓ | - | - | ✓ |
+| 2. Create PR | - | ✓ | ✓ | - |
+| 3. Keep as-is | - | - | ✓ | - |
+| 4. Discard | - | - | - | ✓ (force) |
+
+## Common Mistakes
+
+**Skipping test verification**
+- **Problem:** Merge broken code, create failing PR
+- **Fix:** Always verify tests before offering options
+
+**Open-ended questions**
+- **Problem:** "What should I do next?" → ambiguous
+- **Fix:** Present exactly 4 structured options
+
+**Automatic worktree cleanup**
+- **Problem:** Remove worktree when might need it (Option 2, 3)
+- **Fix:** Only cleanup for Options 1 and 4
+
+**No confirmation for discard**
+- **Problem:** Accidentally delete work
+- **Fix:** Require typed "discard" confirmation
+
+## Red Flags
+
+**Never:**
+- Proceed with failing tests
+- Merge without verifying tests on result
+- Delete work without confirmation
+- Force-push without explicit request
+
+**Always:**
+- Verify tests before offering options
+- Present exactly 4 options
+- Get typed confirmation for Option 4
+- Clean up worktree for Options 1 & 4 only
+
+## Integration
+
+**Called by:**
+- **subagent-driven-development** (Step 7) - After all tasks complete
+- **executing-plans** (Step 5) - After all batches complete
+
+**Pairs with:**
+- **using-git-worktrees** - Cleans up worktree created by that skill
