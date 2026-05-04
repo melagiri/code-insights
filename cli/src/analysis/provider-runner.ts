@@ -150,7 +150,7 @@ function makeGeminiChat(apiKey: string, model: string): LLMChatFn {
 }
 
 function makeOllamaChat(model: string, baseUrl?: string): LLMChatFn {
-  const url = baseUrl || 'http://localhost:11434';
+  const url = (baseUrl || 'http://localhost:11434').trim().replace(/\/$/, '');
   return async (messages) => {
     const response = await fetch(`${url}/api/chat`, {
       method: 'POST',
@@ -176,7 +176,7 @@ function makeOllamaChat(model: string, baseUrl?: string): LLMChatFn {
 function makeLlamaCppChat(model: string, baseUrl?: string): LLMChatFn {
   // Use 0.3 temperature — small quantized models produce more consistent structured JSON
   // output at lower temperatures (LLM Expert requirement).
-  const url = baseUrl || 'http://localhost:8080';
+  const url = (baseUrl || 'http://localhost:8080').trim().replace(/\/$/, '');
   return async (messages) => {
     let response: Response;
     try {

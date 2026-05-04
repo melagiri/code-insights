@@ -24,7 +24,7 @@ function stripJsonTags(content: string): string {
 const DEFAULT_CHAT_TIMEOUT_MS = 600_000;
 
 export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient {
-  const url = baseUrl || DEFAULT_LLAMACPP_URL;
+  const url = (baseUrl || DEFAULT_LLAMACPP_URL).trim().replace(/\/$/, '');
 
   return {
     provider: 'llamacpp',
@@ -193,7 +193,7 @@ export function createLlamaCppClient(model: string, baseUrl?: string): LLMClient
 export async function discoverLlamaCppModels(
   baseUrl?: string
 ): Promise<Array<{ id: string; object: string }>> {
-  const url = baseUrl || DEFAULT_LLAMACPP_URL;
+  const url = (baseUrl || DEFAULT_LLAMACPP_URL).trim().replace(/\/$/, '');
   try {
     const response = await fetch(`${url}/v1/models`, {
       signal: AbortSignal.timeout(3000),

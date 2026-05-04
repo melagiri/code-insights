@@ -48,7 +48,7 @@ export function analysisChecks(): Check[] {
         // For Ollama, check if the server is running
         if (llm.provider === 'ollama') {
           try {
-            const baseUrl = llm.baseUrl || 'http://localhost:11434';
+            const baseUrl = (llm.baseUrl || 'http://localhost:11434').trim().replace(/\/$/, '');
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
             const res = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
@@ -71,7 +71,7 @@ export function analysisChecks(): Check[] {
         // For llama.cpp, check the health endpoint
         if (llm.provider === 'llamacpp') {
           try {
-            const baseUrl = llm.baseUrl || 'http://localhost:8080';
+            const baseUrl = (llm.baseUrl || 'http://localhost:8080').trim().replace(/\/$/, '');
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
             const res = await fetch(`${baseUrl}/health`, { signal: controller.signal });

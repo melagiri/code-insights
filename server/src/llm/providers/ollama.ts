@@ -6,7 +6,7 @@ import { flattenContent } from '../types.js';
 const DEFAULT_OLLAMA_URL = 'http://localhost:11434';
 
 export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
-  const url = baseUrl || DEFAULT_OLLAMA_URL;
+  const url = (baseUrl || DEFAULT_OLLAMA_URL).trim().replace(/\/$/, '');
 
   return {
     provider: 'ollama',
@@ -28,7 +28,10 @@ export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
           }),
         });
       } catch (err) {
-        // Network-level failure — Ollama is likely not running
+        // Network-level failure — Ollama is likely not running.
+        // On macOS/Linux, Node's undici surfaces ECONNREFUSED via err.cause.code.
+        // On Windows, undici may wrap it in an AggregateError, making cause.code undefined —
+        // the TypeError fallback ('fetch failed') handles that case.
         const cause = (err as { cause?: { code?: string } })?.cause;
         if (cause?.code === 'ECONNREFUSED' || (err instanceof TypeError && err.message.includes('fetch'))) {
           throw new Error(`Cannot connect to Ollama at ${url} — is it running? Start it with: ollama serve`);
@@ -80,7 +83,7 @@ export function createOllamaClient(model: string, baseUrl?: string): LLMClient {
 export async function discoverOllamaModels(
   baseUrl?: string
 ): Promise<Array<{ name: string; size: number; modifiedAt: string }>> {
-  const url = baseUrl || DEFAULT_OLLAMA_URL;
+  const url = (baseUrl || DEFAULT_OLLAMA_URL).trim().replace(/\/$/, '');
   try {
     const response = await fetch(`${url}/api/tags`, {
       signal: AbortSignal.timeout(3000),

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { getDb } from '@code-insights/cli/db/client';
-import { trackEvent, captureError } from '@code-insights/cli/utils/telemetry';
+import { trackEvent } from '@code-insights/cli/utils/telemetry';
 import type { ExportTemplate } from '@code-insights/cli/types';
 import { formatKnowledgeBase } from '../export/knowledge-base.js';
 import { formatAgentRules } from '../export/agent-rules.js';
@@ -273,7 +273,6 @@ app.post('/generate', requireLLM(), async (c) => {
       return c.json({ error: 'Export cancelled' }, 422);
     }
     const message = error instanceof Error ? error.message : 'Export generation failed';
-    captureError(error, { format, scope, depth, llm_provider: llmConfig?.provider, llm_model: llmConfig?.model });
     trackEvent('export_run', {
       format: `llm-${format}`,
       scope,
@@ -397,7 +396,6 @@ app.get('/generate/stream', requireLLM(), async (c) => {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      captureError(err, { format, scope, depth, llm_provider: llmConfig?.provider, llm_model: llmConfig?.model });
       trackEvent('export_run', {
         format: `llm-${format}`,
         scope,

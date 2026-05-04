@@ -14,9 +14,11 @@ vi.mock('@code-insights/cli/db/client', () => ({
   closeDb: () => {},
 }));
 
+const mockCaptureError = vi.fn();
+
 vi.mock('@code-insights/cli/utils/telemetry', () => ({
   trackEvent: vi.fn(),
-  captureError: vi.fn(),
+  captureError: mockCaptureError,
 }));
 
 const mockChat = vi.fn();
@@ -95,6 +97,7 @@ describe('Export routes', () => {
     testDb = initTestDb();
     mockIsLLMConfigured.mockReturnValue(false);
     mockChat.mockReset();
+    mockCaptureError.mockReset();
     mockLoadLLMConfig.mockReturnValue({ provider: 'openai', model: 'gpt-4o' });
   });
 
@@ -405,6 +408,7 @@ describe('Export routes', () => {
       expect(res.status).toBe(422);
       const body = await res.json();
       expect(body.error).toContain('API rate limit');
+      expect(mockCaptureError).not.toHaveBeenCalled();
     });
 
     it('returns 200 even when no insights are found (empty prompt case)', async () => {

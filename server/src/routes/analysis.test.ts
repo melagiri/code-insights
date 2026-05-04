@@ -13,9 +13,11 @@ vi.mock('@code-insights/cli/db/client', () => ({
   closeDb: () => {},
 }));
 
+const mockCaptureError = vi.fn();
+
 vi.mock('@code-insights/cli/utils/telemetry', () => ({
   trackEvent: vi.fn(),
-  captureError: vi.fn(),
+  captureError: mockCaptureError,
   isTelemetryEnabled: () => false,
   getStableMachineId: () => 'test-id',
 }));
@@ -76,6 +78,7 @@ describe('Analysis routes', () => {
     mockFindRecurringInsights.mockReset();
     mockLoadLLMConfig.mockReset();
     mockLoadLLMConfig.mockReturnValue({ provider: 'openai', model: 'gpt-4o' });
+    mockCaptureError.mockReset();
   });
 
   afterEach(() => {
@@ -176,6 +179,7 @@ describe('Analysis routes', () => {
       expect(res.status).toBe(422);
       const body = await res.json();
       expect(body.success).toBe(false);
+      expect(mockCaptureError).not.toHaveBeenCalled();
     });
   });
 
@@ -277,6 +281,7 @@ describe('Analysis routes', () => {
       expect(res.status).toBe(422);
       const body = await res.json();
       expect(body.success).toBe(false);
+      expect(mockCaptureError).not.toHaveBeenCalled();
     });
   });
 
@@ -368,6 +373,7 @@ describe('Analysis routes', () => {
       expect(res.status).toBe(422);
       const body = await res.json();
       expect(body.success).toBe(false);
+      expect(mockCaptureError).not.toHaveBeenCalled();
     });
   });
 });
