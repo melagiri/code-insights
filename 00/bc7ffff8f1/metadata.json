@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "00bc7ffff8f1",
+  "strategy": "manual-commit",
+  "branch": "fix/insights-check-use-configured-provider",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cli/src/commands/__tests__/insights.test.ts",
+    "cli/src/commands/insights.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/00/bc7ffff8f1/0/metadata.json",
+      "transcript": "/00/bc7ffff8f1/0/full.jsonl",
+      "context": "/00/bc7ffff8f1/0/context.md",
+      "content_hash": "/00/bc7ffff8f1/0/content_hash.txt",
+      "prompt": "/00/bc7ffff8f1/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 26,
+    "cache_creation_tokens": 80994,
+    "cache_read_tokens": 1374170,
+    "output_tokens": 8440,
+    "api_call_count": 18
+  }
+}

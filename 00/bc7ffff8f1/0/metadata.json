@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "00bc7ffff8f1",
+  "session_id": "61f4e5c9-3b0b-416f-a1bb-a47fe206ad2e",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-05T16:40:01.125838Z",
+  "branch": "fix/insights-check-use-configured-provider",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "cli/src/commands/__tests__/insights.test.ts",
+    "cli/src/commands/insights.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d28f9f74b714",
+  "checkpoint_transcript_start": 215,
+  "transcript_lines_at_start": 215,
+  "token_usage": {
+    "input_tokens": 26,
+    "cache_creation_tokens": 80994,
+    "cache_read_tokens": 1374170,
+    "output_tokens": 8440,
+    "api_call_count": 18
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-05T16:40:01.03738Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 3,
+    "human_removed": 0,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}
