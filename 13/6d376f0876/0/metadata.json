@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "136d376f0876",
+  "session_id": "8d8adfc8-de09-43f3-b952-b8eebe2eb376",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-06T17:00:47.827504Z",
+  "branch": "master",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/superpowers/specs/2026-05-05-codebase-knowledge-design.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "759dadda7a5b",
+  "token_usage": {
+    "input_tokens": 20,
+    "cache_creation_tokens": 70188,
+    "cache_read_tokens": 631888,
+    "output_tokens": 8567,
+    "api_call_count": 12
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-06T17:00:47.750398Z",
+    "agent_lines": 1,
+    "human_added": 83,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 84,
+    "agent_percentage": 1.1904761904761905
+  }
+}

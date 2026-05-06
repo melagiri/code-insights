@@ -1,0 +1,36 @@
+Thomas from entire.io wrote this on LinkedIn:
+View Thomas Dohmke’s profile
+Thomas Dohmke
+  • Following
+Co-founder & CEO at Entire
+20h • 
+
+
+
+
+Today, Entire is open sourcing our next release: Skills, teaching your agent how to use the full context the Entire CLI captures behind your code changes: prompts, transcripts, and the decisions behind every commit, alongside your git history.
+
+Instead of looking up syntax or running commands yourself, you can ask in plain language and let your agent drive the workflow. This initial release enables your agent to:
+
+Hand off between agents - The session-handoff skill picks up where another agent left off by reading the saved or active session and summarizing the task state, important discoveries, blockers, and next steps. 
+
+Explain why code exists - The explain skill traces a function, file, or line back to the session that created it, so your agent can answer the intent behind code, not just describe what the code currently does. 
+
+Investigate changes - The what-happened skill combines git blame with Entire checkpoint context to explain why a specific block of code looks the way it does. It is useful during code review or when you are investigating a regression. 
+
+Search past work - The search skill finds prior work in your Entire history by topic, repo, branch, author, or time window, so your agent can bring past context into the current task before making changes.
+
+https://lnkd.in/dM_RuAgu
+
+https://github.com/entireio/skills
+
+
+What do you think of this? How can we use or relate or impact on code-insights?
+
+---
+
+does it have any impact in the new plan we are building at @docs/superpowers/specs/2026-05-05-codebase-knowledge-design.md
+
+---
+
+ok, make note of these and add the entire.io's feature into some document in our codebase as well for future reference and commit the file changes
