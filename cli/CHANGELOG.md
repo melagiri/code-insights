@@ -2,6 +2,17 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## [4.10.4] - 2026-05-06
+
+### Fixed
+
+- **`insights check` now uses configured LLM provider** — `insights check`
+  and `insights check --analyze` were hardcoded to use the native Claude
+  runner, ignoring the user's configured LLM provider. They now use
+  `ProviderRunner.fromConfig()`, correctly respecting the configured
+  provider (Anthropic, OpenAI, Ollama, llama.cpp, etc.). The dead
+  `--model` flag on `insights check` has also been removed.
+
 ## [4.10.3] - 2026-05-04
 
 ### Fixed
