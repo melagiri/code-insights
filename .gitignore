@@ -38,8 +38,6 @@ yarn-error.log*
 # Test coverage
 coverage/
 
-# Transient implementation plans
-docs/plans/
 
 # Claude local settings (user-specific)
 .claude/*

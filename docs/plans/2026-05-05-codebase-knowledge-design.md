@@ -951,7 +951,7 @@ Rejected unanimously. An inline changelog contradicts the "pure generated artifa
 
 ### 9.4 `--check` CI Staleness Gate — **Confirmed for Phase 1**
 
-**Verdict:** Include in Phase 1. Trivial to implement, zero LLM calls, direct SQLite read. Unique differentiator — CLAUDE.md, Cursor rules, and entire.io have no freshness enforcement mechanism.
+**Verdict:** Include in Phase 1. Trivial to implement, zero LLM calls, direct SQLite read. No equivalent freshness enforcement exists in CLAUDE.md, `.cursorrules`, or competing knowledge extraction tools.
 
 **Full specification:**
 
