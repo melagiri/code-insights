@@ -1,9 +1,9 @@
 # Session Writeup / Dispatch — Feature Ideation
 
-> **Status:** Ideation — Thoughts maturing, not ready for implementation
+> **Status:** Superseded — session-scoped approach abandoned
 > **Date:** 2026-05-09
+> **Superseded by:** `2026-05-10-dispatch-learnings-curated-design.md`
 > **Triggered by:** Entire.io "Dispatch" feature observation
-> **Depends on:** `.code-insights.md` Phase 1 (`code-insights attach`) — must ship first
 
 ---
 
