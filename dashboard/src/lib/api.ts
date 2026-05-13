@@ -457,6 +457,38 @@ export async function reflectGenerateStream(
   return res;
 }
 
+// ── Dispatch (blog post generator) ───────────────────────────────────────────
+
+export type DispatchTone = 'technical' | 'accessible' | 'quick-tips';
+
+export interface DispatchRequest {
+  insightIds: string[];
+  context: string;
+  tone: DispatchTone;
+}
+
+export interface DispatchResponse {
+  markdown: string;
+  frontmatter: {
+    title: string;
+    tags: string[];
+    tldr: string;
+  };
+  wordCount: number;
+  model: string;
+  tokensUsed: {
+    input: number;
+    output: number;
+  };
+}
+
+export function generateDispatch(body: DispatchRequest): Promise<DispatchResponse> {
+  return request<DispatchResponse>('/dispatch/generate', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 // ── Analysis Queue ────────────────────────────────────────────────────────────
 
 export interface AnalysisQueueItem {
