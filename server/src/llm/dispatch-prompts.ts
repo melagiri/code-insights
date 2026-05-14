@@ -38,14 +38,16 @@ title: "A short title (8 words max)"
 Then write the post body as plain text. This is what gets copy-pasted to LinkedIn.
 
 Post structure:
-- Lines 1-2: The hook. State a concrete insight, counterintuitive observation, or sharp finding. Must stand alone before LinkedIn's "...see more" cutoff (~1,300 characters). Do not open with "I learned" or "Today I".
+- Lines 1-2: The hook. State a concrete insight, counterintuitive observation, or sharp finding. Must stand alone before LinkedIn's "...see more" cutoff (~1,300 characters). Do not open with "I learned", "Today I", "Recently I", or "Have you ever".
+  Strong hook example: "SQLite WAL mode eliminates write blocking — and most production apps don't use it."
+  Weak hook to avoid: "I recently learned something interesting about SQLite performance."
 - Body: 3-6 short paragraphs (1-3 sentences each). One blank line between paragraphs.
 - Last line: 3-5 hashtags only. Example: #engineering #typescript #sqlite
 
 LinkedIn rendering rules:
 - Bold is supported: **bold text**. Use sparingly — one bold phrase per paragraph at most.
 - No headers (## renders as literal ##, not a heading).
-- No bullet lists (- renders as a hyphen, not a bullet).
+- No bullet lists (- renders as a hyphen, not a bullet). If you need to present multiple items, write them as a short prose sequence: "First X, then Y, finally Z."
 - No YAML in the post body.`,
 };
 

@@ -15,6 +15,12 @@ const app = new Hono();
 const VALID_TONES: DispatchTone[] = ['technical', 'accessible', 'quick-tips'];
 const VALID_FORMATS: DispatchFormat[] = ['blog', 'linkedin'];
 
+// LinkedIn uses a lower temperature for consistent hook quality — the hook is the highest-stakes line
+const TEMPERATURES: Record<DispatchFormat, number> = {
+  blog: 0.7,
+  linkedin: 0.55,
+};
+
 interface InsightRow {
   id: string;
   type: string;
@@ -112,7 +118,7 @@ app.post('/generate', requireLLM(), async (c) => {
     { role: 'user' as const, content: userMessage },
   ];
 
-  const chatOptions = { temperature: 0.7, responseFormat: 'text' as const };
+  const chatOptions = { temperature: TEMPERATURES[format], responseFormat: 'text' as const };
   let response = await client.chat(messages, chatOptions);
 
   let parsed = parseDispatchOutput(response.content, format);

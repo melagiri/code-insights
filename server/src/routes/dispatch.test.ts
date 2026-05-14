@@ -396,6 +396,11 @@ describe('POST /api/dispatch/generate', () => {
     expect(json.body).toContain('WAL mode is not optional');
     expect(json.characterCount).toBeGreaterThan(0);
     expect(json.degraded).toBe(false);
+    // LinkedIn uses lower temperature for hook consistency
+    expect(mockClient.chat).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ temperature: 0.55 }),
+    );
   });
 
   it('format is echoed back correctly in response', async () => {

@@ -79,7 +79,7 @@ function SortableInsightItem({ insight, onRemove }: SortableInsightItemProps) {
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
-        aria-description="Press Space or Enter to pick up, arrow keys to move, Space or Enter to drop"
+        aria-describedby="drag-hint"
       >
         <GripVertical className="h-4 w-4" />
       </button>
@@ -152,9 +152,11 @@ export function DispatchDrawer({
 
   function handleClose() {
     onOpenChange(false);
-    // Reset generation result when drawer closes so next open starts fresh
     setResult(null);
     mutation.reset();
+    setFormat('blog');
+    setTone('technical');
+    setContext('');
   }
 
   const canGenerate = selectedInsights.length >= 3 && context.trim().length > 0 && !mutation.isPending;
@@ -185,6 +187,9 @@ export function DispatchDrawer({
                   <span className="ml-1 normal-case font-normal">— drag to reorder</span>
                 )}
               </p>
+              <span id="drag-hint" className="sr-only">
+                Press Space or Enter to pick up, arrow keys to move, Space or Enter to drop, Escape to cancel.
+              </span>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -236,8 +241,8 @@ export function DispatchDrawer({
             </div>
 
             {/* Format selector */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Format</p>
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Format</legend>
               <div className="space-y-1.5">
                 {FORMAT_OPTIONS.map((opt) => (
                   <label
@@ -263,11 +268,11 @@ export function DispatchDrawer({
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Tone selector */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Tone</p>
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tone</legend>
               <div className="space-y-1.5">
                 {TONE_OPTIONS.map((opt) => (
                   <label
@@ -293,7 +298,7 @@ export function DispatchDrawer({
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Error */}
             {mutation.isError && (
