@@ -382,6 +382,7 @@ export interface FileSyncState {
 // ── Dispatch feature (blog post generator) ───────────────────────────────────
 
 export type DispatchTone = 'technical' | 'accessible' | 'quick-tips';
+export type DispatchFormat = 'blog' | 'linkedin';
 
 export interface DispatchInsight {
   id: string;
@@ -395,16 +396,22 @@ export interface DispatchRequest {
   insightIds: string[];
   context: string;
   tone: DispatchTone;
+  format: DispatchFormat;
 }
 
 export interface DispatchResponse {
   markdown: string;
+  /** Plain text body without YAML frontmatter — use for LinkedIn copy and word/char count. */
+  body: string;
+  format: DispatchFormat;
   frontmatter: {
     title: string;
     tags: string[];
     tldr: string;
   };
   wordCount: number;
+  characterCount: number;
+  degraded: boolean;
   model: string;
   tokensUsed: {
     input: number;

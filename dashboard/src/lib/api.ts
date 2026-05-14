@@ -460,23 +460,28 @@ export async function reflectGenerateStream(
 // ── Dispatch (blog post generator) ───────────────────────────────────────────
 
 export type DispatchTone = 'technical' | 'accessible' | 'quick-tips';
+export type DispatchFormat = 'blog' | 'linkedin';
 
 export interface DispatchRequest {
   insightIds: string[];
   context: string;
   tone: DispatchTone;
+  format: DispatchFormat;
 }
 
 export interface DispatchResponse {
   markdown: string;
+  /** Plain text body without YAML frontmatter — use for LinkedIn copy and character count. */
+  body: string;
+  format: DispatchFormat;
   frontmatter: {
     title: string;
     tags: string[];
     tldr: string;
   };
   wordCount: number;
-  /** True when frontmatter parse failed and we returned raw content with a guessed title. */
-  degraded?: boolean;
+  characterCount: number;
+  degraded: boolean;
   model: string;
   tokensUsed: {
     input: number;

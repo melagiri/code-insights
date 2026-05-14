@@ -1,27 +1,24 @@
-// Prompt construction and output parsing for the Dispatch blog post generator.
+// Prompt construction and output parsing for the Dispatch post generator.
+// Supports two output formats: 'blog' (markdown + YAML frontmatter) and 'linkedin' (plain text + metadata block).
 
-import type { DispatchTone, DispatchInsight } from '@code-insights/cli/types';
+import type { DispatchTone, DispatchInsight, DispatchFormat } from '@code-insights/cli/types';
 
 // --- System prompt ---
 
-const TONE_INSTRUCTIONS: Record<DispatchTone, string> = {
-  'technical': 'Write for senior engineers. Precise vocabulary, specific trade-offs, do not over-explain fundamentals. Favor depth over accessibility.',
-  'accessible': 'Write for a mixed technical and non-technical audience. Define terms on first introduction, use analogies where helpful, keep sentences short. Favor clarity over density.',
-  'quick-tips': 'Write in a tips format. Each body section opens with a bold actionable tip, followed by 2-4 sentences of context. Favor scanability over narrative.',
-};
-
-const SYSTEM_PROMPT_BASE = `You are a technical ghostwriter helping a software engineer publish their learnings.
+const SHARED_BASE = `You are a technical ghostwriter helping a software engineer publish their learnings.
 The engineer has selected specific learnings and provided context about the story.
 
-Write a blog post of 800-1000 words in markdown (body only, excluding frontmatter).
-Structure: opening paragraph, 2-4 body sections each with an H2 heading, closing takeaway paragraph.
-Use plain, direct prose — write like an engineer sharing hard-won knowledge, not a content marketer.
 Do not use the words: "leveraged", "utilized", "seamlessly", "delve".
 Do not invent facts not present in the insights.
 Do not mention AI coding sessions, Code Insights, or any tool names.
 Synthesize — do not enumerate insights one by one as a list.
+Output only the requested format — no preamble, no meta-commentary.`;
 
-Output a markdown document only — no preamble, no meta-commentary.
+const FORMAT_INSTRUCTIONS: Record<DispatchFormat, string> = {
+  blog: `Write a blog post of 800-1000 words in markdown (body only, excluding frontmatter).
+Structure: opening paragraph, 2-4 body sections each with an H2 heading, closing takeaway paragraph.
+Use plain, direct prose — write like an engineer sharing hard-won knowledge, not a content marketer.
+
 Begin with a YAML frontmatter block in exactly this format:
 ---
 title: "A concise title (10 words max)"
@@ -29,10 +26,44 @@ tags: [tag1, tag2, tag3]
 tldr: "One sentence summary of the post"
 ---
 
-Then write the blog post body (H2 sections, no H1 — title is in the frontmatter).`;
+Then write the blog post body (H2 sections, no H1 — title is in the frontmatter).`,
 
-export function buildDispatchSystemPrompt(tone: DispatchTone): string {
-  return `${SYSTEM_PROMPT_BASE}\n\n${TONE_INSTRUCTIONS[tone]}`;
+  linkedin: `Write a LinkedIn post of 150-250 words.
+
+Output format — begin with a YAML metadata block (for internal use only, not part of the post):
+---
+title: "A short title (8 words max)"
+---
+
+Then write the post body as plain text. This is what gets copy-pasted to LinkedIn.
+
+Post structure:
+- Lines 1-2: The hook. State a concrete insight, counterintuitive observation, or sharp finding. Must stand alone before LinkedIn's "...see more" cutoff (~1,300 characters). Do not open with "I learned" or "Today I".
+- Body: 3-6 short paragraphs (1-3 sentences each). One blank line between paragraphs.
+- Last line: 3-5 hashtags only. Example: #engineering #typescript #sqlite
+
+LinkedIn rendering rules:
+- Bold is supported: **bold text**. Use sparingly — one bold phrase per paragraph at most.
+- No headers (## renders as literal ##, not a heading).
+- No bullet lists (- renders as a hyphen, not a bullet).
+- No YAML in the post body.`,
+};
+
+const TONE_INSTRUCTIONS: Record<DispatchFormat, Record<DispatchTone, string>> = {
+  blog: {
+    technical: 'Write for senior engineers. Precise vocabulary, specific trade-offs, do not over-explain fundamentals. Favor depth over accessibility.',
+    accessible: 'Write for a mixed technical and non-technical audience. Define terms on first introduction, use analogies where helpful, keep sentences short. Favor clarity over density.',
+    'quick-tips': 'Write in a tips format. Each body section opens with a bold actionable tip, followed by 2-4 sentences of context. Favor scanability over narrative.',
+  },
+  linkedin: {
+    technical: 'Use precise technical vocabulary. Name the specific trade-off or constraint. Do not over-explain — trust the audience knows the fundamentals.',
+    accessible: 'Use plain language. If a technical term is unavoidable, follow it immediately with a one-phrase explanation. Keep sentences short.',
+    'quick-tips': 'Each paragraph opens with a **bold actionable statement** (no headers — LinkedIn does not render them). Follow with 2-3 sentences of context. Favor scanability.',
+  },
+};
+
+export function buildDispatchSystemPrompt(tone: DispatchTone, format: DispatchFormat): string {
+  return `${SHARED_BASE}\n\n${FORMAT_INSTRUCTIONS[format]}\n\n${TONE_INSTRUCTIONS[format][tone]}`;
 }
 
 // --- User context builder ---
@@ -69,7 +100,7 @@ export function buildDispatchContext(input: DispatchInput): string {
 export interface DispatchParseResult {
   ok: boolean;
   markdown?: string;
-  /** The body text without frontmatter — use for word count to avoid re-parsing. */
+  /** The body text without frontmatter — plain post text. Use for character/word count and LinkedIn copy. */
   body?: string;
   frontmatter?: {
     title: string;
@@ -84,7 +115,14 @@ export interface DispatchParseResult {
 
 const PROHIBITED_WORDS = ['leveraged', 'utilized', 'seamlessly', 'delve'];
 
-export function parseDispatchOutput(raw: string): DispatchParseResult {
+export function parseDispatchOutput(raw: string, format: DispatchFormat): DispatchParseResult {
+  if (format === 'linkedin') {
+    return parseLinkedInOutput(raw);
+  }
+  return parseBlogOutput(raw);
+}
+
+function parseBlogOutput(raw: string): DispatchParseResult {
   const fmMatch = raw.match(/^[\s]*---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!fmMatch) {
     return { ok: false, error: 'missing-frontmatter', raw };
@@ -118,8 +156,9 @@ export function parseDispatchOutput(raw: string): DispatchParseResult {
     console.warn(`[dispatch-prohibited-words] Prohibited words found in output: ${found.join(', ')}`);
   }
 
-  const title = titleMatch[1];
-  const tldr = tldrMatch[1];
+  // Unescape backslash-escaped quotes — LLM may emit \" inside the quoted YAML value
+  const title = titleMatch[1].replace(/\\"/g, '"');
+  const tldr = tldrMatch[1].replace(/\\"/g, '"');
 
   // Escape special YAML characters so the output is valid when pasted into blog platforms.
   // Titles/tldrs with ':' or '[' produce invalid unquoted YAML.
@@ -137,6 +176,47 @@ export function parseDispatchOutput(raw: string): DispatchParseResult {
       title,
       tags,
       tldr,
+    },
+  };
+}
+
+function parseLinkedInOutput(raw: string): DispatchParseResult {
+  // LinkedIn output: ---\ntitle: "..."\n---\n\n<post body>
+  const fmMatch = raw.match(/^[\s]*---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!fmMatch) {
+    return { ok: false, error: 'missing-frontmatter', raw };
+  }
+
+  const fm = fmMatch[1];
+  const body = fmMatch[2].trim();
+
+  const titleMatch = fm.match(/^title:\s*"?(.+?)"?\s*$/m);
+  if (!titleMatch) {
+    return { ok: false, error: 'malformed-frontmatter', raw };
+  }
+
+  // Extract hashtags from the last line of the body
+  const lastLineMatch = body.match(/(?:^|\n)((?:#[a-zA-Z]\w*(?:\s+|$))+)$/);
+  const tags = lastLineMatch
+    ? lastLineMatch[1].trim().split(/\s+/).map(t => t.replace(/^#/, ''))
+    : [];
+
+  // Log prohibited word leakage without rejecting
+  const lowerBody = body.toLowerCase();
+  const found = PROHIBITED_WORDS.filter(w => lowerBody.includes(w));
+  if (found.length > 0) {
+    console.warn(`[dispatch-prohibited-words] Prohibited words found in output: ${found.join(', ')}`);
+  }
+
+  return {
+    ok: true,
+    // For LinkedIn, markdown IS the body — no YAML wrapper gets returned to the user
+    markdown: body,
+    body,
+    frontmatter: {
+      title: titleMatch[1],
+      tags,
+      tldr: '',
     },
   };
 }

@@ -31,7 +31,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { generateDispatch } from '@/lib/api';
 import { PostPreview } from './PostPreview';
 import type { Insight } from '@/lib/types';
-import type { DispatchTone, DispatchResponse } from '@/lib/api';
+import type { DispatchTone, DispatchFormat, DispatchResponse } from '@/lib/api';
+
+const FORMAT_OPTIONS: { value: DispatchFormat; label: string; description: string }[] = [
+  { value: 'blog', label: 'Blog post', description: 'Full narrative, 800-1000 words, markdown ready to paste to dev.to / Hashnode' },
+  { value: 'linkedin', label: 'LinkedIn', description: 'Hook-first, 150-250 words, optimized for LinkedIn feed' },
+];
 
 const TONE_OPTIONS: { value: DispatchTone; label: string; description: string }[] = [
   { value: 'technical', label: 'Technical deep-dive', description: 'For senior engineers — precise, depth-first' },
@@ -113,6 +118,7 @@ export function DispatchDrawer({
   onRemove,
 }: DispatchDrawerProps) {
   const [context, setContext] = useState('');
+  const [format, setFormat] = useState<DispatchFormat>('blog');
   const [tone, setTone] = useState<DispatchTone>('technical');
   const [result, setResult] = useState<DispatchResponse | null>(null);
 
@@ -140,6 +146,7 @@ export function DispatchDrawer({
       insightIds: selectedInsights.map((i) => i.id),
       context,
       tone,
+      format,
     });
   }
 
@@ -160,7 +167,7 @@ export function DispatchDrawer({
         className="w-full sm:max-w-none sm:w-[480px] flex flex-col p-0 gap-0"
       >
         <SheetHeader className="px-4 py-3 border-b shrink-0">
-          <SheetTitle>Create Blog Post</SheetTitle>
+          <SheetTitle>Create Post</SheetTitle>
           <SheetDescription>
             Curate insights and context, then generate a publishable post.
           </SheetDescription>
@@ -225,6 +232,36 @@ export function DispatchDrawer({
                 <span className={`text-xs ${contextTooLong ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {context.length}/500
                 </span>
+              </div>
+            </div>
+
+            {/* Format selector */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Format</p>
+              <div className="space-y-1.5">
+                {FORMAT_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-2.5 rounded-md border px-3 py-2.5 cursor-pointer transition-colors ${
+                      format === opt.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="dispatch-format"
+                      value={opt.value}
+                      checked={format === opt.value}
+                      onChange={() => setFormat(opt.value)}
+                      className="mt-0.5 shrink-0 accent-primary"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.description}</p>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
 

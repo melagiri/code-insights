@@ -8,11 +8,12 @@ import {
   parseDispatchOutput,
   buildDegradedResponse,
 } from '../llm/dispatch-prompts.js';
-import type { DispatchTone, DispatchInsight } from '@code-insights/cli/types';
+import type { DispatchTone, DispatchInsight, DispatchFormat } from '@code-insights/cli/types';
 
 const app = new Hono();
 
 const VALID_TONES: DispatchTone[] = ['technical', 'accessible', 'quick-tips'];
+const VALID_FORMATS: DispatchFormat[] = ['blog', 'linkedin'];
 
 interface InsightRow {
   id: string;
@@ -23,13 +24,14 @@ interface InsightRow {
 }
 
 // POST /api/dispatch/generate
-// Body: { insightIds: string[], context: string, tone: DispatchTone }
-// Returns: { markdown, frontmatter: { title, tags, tldr }, wordCount, model, tokensUsed }
+// Body: { insightIds: string[], context: string, tone: DispatchTone, format: DispatchFormat }
+// Returns: { markdown, body, format, frontmatter, wordCount, characterCount, degraded, model, tokensUsed }
 app.post('/generate', requireLLM(), async (c) => {
   const body = await c.req.json<{
     insightIds?: unknown;
     context?: unknown;
     tone?: unknown;
+    format?: unknown;
   }>();
 
   // Validate insightIds
@@ -60,7 +62,13 @@ app.post('/generate', requireLLM(), async (c) => {
     return c.json({ error: `tone must be one of: ${VALID_TONES.join(', ')}` }, 400);
   }
 
+  // Validate format
+  if (!VALID_FORMATS.includes(body.format as DispatchFormat)) {
+    return c.json({ error: `format must be one of: ${VALID_FORMATS.join(', ')}` }, 400);
+  }
+
   const tone = body.tone as DispatchTone;
+  const format = body.format as DispatchFormat;
   const contextText = body.context.trim();
   const typedIds = insightIds as string[];
 
@@ -95,7 +103,7 @@ app.post('/generate', requireLLM(), async (c) => {
     return c.json({ error: 'Select at least 3 insights to generate a post' }, 400);
   }
 
-  const systemPrompt = buildDispatchSystemPrompt(tone);
+  const systemPrompt = buildDispatchSystemPrompt(tone, format);
   const userMessage = buildDispatchContext({ userContext: contextText, insights: orderedInsights });
 
   const client = createLLMClient();
@@ -107,12 +115,12 @@ app.post('/generate', requireLLM(), async (c) => {
   const chatOptions = { temperature: 0.7, responseFormat: 'text' as const };
   let response = await client.chat(messages, chatOptions);
 
-  let parsed = parseDispatchOutput(response.content);
+  let parsed = parseDispatchOutput(response.content, format);
 
   // Single retry on parse failure
   if (!parsed.ok) {
     response = await client.chat(messages, chatOptions);
-    parsed = parseDispatchOutput(response.content);
+    parsed = parseDispatchOutput(response.content, format);
 
     if (!parsed.ok) {
       // Degrade gracefully — return the raw content with extracted title
@@ -123,11 +131,15 @@ app.post('/generate', requireLLM(), async (c) => {
   const markdown = parsed.markdown ?? response.content;
   const bodyText = parsed.body ?? markdown;
   const wordCount = bodyText.trim().split(/\s+/).filter(Boolean).length;
+  const characterCount = bodyText.length;
 
   return c.json({
     markdown,
+    body: bodyText,
+    format,
     frontmatter: parsed.frontmatter ?? { title: 'Untitled', tags: [], tldr: '' },
     wordCount,
+    characterCount,
     degraded: parsed.degraded ?? false,
     model: client.model,
     tokensUsed: {
