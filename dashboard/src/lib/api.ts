@@ -497,6 +497,26 @@ export function generateDispatch(body: DispatchRequest): Promise<DispatchRespons
   });
 }
 
+export interface DispatchImagePromptRequest {
+  title: string;
+  tags: string[];
+  tldr: string;
+  format: DispatchFormat;
+}
+
+export interface DispatchImagePromptResponse {
+  prompt: string;
+  model: string;
+  tokensUsed: { input: number; output: number };
+}
+
+export function generateDispatchImagePrompt(body: DispatchImagePromptRequest): Promise<DispatchImagePromptResponse> {
+  return request<DispatchImagePromptResponse>('/dispatch/image-prompt', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 // ── Analysis Queue ────────────────────────────────────────────────────────────
 
 export interface AnalysisQueueItem {
