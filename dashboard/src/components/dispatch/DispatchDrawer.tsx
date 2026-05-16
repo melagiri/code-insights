@@ -30,7 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { generateDispatch } from '@/lib/api';
-import { PostPreview } from './PostPreview';
+import { PostOverlay } from './PostOverlay';
 import type { Insight } from '@/lib/types';
 import type { DispatchTone, DispatchFormat, DispatchResponse } from '@/lib/api';
 
@@ -123,10 +123,11 @@ export function DispatchDrawer({
   const [tone, setTone] = useState<DispatchTone>('technical');
   const [includeSessionBackground, setIncludeSessionBackground] = useState(false);
   const [result, setResult] = useState<DispatchResponse | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: generateDispatch,
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => { setResult(data); setOverlayOpen(true); },
   });
 
   const sensors = useSensors(
@@ -155,6 +156,7 @@ export function DispatchDrawer({
 
   function handleClose() {
     onOpenChange(false);
+    setOverlayOpen(false);
     setResult(null);
     mutation.reset();
     setFormat('blog');
@@ -167,6 +169,7 @@ export function DispatchDrawer({
   const contextTooLong = context.length > 500;
 
   return (
+    <>
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent
         side="right"
@@ -179,10 +182,7 @@ export function DispatchDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        {result ? (
-          <PostPreview result={result} />
-        ) : (
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
             {/* Selected insights with drag-to-reorder */}
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
@@ -330,10 +330,9 @@ export function DispatchDrawer({
               </div>
             )}
           </div>
-        )}
 
         {/* Footer */}
-        {!result && (
+        {!result ? (
           <div className="shrink-0 px-4 py-3 border-t">
             <Button
               className="w-full"
@@ -355,13 +354,17 @@ export function DispatchDrawer({
               </p>
             )}
           </div>
-        )}
-
-        {result && (
-          <div className="shrink-0 px-4 py-3 border-t">
+        ) : (
+          <div className="shrink-0 px-4 py-3 border-t flex gap-2">
+            <Button
+              className="flex-1"
+              onClick={() => setOverlayOpen(true)}
+            >
+              View post
+            </Button>
             <Button
               variant="outline"
-              className="w-full"
+              className="flex-1"
               onClick={() => { setResult(null); mutation.reset(); }}
             >
               Regenerate
@@ -370,5 +373,14 @@ export function DispatchDrawer({
         )}
       </SheetContent>
     </Sheet>
+
+    {result && (
+      <PostOverlay
+        open={overlayOpen}
+        onClose={() => setOverlayOpen(false)}
+        result={result}
+      />
+    )}
+    </>
   );
 }
