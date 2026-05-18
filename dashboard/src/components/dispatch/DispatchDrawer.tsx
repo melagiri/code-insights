@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   DndContext,
@@ -31,7 +31,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { generateDispatch } from '@/lib/api';
 import { PostOverlay } from './PostOverlay';
-import type { Insight } from '@/lib/types';
+import type { Insight, DispatchPrefill } from '@/lib/types';
 import type { DispatchTone, DispatchFormat, DispatchResponse } from '@/lib/api';
 
 const FORMAT_OPTIONS: { value: DispatchFormat; label: string; description: string }[] = [
@@ -109,6 +109,7 @@ interface DispatchDrawerProps {
   selectedInsights: Insight[];
   onReorder: (insights: Insight[]) => void;
   onRemove: (id: string) => void;
+  prefill?: DispatchPrefill;
 }
 
 export function DispatchDrawer({
@@ -117,13 +118,28 @@ export function DispatchDrawer({
   selectedInsights,
   onReorder,
   onRemove,
+  prefill,
 }: DispatchDrawerProps) {
   const [context, setContext] = useState('');
+  const [contextEdited, setContextEdited] = useState(false);
   const [format, setFormat] = useState<DispatchFormat>('blog');
   const [tone, setTone] = useState<DispatchTone>('technical');
   const [includeSessionBackground, setIncludeSessionBackground] = useState(false);
   const [result, setResult] = useState<DispatchResponse | null>(null);
   const [overlayOpen, setOverlayOpen] = useState(false);
+
+  // When drawer opens with a prefill, apply it; when closed, reset transient state
+  useEffect(() => {
+    if (open && prefill) {
+      setContext(prefill.contextMarkdown);
+      setContextEdited(false);
+      setFormat(prefill.format);
+    }
+    if (!open) {
+      setContext('');
+      setContextEdited(false);
+    }
+  }, [open, prefill]);
 
   const mutation = useMutation({
     mutationFn: generateDispatch,
@@ -162,6 +178,7 @@ export function DispatchDrawer({
     setFormat('blog');
     setTone('technical');
     setContext('');
+    setContextEdited(false);
     setIncludeSessionBackground(false);
   }
 
@@ -178,7 +195,9 @@ export function DispatchDrawer({
         <SheetHeader className="px-4 py-3 border-b shrink-0">
           <SheetTitle>Create Post</SheetTitle>
           <SheetDescription>
-            Curate insights and context, then generate a publishable post.
+            {prefill
+              ? `Drafting from ${prefill.title}`
+              : 'Curate insights and context, then generate a publishable post.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -231,7 +250,7 @@ export function DispatchDrawer({
                 maxLength={500}
                 placeholder="2-3 sentences framing the narrative. What did you build or discover? Why does it matter?"
                 value={context}
-                onChange={(e) => setContext(e.target.value)}
+                onChange={(e) => { setContext(e.target.value); if (prefill) setContextEdited(true); }}
                 className="resize-none"
               />
               <div className="flex justify-between mt-1">
@@ -242,6 +261,16 @@ export function DispatchDrawer({
                   {context.length}/500
                 </span>
               </div>
+              {prefill && contextEdited && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-7 text-xs text-muted-foreground"
+                  onClick={() => { setContext(prefill.contextMarkdown); setContextEdited(false); }}
+                >
+                  Reset to defaults
+                </Button>
+              )}
             </div>
 
             {/* Format selector */}

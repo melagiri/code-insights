@@ -64,6 +64,21 @@ export function capturePageView(path: string): void {
   }
 }
 
+export function captureDispatchCalloutShown(): void {
+  if (!initialized) return;
+  try { posthog.capture('dispatch.discovery_callout_shown'); } catch { /* silent */ }
+}
+
+export function captureDispatchCalloutDismissed(via: 'x' | 'not_now' | 'try_it'): void {
+  if (!initialized) return;
+  try { posthog.capture('dispatch.discovery_callout_dismissed', { via }); } catch { /* silent */ }
+}
+
+export function captureDispatchOpenedFromInsights(sessionCharacter: string | null): void {
+  if (!initialized) return;
+  try { posthog.capture('dispatch.opened_from_insights', { session_character: sessionCharacter }); } catch { /* silent */ }
+}
+
 /**
  * Capture the dashboard_loaded event with load time.
  * @param page - The route segment (e.g. 'dashboard', 'sessions')

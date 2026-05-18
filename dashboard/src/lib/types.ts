@@ -225,6 +225,43 @@ export interface InsightMetadata {
   potentialMessageReduction?: number;
 }
 
+// Raw session_facets row as returned by GET /api/facets
+export interface FacetRow {
+  session_id: string;
+  outcome_satisfaction: string;
+  workflow_pattern: string | null;
+  had_course_correction: number;
+  course_correction_reason: string | null;
+  iteration_count: number;
+  friction_points: string;     // JSON-encoded FrictionPoint[]
+  effective_patterns: string;  // JSON-encoded EffectivePattern[]
+  extracted_at: string;
+  analysis_version: string;
+}
+
+export interface FrictionPoint {
+  category: string;
+  attribution?: 'user-actionable' | 'ai-capability' | 'environmental';
+  description: string;
+  severity: 'high' | 'medium' | 'low';
+  resolution: 'resolved' | 'workaround' | 'unresolved';
+}
+
+export interface EffectivePattern {
+  category: string;
+  description: string;
+  confidence: number;
+  driver?: 'user-driven' | 'ai-driven' | 'collaborative';
+}
+
+// Prefill data for DispatchDrawer when opened from InsightsPage
+export interface DispatchPrefill {
+  sessionId: string;
+  title: string;
+  format: 'blog' | 'linkedin';
+  contextMarkdown: string;
+}
+
 // LLM config from /api/config/llm
 export interface LLMConfig {
   dashboardPort: number;

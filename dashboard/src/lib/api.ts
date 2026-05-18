@@ -2,7 +2,7 @@
 // Base URL is relative in production (SPA served by the same server).
 // In Vite dev mode, the proxy forwards /api -> localhost:7890.
 
-import type { Project, Session, Message, Insight, DashboardStats, LLMConfig, ExportTemplate } from '@/lib/types';
+import type { Project, Session, Message, Insight, DashboardStats, LLMConfig, ExportTemplate, FacetRow } from '@/lib/types';
 
 const BASE = '/api';
 
@@ -311,6 +311,19 @@ export interface FacetAggregation {
   pqScores: PQDimensionScores | null;
   lifetimeSessions: number;
   totalTokens: number;
+}
+
+export function fetchFacets(params?: {
+  project?: string;
+  period?: string;
+  source?: string;
+}) {
+  const q = new URLSearchParams();
+  if (params?.project) q.set('project', params.project);
+  if (params?.period) q.set('period', params.period);
+  if (params?.source) q.set('source', params.source);
+  const qs = q.toString() ? `?${q.toString()}` : '';
+  return request<{ facets: FacetRow[]; missingCount: number; totalSessions: number }>(`/facets${qs}`);
 }
 
 export function fetchFacetAggregation(params?: {
