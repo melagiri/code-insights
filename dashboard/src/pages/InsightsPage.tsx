@@ -1,11 +1,14 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useSearchParams, Link } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useInsights } from '@/hooks/useInsights';
 import { useSessions } from '@/hooks/useSessions';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { useProjects } from '@/hooks/useProjects';
+import { useDispatchDiscovery } from '@/hooks/useDispatchDiscovery';
 import { buildPatternGroups } from '@/lib/pattern-grouping';
+import { buildDispatchPrefill } from '@/lib/buildDispatchPrefill';
 import { InsightListItem } from '@/components/insights/InsightListItem';
 // PromptQualityCard still used in SessionDetailPanel; on this page prompt_quality
 // insights render inline via InsightListItem → PromptQualityContent.
@@ -27,7 +30,7 @@ import {
 import { Sparkles, SearchX, X, FileText, GitCommit, BookOpen, Target } from 'lucide-react';
 import { getDateGroup, sortDateGroups } from '@/lib/utils';
 import { INSIGHT_TYPE_LABELS } from '@/lib/constants/colors';
-import type { Insight, InsightType } from '@/lib/types';
+import type { Insight, InsightType, DispatchPrefill, SessionCharacter } from '@/lib/types';
 import { InsightTypePills } from '@/components/filters/InsightTypePills';
 import { SaveFilterPopover } from '@/components/filters/SaveFilterPopover';
 import { SavedFiltersDropdown } from '@/components/filters/SavedFiltersDropdown';
@@ -36,8 +39,14 @@ import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { LlmNudgeBanner } from '@/components/LlmNudgeBanner';
 import { DispatchDrawer } from '@/components/dispatch/DispatchDrawer';
 import { FloatingActionBar } from '@/components/dispatch/FloatingActionBar';
+import { DispatchEntryButton } from '@/components/insights/DispatchEntryButton';
+import { DispatchDiscoveryCallout } from '@/components/insights/DispatchDiscoveryCallout';
+import { fetchFacets } from '@/lib/api';
+import { captureDispatchCalloutShown, captureDispatchOpenedFromInsights } from '@/lib/telemetry';
 
 const INSIGHT_TYPES: InsightType[] = ['summary', 'decision', 'learning', 'technique', 'prompt_quality'];
+
+const QUALIFYING_SESSION_TYPES = new Set<SessionCharacter>(['feature_build', 'deep_focus', 'bug_hunt', 'refactor']);
 
 const TYPE_SECTION_ICONS: Record<string, { icon: typeof FileText; color: string }> = {
   summary: { icon: FileText, color: 'text-purple-500' },
@@ -77,6 +86,10 @@ export default function InsightsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedInsights, setSelectedInsights] = useState<Insight[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dispatchPrefill, setDispatchPrefill] = useState<DispatchPrefill | undefined>(undefined);
+
+  // Dispatch discovery: callout + opened tracking
+  const { shouldShowCallout, markCalloutDismissed, markDispatchOpened } = useDispatchDiscovery();
 
   const handleToggleSelect = useCallback((insight: Insight) => {
     setSelectedIds((prev) => {
@@ -126,7 +139,54 @@ export default function InsightsPage() {
   // limit: 500 matches Analytics page pattern; server default is 50 which would silently miss sessions.
   const { data: allSessions = [] } = useSessions({ limit: 500 });
 
+  // Fetch raw facets to power DispatchEntryButton prefill
+  const { data: facetsData } = useQuery({
+    queryKey: ['facets', 'list'],
+    queryFn: () => fetchFacets({ period: '30d' }),
+    staleTime: 60_000,
+  });
+
+  // Build a map of session_id → facet row for prefill lookup
+  const facetsBySessionId = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof facetsData>['facets'][0]>();
+    for (const f of (facetsData?.facets ?? [])) {
+      map.set(f.session_id, f);
+    }
+    return map;
+  }, [facetsData]);
+
+  // Primary qualifying session: most recent session with a qualifying character that has facets
+  const primarySession = useMemo(() => {
+    const qualifying = allSessions.filter(
+      (s) => s.session_character && QUALIFYING_SESSION_TYPES.has(s.session_character as SessionCharacter) && facetsBySessionId.has(s.id)
+    );
+    if (qualifying.length === 0) return null;
+    return qualifying.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
+  }, [allSessions, facetsBySessionId]);
+
   const allInsightIds = useMemo(() => new Set(insights.map((i) => i.id)), [insights]);
+
+  // Fire callout_shown telemetry once when callout becomes visible
+  useEffect(() => {
+    if (shouldShowCallout && primarySession) {
+      captureDispatchCalloutShown();
+    }
+  }, [shouldShowCallout, primarySession]);
+
+  function openDispatchWithPrefill() {
+    if (!primarySession) return;
+    const facetRow = facetsBySessionId.get(primarySession.id);
+    if (!facetRow) return;
+    const prefill = buildDispatchPrefill(primarySession, facetRow);
+    setDispatchPrefill(prefill);
+    setDrawerOpen(true);
+    markDispatchOpened();
+    captureDispatchOpenedFromInsights(primarySession.session_character);
+  }
+
+  function handleCalloutDismiss() {
+    markCalloutDismissed();
+  }
 
   // Map session_id → source_tool for client-side source filtering on Insights
   const sessionSourceMap = useMemo(() => {
@@ -238,14 +298,21 @@ export default function InsightsPage() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] relative">
       {/* Sticky header: title + filters */}
       <div className="shrink-0 sticky top-0 z-10 bg-background border-b px-6 pt-5 pb-3 space-y-3">
-        <div>
-          <h1 className="text-2xl font-bold">Insights</h1>
-          {!isLoading && (
-            <p className="text-muted-foreground text-sm">
-              {filtered.length} insight{filtered.length !== 1 ? 's' : ''}
-              {hasFilters ? ' matching filters' : ''}
-            </p>
-          )}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Insights</h1>
+            {!isLoading && (
+              <p className="text-muted-foreground text-sm">
+                {filtered.length} insight{filtered.length !== 1 ? 's' : ''}
+                {hasFilters ? ' matching filters' : ''}
+              </p>
+            )}
+          </div>
+          <DispatchEntryButton
+            sessionCharacter={primarySession?.session_character}
+            facetsLoaded={!!primarySession && facetsBySessionId.has(primarySession.id)}
+            onClick={openDispatchWithPrefill}
+          />
         </div>
 
         {/* Pattern filter banner */}
@@ -331,6 +398,12 @@ export default function InsightsPage() {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      {shouldShowCallout && primarySession && facetsBySessionId.has(primarySession.id) && (
+        <DispatchDiscoveryCallout
+          onTryIt={() => { openDispatchWithPrefill(); }}
+          onDismiss={handleCalloutDismiss}
+        />
+      )}
       <LlmNudgeBanner context="insights" />
       {isError && !isLoading ? (
         <ErrorCard message="Failed to load insights" onRetry={refetch} />
@@ -422,7 +495,7 @@ export default function InsightsPage() {
 
       <FloatingActionBar
         count={selectedIds.size}
-        onOpen={() => setDrawerOpen(true)}
+        onOpen={() => { setDispatchPrefill(undefined); setDrawerOpen(true); }}
       />
 
       <DispatchDrawer
@@ -431,6 +504,7 @@ export default function InsightsPage() {
         selectedInsights={selectedInsights}
         onReorder={handleReorder}
         onRemove={handleRemoveFromDrawer}
+        prefill={dispatchPrefill}
       />
     </div>
   );
