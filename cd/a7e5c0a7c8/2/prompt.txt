@@ -1,0 +1,25 @@
+You are performing a Phase 1 INSIDER review of PR #297 in the code-insights repo. This is review ROUND 1.
+
+Fetch the PR diff using: gh pr diff 297
+Also fetch the PR details: gh pr view 297
+
+Follow your Phase 1 review protocol:
+1. Read the PR description and any linked GitHub Issue (#296)
+2. Check if the change touches schema concerns (types.ts, SQLite schema)
+3. Review code against existing patterns in the codebase
+4. Check existing CLAUDE.md conventions compliance
+5. Verify data contract patterns are followed (if data flow changed)
+6. Check shadcn/ui and component conventions (if UI changes)
+
+ADDITIONAL CHECKS:
+7. dnd-kit dependency audit (from PR description): React 19 compatible, no peer conflicts with shadcn Sheet, ~15KB gzipped, actively maintained. No concerns flagged in dep audit.
+8. Check the SQL query in server/src/routes/dispatch.ts — specifically the IN clause using template literals with placeholders. Is this safe parameterization or is there an injection risk?
+9. Check that verification evidence in the PR description is credible
+
+Output your review in the structured format:
+## TA Review (Phase 1 - Insider): feat: Dispatch — Learnings-Curated Blog Post Generator — Round 1
+### Architecture Alignment
+### Issues Found (with priority markers: FIX NOW, SUGGESTION, NOTE)
+### Phase 1 Verdict
+
+DO NOT look at any other review comments. Your review must be independent.
