@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4c69ac669934",
+  "session_id": "9b89ed08-ae4e-4b35-b81b-545165e29e26",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-24T10:55:54.717045Z",
+  "branch": "docs/plan-audit-cleanup",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/plans/2026-05-09-session-writeup-dispatch-ideation.md",
+    "docs/plans/2026-05-10-dispatch-learnings-curated-design.md"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "870b3dd9ff08",
+  "token_usage": {
+    "input_tokens": 1599,
+    "cache_creation_tokens": 3311881,
+    "cache_read_tokens": 38306176,
+    "output_tokens": 243473,
+    "api_call_count": 406
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-24T10:55:53.275473Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 5,
+    "human_removed": 161,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}
