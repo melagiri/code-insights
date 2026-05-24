@@ -1,7 +1,7 @@
 # Gamification & Shareable Badges — Design Plan
 
 **Date:** 2026-03-08
-**Status:** Future feature (design phase — not yet approved for implementation)
+**Status:** Phase 1 (Working Style Card) shipped v4.2.0 · Phase 2 (AI Fluency Score Card) shipped v4.3.0 · Phase 3 (Stats Card) and Phase 4 (Milestone Cards) future
 **Prerequisite:** Patterns Page Refinement (2026-03-08-patterns-page-refinement.md)
 **Depends on:** Working Style hero card, tagline, streak computation
 

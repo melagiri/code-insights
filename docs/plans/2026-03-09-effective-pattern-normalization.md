@@ -1,6 +1,6 @@
 # Reflect Feature Enhancement — Design Plan
 
-> **Status:** In Progress — Gathering Requirements
+> **Status:** Feature 1 Complete (PRs #125, #127, #129, #132, #136, #138) · Feature 2 (Progress Tracking) Deferred
 > **Date:** 2026-03-09
 > **Scope:** Server (prompts, aggregation, normalization), Dashboard (PatternsPage, Insights), CLI (types)
 > **Features:** Pattern Normalization + Confidence Filtering + Outdated Format Detection + Progress Tracking (TBD)

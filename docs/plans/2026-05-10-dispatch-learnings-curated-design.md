@@ -1,6 +1,6 @@
 # Dispatch — Learnings-Curated Blog Post Generator
 
-> **Status:** Design — Ready for implementation planning
+> **Status:** Shipped — v4.11.0 (PRs #297, #299, #301)
 > **Date:** 2026-05-10
 > **Supersedes:** `2026-05-09-session-writeup-dispatch-ideation.md` (session-scoped approach abandoned)
 > **Dependencies:** None — uses existing `insights` table and `/insights` dashboard page
