@@ -1,0 +1,46 @@
+You are performing an independent LLM EXPERT review of PR #297 in the code-insights repo. This is review ROUND 1.
+
+Fetch the PR diff using: gh pr diff 297
+Also fetch the PR details: gh pr view 297
+
+Review all LLM-related code in server/src/llm/dispatch-prompts.ts and server/src/routes/dispatch.ts for:
+- Prompt quality: clarity, specificity, output format constraints
+- Token efficiency: redundant instructions, over-prompting, prompt stuffing
+- Output consistency: structured output schemas, JSON mode, frontmatter regex parsing
+- Model selection: is Sonnet at temp 0.7 appropriate for this task?
+- Resilience: handling malformed LLM output, timeouts, retries, rate limits
+- The single retry on parse failure — is the retry logic correct? Does it send the same prompt or a corrected one?
+- The degraded response fallback — when is it triggered and is the fallback behavior appropriate?
+- Prohibited word detection — is the implementation complete and correct?
+- Frontmatter regex parsing — does the regex correctly handle all edge cases (missing fields, extra whitespace, multi-word titles with quotes, etc.)?
+- Cross-model compatibility: will the prompts work with non-Anthropic providers (OpenAI, Gemini, Ollama)?
+- Cost implications: ~2,300 input + ~1,000 output tokens per call — reasonable?
+
+Rate each function on: clarity (1-5), token efficiency (1-5), output consistency (1-5), resilience (1-5).
+
+RUNTIME VERIFICATION RULE:
+When you encounter code where the runtime behavior is NOT self-evident from reading — flag it as VERIFY AT RUNTIME instead of reasoning about correctness.
+
+Common triggers (not exhaustive):
+- Regular expressions with special characters
+- String escaping across language boundaries
+- Template literal interpolation producing strings for another parser
+- Type coercion at boundaries
+- Async timing assumptions
+
+When you flag VERIFY AT RUNTIME:
+1. State what you THINK the behavior is
+2. State what the RISK is if you are wrong
+3. Require the dev to paste actual runtime output proving correctness
+
+Do NOT approve code in these categories based on code reading alone.
+
+Output your review in the structured format:
+## LLM Expert Review: feat: Dispatch — Learnings-Curated Blog Post Generator — Round 1
+### Prompt Quality Assessment
+### Token Efficiency
+### Model Selection
+### Issues Found (FIX NOW, VERIFY AT RUNTIME, SUGGESTION, NOTE)
+### Recommendations
+
+DO NOT look at any other review comments. Your review must be independent.
