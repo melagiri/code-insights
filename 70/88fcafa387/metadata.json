@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "7088fcafa387",
+  "strategy": "manual-commit",
+  "branch": "feature/fix-dashboard-bulkanalyze-tests",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/package.json",
+    "dashboard/src/test-setup.ts",
+    "dashboard/vitest.config.ts",
+    "pnpm-lock.yaml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/70/88fcafa387/0/metadata.json",
+      "transcript": "/70/88fcafa387/0/full.jsonl",
+      "context": "/70/88fcafa387/0/context.md",
+      "content_hash": "/70/88fcafa387/0/content_hash.txt",
+      "prompt": "/70/88fcafa387/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 6326,
+    "cache_read_tokens": 442433,
+    "output_tokens": 1700,
+    "api_call_count": 4
+  }
+}

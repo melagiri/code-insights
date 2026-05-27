@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "7088fcafa387",
+  "session_id": "ac8d5915-9b57-4846-a9d3-4a16a12d98b0",
+  "strategy": "manual-commit",
+  "created_at": "2026-05-27T02:35:49.991388Z",
+  "branch": "feature/fix-dashboard-bulkanalyze-tests",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/package.json",
+    "dashboard/src/test-setup.ts",
+    "dashboard/vitest.config.ts",
+    "pnpm-lock.yaml"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "2fcb3315edd0",
+  "checkpoint_transcript_start": 428,
+  "transcript_lines_at_start": 428,
+  "token_usage": {
+    "input_tokens": 8,
+    "cache_creation_tokens": 6326,
+    "cache_read_tokens": 442433,
+    "output_tokens": 1700,
+    "api_call_count": 4
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-05-27T02:35:49.83061Z",
+    "agent_lines": 28,
+    "human_added": 1,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 29,
+    "agent_percentage": 96.55172413793103
+  }
+}
