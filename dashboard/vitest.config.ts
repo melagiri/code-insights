@@ -8,6 +8,7 @@ export default defineConfig({
     alias: { '@': resolve(__dirname, 'src') },
   },
   test: {
+    name: 'dashboard',
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
