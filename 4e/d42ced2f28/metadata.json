@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "4ed42ced2f28",
+  "strategy": "manual-commit",
+  "branch": "feature/fix-dashboard-bulkanalyze-tests",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "dashboard/package.json",
+    "dashboard/tsconfig.json",
+    "pnpm-lock.yaml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/4e/d42ced2f28/0/metadata.json",
+      "transcript": "/4e/d42ced2f28/0/full.jsonl",
+      "context": "/4e/d42ced2f28/0/context.md",
+      "content_hash": "/4e/d42ced2f28/0/content_hash.txt",
+      "prompt": "/4e/d42ced2f28/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 19,
+    "cache_creation_tokens": 115297,
+    "cache_read_tokens": 736373,
+    "output_tokens": 4412,
+    "api_call_count": 7
+  }
+}
