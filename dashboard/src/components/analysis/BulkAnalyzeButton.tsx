@@ -83,7 +83,7 @@ export function BulkAnalyzeButton({ sessions, onComplete }: BulkAnalyzeButtonPro
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose(); }}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
