@@ -6,7 +6,7 @@
     "dev": "pnpm --filter @code-insights/cli dev",
     "test": "pnpm -r test",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "pnpm --filter @code-insights/cli test:coverage && pnpm --filter @code-insights/server test:coverage"
   },
   "engines": {
     "node": ">=18.0.0",
