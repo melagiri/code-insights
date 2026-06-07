@@ -137,6 +137,8 @@ interface CodexUsage {
   cached_input_tokens?: number;
   output_tokens?: number;
   reasoning?: number;
+  reasoning_output_tokens?: number; // v0.131+ format
+  total_tokens?: number;            // v0.131+ cumulative total
 }
 
 // Format B: top-level JSON structure
@@ -207,6 +209,8 @@ function parseFormatA(content: string): ParsedSession | null {
   const usageEntries: CodexUsage[] = [];
   let model = meta.model || '';
   let lastTimestamp = new Date(meta.timestamp);
+  // v0.131+ emits cumulative token totals in token_count events instead of task_complete
+  let cumulativeTokenCount: CodexUsage | null = null;
 
   // Accumulator for current assistant turn
   let currentAssistantText = '';
@@ -230,7 +234,7 @@ function parseFormatA(content: string): ParsedSession | null {
     } : null;
 
     messages.push({
-      id: `codex-assistant-${messages.length}`,
+      id: `${sessionId}-assistant-${messages.length}`,
       sessionId: sessionId,
       type: 'assistant',
       content: text.slice(0, 10000),
@@ -284,7 +288,7 @@ function parseFormatA(content: string): ParsedSession | null {
           }
           lastTimestamp = parseEnvelopeTimestamp(event) || lastTimestamp;
         }
-        // Skip role === 'user' — handled by event_msg/user_message case.
+        // role === 'user' is handled by event_msg/user_message case.
         // Both response_item/message(role=user) and event_msg/user_message fire for
         // every user prompt, so only capturing from one source avoids doubling the count.
         break;
@@ -298,7 +302,7 @@ function parseFormatA(content: string): ParsedSession | null {
         const msgText = (payload.message as string) || '';
         if (msgText && !isSystemContextMessage(msgText)) {
           messages.push({
-            id: (payload.id as string) || `codex-user-${messages.length}`,
+            id: `${sessionId}-user-${messages.length}`,
             sessionId: sessionId,
             type: 'user',
             content: msgText.slice(0, 10000),
@@ -326,7 +330,7 @@ function parseFormatA(content: string): ParsedSession | null {
         // response_item/function_call: tool invocation (exec_command, etc.)
         // payload: { type, name, arguments (JSON string), call_id, status? }
         toolCounter++;
-        const callId = (payload.call_id as string) || `codex-tool-${toolCounter}`;
+        const callId = (payload.call_id as string) || `${sessionId}-tool-${toolCounter}`;
         let args: Record<string, unknown> = {};
         try {
           args = JSON.parse(payload.arguments as string) as Record<string, unknown>;
@@ -358,7 +362,7 @@ function parseFormatA(content: string): ParsedSession | null {
         // response_item/custom_tool_call: apply_patch and similar custom tools
         // payload: { type, name, call_id, input (string), status? }
         toolCounter++;
-        const ctcCallId = (payload.call_id as string) || `codex-custom-${toolCounter}`;
+        const ctcCallId = (payload.call_id as string) || `${sessionId}-custom-${toolCounter}`;
         currentToolCalls.push({
           id: ctcCallId,
           name: (payload.name as string) || 'custom_tool',
@@ -438,12 +442,22 @@ function parseFormatA(content: string): ParsedSession | null {
         break;
       }
 
+      case 'token_count': {
+        // event_msg/token_count: cumulative session token usage (v0.131+)
+        // payload.info.total_token_usage holds running totals; track the last seen value
+        const tcInfo = payload.info as Record<string, unknown> | undefined;
+        const total = tcInfo?.total_token_usage as CodexUsage | undefined;
+        if (total) cumulativeTokenCount = total;
+        break;
+      }
+
       case 'turn.started':
       case 'thread.started':
       case 'session_meta':
       case 'task_started':
-      case 'token_count':
       case 'turn_context':
+      case 'turn_aborted':   // interrupted session — final flush handles remaining content
+      case 'patch_apply_end': // apply_patch confirmation event
         // Lifecycle/telemetry events — skip
         break;
 
@@ -454,6 +468,12 @@ function parseFormatA(content: string): ParsedSession | null {
 
   // Flush any remaining assistant content after all lines processed
   flushAssistantTurn();
+
+  // If no per-turn usage was captured from task_complete (old format), fall back to the
+  // cumulative total from the last token_count event (v0.131+ format)
+  if (usageEntries.length === 0 && cumulativeTokenCount) {
+    usageEntries.push(cumulativeTokenCount);
+  }
 
   return buildSession(sessionId, meta.cwd || 'codex://unknown', meta.cli_version || null, meta.timestamp, messages, usageEntries, model);
 }
@@ -493,7 +513,7 @@ function parseFormatB(content: string): ParsedSession | null {
     if (currentToolCalls.length === 0 && !currentThinking) return;
 
     messages.push({
-      id: `codex-assistant-${messages.length}`,
+      id: `${sessionId}-assistant-${messages.length}`,
       sessionId: sessionId,
       type: 'assistant',
       content: '',
@@ -519,7 +539,7 @@ function parseFormatB(content: string): ParsedSession | null {
       const userContent = extractFormatBContent(item.content);
       if (userContent && !isSystemContextMessage(userContent)) {
         messages.push({
-          id: `codex-user-${messages.length}`,
+          id: `${sessionId}-user-${messages.length}`,
           sessionId: sessionId,
           type: 'user',
           content: userContent.slice(0, 10000),
@@ -551,7 +571,7 @@ function parseFormatB(content: string): ParsedSession | null {
       case 'function_call': {
         // item: { type, id, name, arguments (JSON string), call_id, status }
         toolCounter++;
-        const callId = item.call_id || item.id || `codex-tool-${toolCounter}`;
+        const callId = item.call_id || item.id || `${sessionId}-tool-${toolCounter}`;
         let args: Record<string, unknown> = {};
         if (item.arguments) {
           try {
