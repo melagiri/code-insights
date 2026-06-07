@@ -313,6 +313,13 @@ export function insertMessages(session: ParsedSession, isForce = false): void {
   const stmts = getStmts();
 
   const tx = db.transaction((messages: ParsedMessage[]) => {
+    if (isForce) {
+      // Delete all existing messages for this session before re-inserting.
+      // Parser fixes can change message IDs (e.g. adding session-scoped prefixes),
+      // so DELETE + INSERT is safer than INSERT OR REPLACE which leaves orphaned
+      // rows when IDs change.
+      db.prepare('DELETE FROM messages WHERE session_id = ?').run(session.id);
+    }
     const stmt = isForce ? stmts.replaceMessage : stmts.insertMessage;
     for (const msg of messages) {
       stmt.run(
