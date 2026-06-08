@@ -23,6 +23,7 @@ import { fileURLToPath } from 'url';
 import { getConfigDir } from '../utils/config.js';
 import { syncSingleFile } from './sync.js';
 import { enqueue } from '../db/queue.js';
+import { sessionExists } from '../db/read.js';
 
 /** Resolve the CLI entry point for spawning child processes. */
 const CLI_ENTRY = resolve(fileURLToPath(import.meta.url), '../../index.js');
@@ -82,7 +83,11 @@ export async function sessionEndCommand(options: SessionEndOptions = {}): Promis
     }
   }
 
-  // Phase 2: Enqueue for async analysis
+  // Phase 2: Enqueue for async analysis — skip if session wasn't written to DB
+  // (e.g. user exited without sending any messages, like running /config then quitting)
+  if (!sessionExists(sessionId)) {
+    return;
+  }
   enqueue(sessionId, native ? 'native' : 'provider');
 
   // Phase 3: Spawn detached worker to process the queue
