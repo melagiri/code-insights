@@ -38,7 +38,7 @@ const syncCmd = program
   .description('Sync AI coding sessions to local SQLite database')
   .option('-f, --force', 'Force re-sync all sessions (also restores hidden sessions)')
   .option('-p, --project <name>', 'Only sync sessions from a specific project')
-  .option('-s, --source <name>', 'Only sync sessions from a specific tool (e.g., claude-code, cursor)')
+  .option('-s, --source <name>', 'Only sync sessions from a specific tool (e.g., claude-code, cursor, pi)')
   .option('--dry-run', 'Show what would be synced without making changes')
   .option('-q, --quiet', 'Suppress output (useful for hooks)')
   .option('-v, --verbose', 'Show diagnostic warnings from providers')

@@ -25,7 +25,7 @@ npx @code-insights/cli
   <img src="docs/assets/screenshots/patterns-light.png" alt="Patterns — friction points, effective patterns, prompt quality, working style" width="800" />
 </p>
 
-Analyzes your sessions from **Claude Code, Cursor, Codex CLI, Copilot CLI, and VS Code Copilot Chat** to extract structured insights — decisions with trade-offs, learnings with root causes, prompt quality with actionable feedback, and cross-session patterns that surface what's working and what's not. All stored locally in SQLite, browsable through terminal analytics and a built-in dashboard.
+Analyzes your sessions from **Claude Code, Cursor, Codex CLI, Pi, Copilot CLI, and VS Code Copilot Chat** to extract structured insights — decisions with trade-offs, learnings with root causes, prompt quality with actionable feedback, and cross-session patterns that surface what's working and what's not. All stored locally in SQLite, browsable through terminal analytics and a built-in dashboard.
 
 **No accounts. No cloud. No data leaves your machine.**
 
@@ -100,6 +100,7 @@ Don't need a browser? `code-insights stats` gives you the full picture from the 
 | Claude Code | `~/.claude/projects/**/*.jsonl` |
 | Cursor | Workspace storage SQLite (macOS, Linux, Windows) |
 | Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
+| Pi | `~/.pi/agent/sessions/**/*.jsonl` |
 | Copilot CLI | `~/.copilot/session-state/{id}/events.jsonl` |
 | VS Code Copilot Chat | Platform-specific Copilot Chat storage |
 
@@ -129,6 +130,7 @@ code-insights stats cost               # cost breakdown by project and model
 code-insights dashboard                # start dashboard server
 code-insights sync                     # sync sessions only
 code-insights sync --source cursor     # sync from a specific tool
+code-insights sync --source pi         # sync only Pi sessions
 code-insights reflect                  # cross-session pattern synthesis
 code-insights reflect --week 2026-W11  # reflect on a specific week
 code-insights config llm               # configure LLM provider
@@ -142,7 +144,7 @@ See [`cli/README.md`](cli/README.md) for the full CLI reference.
 ## Architecture
 
 ```
-Session files (Claude Code, Cursor, Codex CLI, Copilot CLI, VS Code Copilot Chat)
+Session files (Claude Code, Cursor, Codex CLI, Pi, Copilot CLI, VS Code Copilot Chat)
                           │
                           ▼
                ┌──────────────────┐

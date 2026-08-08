@@ -16,7 +16,7 @@ Code Insights occupies the **developer self-reflection analytics** layer — it 
 | **Developer analytics** | Helps humans understand their AI usage patterns | **Code Insights** |
 | **Session capture** | Records what happened during a session | Entire.io CLI, Claude Code JSONL |
 
-Code Insights is neutral across runtimes (parses 5 providers), analytics-focused (friction taxonomy, pattern taxonomy, weekly reflect), and local-first. Competing tools are typically tied to a single runtime and focused on forward-looking agent continuity rather than backward-looking human learning.
+Code Insights is neutral across runtimes (parses 6 providers), analytics-focused (friction taxonomy, pattern taxonomy, weekly reflect), and local-first. Competing tools are typically tied to a single runtime and focused on forward-looking agent continuity rather than backward-looking human learning.
 
 ---
 
@@ -43,7 +43,7 @@ Entire CLI captures rich context behind code changes: prompts, transcripts, and 
 |-----------|-----------------|---------------|
 | Primary consumer | The AI agent (runtime) | The human developer (analytics) |
 | Time orientation | Present task continuity | Cross-session pattern aggregation |
-| Source support | Entire CLI only | 5 providers (Claude Code, Cursor, Codex CLI, Copilot CLI, VS Code Copilot Chat) |
+| Source support | Entire CLI only | 6 providers (Claude Code, Cursor, Codex CLI, Pi, Copilot CLI, VS Code Copilot Chat) |
 | Output | Agent context window | Dashboard, CLI stats, `.code-insights.md` |
 | Core question | "What was happening in this session?" | "How are my patterns changing over time?" |
 | Freshness gate | None | `code-insights attach --check` (CI staleness gate) |

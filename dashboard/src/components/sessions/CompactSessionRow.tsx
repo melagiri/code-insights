@@ -10,6 +10,7 @@ const SOURCE_LABELS: Record<string, string> = {
   'claude-code': 'Claude Code',
   cursor: 'Cursor',
   'codex-cli': 'Codex CLI',
+  pi: 'Pi',
   'copilot-cli': 'Copilot CLI',
   copilot: 'Copilot',
 };

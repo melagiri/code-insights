@@ -22,7 +22,7 @@ code-insights/
 │       ├── commands/       # CLI commands (init, sync, status, stats, dashboard, config, insights)
 │       ├── commands/stats/ # Stats command suite (4-layer architecture)
 │       ├── analysis/       # Prompt builders, response parsers, normalizers, runner interface (shared by CLI + server)
-│       ├── providers/      # Source tool providers (claude-code, cursor, codex, copilot, copilot-cli)
+│       ├── providers/      # Source tool providers (claude-code, cursor, codex, pi, copilot, copilot-cli)
 │       ├── parser/         # JSONL parsing, title generation
 │       ├── db/             # SQLite schema, migrations, queries
 │       ├── utils/          # Config, device, paths, telemetry
@@ -66,7 +66,7 @@ code-insights/
   - `actions/` — Action handlers for each subcommand + shared error handler
   - `index.ts` — Command tree with lazy imports
   - `shared.ts` — Shared CLI flags
-- `providers/` — Source tool providers (claude-code, cursor, codex, copilot, copilot-cli)
+- `providers/` — Source tool providers (claude-code, cursor, codex, pi, copilot, copilot-cli)
 - `providers/types.ts` — `SessionProvider` interface
 - `providers/registry.ts` — Provider registration and lookup
 - `parser/jsonl.ts` — JSONL file parsing (used by ClaudeCodeProvider)

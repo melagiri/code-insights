@@ -6,7 +6,7 @@ Turn your AI coding sessions into knowledge. Code Insights extracts patterns fro
 
 ## The Problem
 
-AI coding tools store every conversation as files on your machine. Claude Code uses JSONL in `~/.claude/projects/`. Cursor stores state in SQLite. Codex CLI and Copilot CLI write their own session formats. This is valuable data:
+AI coding tools store every conversation as files on your machine. Claude Code and Pi use JSONL session files. Cursor stores state in SQLite. Codex CLI and Copilot CLI write their own session formats. This is valuable data:
 - What features did you work on last week?
 - Why did you choose that architecture?
 - What mistakes did you make (and fix)?
@@ -29,7 +29,7 @@ Code Insights provides:
 
 ## Who It's For
 
-- **Developers using multiple AI coding tools** who want to understand their AI-assisted work patterns across Claude Code, Cursor, Codex CLI, Copilot CLI, and VS Code Copilot Chat
+- **Developers using multiple AI coding tools** who want to understand their AI-assisted work patterns across Claude Code, Cursor, Codex CLI, Pi, Copilot CLI, and VS Code Copilot Chat
 - **Learners** who want to review and reinforce what they've built with AI assistants
 - **Privacy-conscious developers** who want insights without giving up their data to a cloud service
 
@@ -52,6 +52,7 @@ LLM analysis uses your own API key, stored in `~/.code-insights/config.json` (mo
 | **Claude Code** | JSONL sessions from `~/.claude/projects/` |
 | **Cursor** | Sessions from Cursor's local SQLite state |
 | **Codex CLI** | Rollout files from `~/.codex/sessions/` |
+| **Pi** | JSONL sessions from `~/.pi/agent/sessions/` |
 | **Copilot CLI** | Event files from `~/.copilot/session-state/` |
 | **VS Code Copilot Chat** | Sessions from VS Code Copilot Chat local storage |
 
@@ -316,6 +317,7 @@ Each provider implements the `SessionProvider` interface (`discover()`, `parse()
 | **Claude Code** | JSONL (append-only, one JSON object per line) | `~/.claude/projects/<path>/<id>.jsonl` |
 | **Cursor** | SQLite key-value (`state.vscdb`, JSON blobs) | `~/Library/Application Support/Cursor/User/` |
 | **Codex CLI** | JSONL (event-based stream) | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
+| **Pi** | JSONL (append-only session tree) | `~/.pi/agent/sessions/<path>/<id>.jsonl` |
 | **Copilot CLI** | JSONL (events) | `~/.copilot/session-state/{id}/events.jsonl` |
 | **VS Code Copilot Chat** | JSON | Platform-specific Copilot Chat storage |
 
@@ -326,6 +328,7 @@ Each provider implements the `SessionProvider` interface (`discover()`, `parse()
 | Claude Code | `~/.claude/projects/` | `~/.claude/projects/` | `%USERPROFILE%\.claude\projects\` |
 | Cursor | `~/Library/Application Support/Cursor/User/` | `~/.config/Cursor/User/` | `%APPDATA%\Cursor\User\` |
 | Codex CLI | `~/.codex/sessions/` | `~/.codex/sessions/` | `%USERPROFILE%\.codex\sessions\` |
+| Pi | `~/.pi/agent/sessions/` | `~/.pi/agent/sessions/` | `%USERPROFILE%\.pi\agent\sessions\` |
 | Copilot CLI | `~/.copilot/session-state/` | `~/.copilot/session-state/` | `%USERPROFILE%\.copilot\session-state\` |
 
 Adding a new source tool requires implementing the `SessionProvider` interface in `cli/src/providers/`, registering it in the provider registry, and adding dashboard display support (colors, avatars, filter options).

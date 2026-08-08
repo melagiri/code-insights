@@ -136,7 +136,7 @@ export function databaseChecks(): Check[] {
       run: async () => {
         try {
           const db = getDb();
-          const knownTools = ['claude-code', 'cursor', 'codex-cli', 'copilot-cli', 'copilot'];
+          const knownTools = ['claude-code', 'cursor', 'codex-cli', 'copilot-cli', 'copilot', 'pi'];
           const placeholders = knownTools.map(() => '?').join(', ');
           const row = db.prepare(
             `SELECT COUNT(*) as cnt FROM sessions WHERE source_tool NOT IN (${placeholders})`

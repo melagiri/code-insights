@@ -84,6 +84,7 @@ export const SOURCE_TOOL_COLORS: Record<string, string> = {
   'claude-code': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
   'cursor': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   'codex-cli': 'bg-green-500/10 text-green-600 border-green-500/20',
+  'pi': 'bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/20',
   'copilot-cli': 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
   'copilot': 'bg-violet-500/10 text-violet-600 border-violet-500/20',
 };
