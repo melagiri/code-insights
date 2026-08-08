@@ -30,6 +30,8 @@ function getAssistantConfig(sourceTool?: string): { name: string; avatarColor: s
       return { name: 'Cursor', avatarColor: 'bg-blue-500' };
     case 'codex-cli':
       return { name: 'Codex', avatarColor: 'bg-green-500' };
+    case 'pi':
+      return { name: 'Pi', avatarColor: 'bg-fuchsia-500' };
     case 'copilot':
       return { name: 'Copilot', avatarColor: 'bg-violet-500' };
     case 'copilot-cli':

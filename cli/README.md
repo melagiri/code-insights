@@ -60,6 +60,7 @@ code-insights doctor                   # diagnose your installation (start here 
 | **Claude Code** | `~/.claude/projects/**/*.jsonl` |
 | **Cursor** | Workspace storage SQLite (macOS, Linux, Windows) |
 | **Codex CLI** | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
+| **Pi** | `~/.pi/agent/sessions/**/*.jsonl` |
 | **Copilot CLI** | `~/.copilot/session-state/{id}/events.jsonl` |
 | **VS Code Copilot Chat** | Platform-specific Copilot Chat storage |
 
@@ -138,6 +139,7 @@ code-insights sync --dry-run
 code-insights sync --source cursor
 code-insights sync --source claude-code
 code-insights sync --source codex-cli
+code-insights sync --source pi
 code-insights sync --source copilot-cli
 
 # Sync only sessions from a specific project

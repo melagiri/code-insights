@@ -701,7 +701,7 @@ export default function SettingsPage() {
             <p>code-insights dashboard</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            The CLI parses sessions from Claude Code, Cursor, Codex CLI, and Copilot CLI into a
+            The CLI parses sessions from Claude Code, Cursor, Codex CLI, Pi, and Copilot CLI into a
             local SQLite database. All data stays on your machine.
           </p>
         </CardContent>

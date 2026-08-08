@@ -35,7 +35,7 @@ No hosted infrastructure. No Vercel. No Firebase. No Supabase. One install, zero
 
 Code Insights is a utility, not a product. It should:
 - Do one thing well (extract insights from AI coding sessions)
-- Support multiple source tools (Claude Code, Cursor, Codex CLI, Copilot CLI, VS Code Copilot Chat)
+- Support multiple source tools (Claude Code, Cursor, Codex CLI, Pi, Copilot CLI, VS Code Copilot Chat)
 - Be easy to install and configure
 - Stay out of the way once set up
 
@@ -59,7 +59,7 @@ Code Insights is a utility, not a product. It should:
 ### Phase 4: Feature Parity ✅
 - Vite + React SPA replacing the hosted web dashboard
 - Hono server embedding the SPA — served via `code-insights dashboard`
-- Multi-source support: Claude Code, Cursor, Codex CLI, Copilot CLI, VS Code Copilot Chat
+- Multi-source support: Claude Code, Cursor, Codex CLI, Pi, Copilot CLI, VS Code Copilot Chat
 - Full feature parity between CLI stats and dashboard views
 
 ### Phase 5: Telemetry ✅

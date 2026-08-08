@@ -10,7 +10,7 @@ export function applySharedFlags(cmd: Command): Command {
   return cmd
     .option('-p, --period <period>', 'Time range: 7d, 30d, 90d, all', '7d')
     .option('--project <name>', 'Scope to a single project')
-    .option('--source <tool>', 'Filter by source tool (claude-code, cursor, etc.)')
+    .option('--source <tool>', 'Filter by source tool (claude-code, cursor, pi, etc.)')
     .option('--no-sync', 'Skip auto-sync before displaying stats');
 }
 

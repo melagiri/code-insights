@@ -11,6 +11,7 @@ export const SOURCE_TOOLS = [
   { value: 'claude-code', label: 'Claude Code' },
   { value: 'cursor', label: 'Cursor' },
   { value: 'codex-cli', label: 'Codex CLI' },
+  { value: 'pi', label: 'Pi' },
   { value: 'copilot-cli', label: 'Copilot CLI' },
   { value: 'copilot', label: 'Copilot' },
 ] as const;
@@ -21,6 +22,7 @@ const DOT_COLORS: Record<string, string> = {
   'claude-code': 'bg-orange-500',
   'cursor': 'bg-blue-500',
   'codex-cli': 'bg-green-500',
+  'pi': 'bg-fuchsia-500',
   'copilot-cli': 'bg-cyan-500',
   'copilot': 'bg-violet-500',
 };

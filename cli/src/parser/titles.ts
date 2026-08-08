@@ -24,7 +24,7 @@ const EDIT_TOOLS = new Set([
   'replace_string_in_file', 'copilot_replaceString',  // Copilot VS Code
   'create_file', 'copilot_createFile',                // Copilot VS Code
   'apply_patch',                                      // Codex CLI (primary edit tool)
-  'edit', 'write_file', 'patch',                      // generic fallbacks
+  'edit', 'write', 'write_file', 'patch',             // Pi + generic fallbacks
 ]);
 
 // Tools that read, search, or browse file content
@@ -35,7 +35,7 @@ const READ_TOOLS = new Set([
   'copilot_searchCodebase', 'semantic_search',        // Copilot VS Code
   'file_search', 'copilot_findFiles',                 // Copilot VS Code
   'list_dir', 'copilot_listDirectory',                // Copilot VS Code
-  'grep', 'view',                                     // Copilot CLI / Codex
+  'read', 'grep', 'view',                             // Pi / Copilot CLI / Codex
 ]);
 
 function isEditTool(name: string): boolean {

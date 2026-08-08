@@ -182,6 +182,7 @@ export const SOURCE_TOOL_DISPLAY_NAMES: Record<string, string> = {
   'claude-code': 'Claude Code',
   'cursor': 'Cursor',
   'codex-cli': 'Codex CLI',
+  'pi': 'Pi',
   'copilot': 'GitHub Copilot',
   'copilot-cli': 'GitHub Copilot',
 };

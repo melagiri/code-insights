@@ -371,6 +371,14 @@ function detectProviders(): string[] {
     detected.push('codex-cli');
   }
 
+  const expandPiHome = (value: string): string => value.replace(/^~(?=$|[\\/])/, home);
+  const piSessionsDir = process.env.PI_CODING_AGENT_SESSION_DIR
+    ? expandPiHome(process.env.PI_CODING_AGENT_SESSION_DIR)
+    : path.join(expandPiHome(process.env.PI_CODING_AGENT_DIR || path.join(home, '.pi', 'agent')), 'sessions');
+  if (fs.existsSync(piSessionsDir)) {
+    detected.push('pi');
+  }
+
   if (fs.existsSync(path.join(home, '.copilot', 'session-state'))) {
     detected.push('copilot-cli');
   }

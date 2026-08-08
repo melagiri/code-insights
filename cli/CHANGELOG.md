@@ -2,6 +2,12 @@
 
 All notable changes to `@code-insights/cli` will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- Pi Coding Agent session discovery, parsing, usage accounting, and dashboard source filtering.
+
 ## [4.11.0] - 2026-05-19
 
 ### Added
