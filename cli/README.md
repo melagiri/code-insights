@@ -58,7 +58,7 @@ code-insights doctor                   # diagnose your installation (start here 
 | Tool | Data Location |
 |------|---------------|
 | **Claude Code** | `~/.claude/projects/**/*.jsonl` |
-| **Cursor** | Workspace storage SQLite (macOS, Linux, Windows) |
+| **Cursor** | Agent transcript JSONL (`~/.cursor/projects/*/agent-transcripts/`) + legacy workspace SQLite |
 | **Codex CLI** | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` |
 | **Copilot CLI** | `~/.copilot/session-state/{id}/events.jsonl` |
 | **VS Code Copilot Chat** | Platform-specific Copilot Chat storage |

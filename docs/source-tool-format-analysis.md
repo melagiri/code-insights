@@ -139,7 +139,15 @@ Parser is production-quality. Handles all current format features.
 
 ## 3. Cursor
 
-### Format
+### Formats
+
+Modern Cursor Agent sessions are exported as JSONL:
+
+- **Location:** `~/.cursor/projects/<encoded-cwd>/agent-transcripts/<session-id>/<session-id>.jsonl`
+- **Records:** `{role, message: {content}}` user/assistant entries plus lifecycle records such as `turn_ended`
+- **Content:** text, thinking, and tool-use input blocks; tool outputs may be absent
+
+The provider also retains support for the legacy Cursor IDE SQLite storage:
 
 - **File type:** SQLite (VS Code `state.vscdb`)
 - **Location:** `~/Library/Application Support/Cursor/User/workspaceStorage/<hash>/state.vscdb`

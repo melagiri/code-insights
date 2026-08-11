@@ -14,6 +14,7 @@ import { CursorProvider } from '../cursor.js';
 // ---------------------------------------------------------------------------
 
 const COMPOSER_ID = 'test-composer-abc123';
+const originalCursorAgentHome = process.env.CURSOR_AGENT_HOME;
 
 function makeCursorDb(dir: string, composerData: Record<string, unknown>): string {
   const dbPath = path.join(dir, 'state.vscdb');
@@ -29,6 +30,25 @@ function makeCursorDb(dir: string, composerData: Record<string, unknown>): strin
 
 function virtualPath(dbPath: string): string {
   return `${dbPath}#${COMPOSER_ID}`;
+}
+
+function makeAgentTranscript(
+  dir: string,
+  sessionId: string,
+  records: Array<Record<string, unknown>>,
+  projectSlug = 'Users-test-example-project',
+): string {
+  const transcriptDir = path.join(
+    dir,
+    'projects',
+    projectSlug,
+    'agent-transcripts',
+    sessionId,
+  );
+  fs.mkdirSync(transcriptDir, { recursive: true });
+  const transcriptPath = path.join(transcriptDir, `${sessionId}.jsonl`);
+  fs.writeFileSync(transcriptPath, records.map(record => JSON.stringify(record)).join('\n'));
+  return transcriptPath;
 }
 
 function userBubble(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -49,6 +69,11 @@ describe('CursorProvider — parsing accuracy fixes', () => {
 
   afterEach(() => {
     fs.rmSync(tempDir, { recursive: true, force: true });
+    if (originalCursorAgentHome === undefined) {
+      delete process.env.CURSOR_AGENT_HOME;
+    } else {
+      process.env.CURSOR_AGENT_HOME = originalCursorAgentHome;
+    }
   });
 
   // ── Timestamps ────────────────────────────────────────────────────────────
@@ -271,5 +296,94 @@ describe('CursorProvider — parsing accuracy fixes', () => {
     expect(session!.userMessageCount).toBe(2);
     expect(session!.assistantMessageCount).toBe(2);
     expect(session!.messageCount).toBe(4);
+  });
+});
+
+describe('CursorProvider — modern Agent transcripts', () => {
+  let tempDir: string;
+  const provider = new CursorProvider();
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cursor-agent-test-'));
+    process.env.CURSOR_AGENT_HOME = tempDir;
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    if (originalCursorAgentHome === undefined) {
+      delete process.env.CURSOR_AGENT_HOME;
+    } else {
+      process.env.CURSOR_AGENT_HOME = originalCursorAgentHome;
+    }
+  });
+
+  it('discovers and parses modern JSONL transcripts', async () => {
+    const transcriptPath = makeAgentTranscript(tempDir, 'session-modern-1', [
+      {
+        role: 'user',
+        message: { content: [{ type: 'text', text: '<user_query>Fix the login flow</user_query>' }] },
+      },
+      {
+        role: 'assistant',
+        message: { content: [{ type: 'text', text: 'I will inspect the authentication code.' }] },
+      },
+      {
+        role: 'assistant',
+        message: {
+          content: [
+            { type: 'thinking', thinking: 'The session cookie may be stale.' },
+            { type: 'tool_use', id: 'tool-1', name: 'Read', input: { path: 'src/auth.ts' } },
+          ],
+        },
+      },
+      { type: 'turn_ended', status: 'success' },
+    ]);
+
+    await expect(provider.discover()).resolves.toContain(transcriptPath);
+
+    const session = await provider.parse(transcriptPath);
+    expect(session).not.toBeNull();
+    expect(session!.id).toBe('cursor:session-modern-1');
+    expect(session!.sourceTool).toBe('cursor');
+    expect(session!.projectPath).toBe('/Users/test/example/project');
+    expect(session!.messages).toHaveLength(3);
+    expect(session!.messages[0].content).toBe('Fix the login flow');
+    expect(session!.messages[2].thinking).toBe('The session cookie may be stale.');
+    expect(session!.messages[2].toolCalls).toEqual([
+      { id: 'tool-1', name: 'Read', input: { path: 'src/auth.ts' } },
+    ]);
+    expect(session!.toolCallCount).toBe(1);
+  });
+
+  it('accepts string content and skips malformed or lifecycle records', async () => {
+    const transcriptPath = makeAgentTranscript(tempDir, 'session-modern-2', [
+      { role: 'user', message: { content: 'First question' } },
+      { role: 'assistant', message: { content: 'First answer' } },
+      { type: 'turn_ended', status: 'success' },
+    ]);
+    fs.appendFileSync(transcriptPath, '\nnot-json');
+
+    const session = await provider.parse(transcriptPath);
+    expect(session).not.toBeNull();
+    expect(session!.messageCount).toBe(2);
+    expect(session!.userMessageCount).toBe(1);
+    expect(session!.assistantMessageCount).toBe(1);
+  });
+
+  it('applies the project filter to modern transcript directories', async () => {
+    const included = makeAgentTranscript(
+      tempDir,
+      'included-session',
+      [{ role: 'user', message: { content: 'Included' } }],
+      'Users-test-alpha-project',
+    );
+    makeAgentTranscript(
+      tempDir,
+      'excluded-session',
+      [{ role: 'user', message: { content: 'Excluded' } }],
+      'Users-test-beta-project',
+    );
+
+    await expect(provider.discover({ projectFilter: 'alpha' })).resolves.toEqual([included]);
   });
 });

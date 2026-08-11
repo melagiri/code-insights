@@ -9,7 +9,8 @@ import { isVerbose } from './context.js';
 
 /**
  * Cursor IDE session provider.
- * Discovers and parses sessions from Cursor's SQLite databases.
+ * Discovers and parses sessions from Cursor's SQLite databases and modern
+ * Agent transcript JSONL files.
  *
  * Cursor stores composer conversations in state.vscdb files (SQLite).
  * One DB can contain multiple sessions (composers), so discover() returns
@@ -27,15 +28,13 @@ export class CursorProvider implements SessionProvider {
    */
   async discover(options?: { projectFilter?: string }): Promise<string[]> {
     const cursorDataDir = getCursorDataDir();
-    if (!cursorDataDir) {
-      return [];
-    }
-
     const dbPaths: string[] = [];
 
     // 1. Check workspace storage databases
-    const workspaceStorageDir = path.join(cursorDataDir, 'workspaceStorage');
-    if (fs.existsSync(workspaceStorageDir)) {
+    const workspaceStorageDir = cursorDataDir
+      ? path.join(cursorDataDir, 'workspaceStorage')
+      : null;
+    if (workspaceStorageDir && fs.existsSync(workspaceStorageDir)) {
       const entries = fs.readdirSync(workspaceStorageDir);
       for (const entry of entries) {
         const wsDir = path.join(workspaceStorageDir, entry);
@@ -57,8 +56,10 @@ export class CursorProvider implements SessionProvider {
     }
 
     // 2. Check global storage database
-    const globalDbPath = path.join(cursorDataDir, 'globalStorage', 'state.vscdb');
-    if (fs.existsSync(globalDbPath)) {
+    const globalDbPath = cursorDataDir
+      ? path.join(cursorDataDir, 'globalStorage', 'state.vscdb')
+      : null;
+    if (globalDbPath && fs.existsSync(globalDbPath)) {
       dbPaths.push(globalDbPath);
     }
 
@@ -72,6 +73,21 @@ export class CursorProvider implements SessionProvider {
       }
     }
 
+    // 3. Check modern Agent transcript JSONL files. Cursor writes these under
+    // ~/.cursor/projects/<encoded-cwd>/agent-transcripts/<session>/<session>.jsonl.
+    // Prefer the richer SQLite representation when the same session ID exists
+    // in both stores.
+    const legacyComposerIds = new Set(
+      virtualPaths.map(virtualPath => virtualPath.slice(virtualPath.lastIndexOf('#') + 1)),
+    );
+    const transcriptPaths = discoverAgentTranscripts(options?.projectFilter);
+    for (const transcriptPath of transcriptPaths) {
+      const sessionId = path.basename(transcriptPath, '.jsonl');
+      if (!legacyComposerIds.has(sessionId)) {
+        virtualPaths.push(transcriptPath);
+      }
+    }
+
     return virtualPaths;
   }
 
@@ -80,6 +96,10 @@ export class CursorProvider implements SessionProvider {
    * Virtual path format: `<dbPath>#<composerId>`
    */
   async parse(virtualPath: string): Promise<ParsedSession | null> {
+    if (virtualPath.endsWith('.jsonl')) {
+      return parseAgentTranscript(virtualPath);
+    }
+
     const hashIndex = virtualPath.lastIndexOf('#');
     if (hashIndex === -1) return null;
 
@@ -94,6 +114,248 @@ export class CursorProvider implements SessionProvider {
 // ---------------------------------------------------------------------------
 // Helper functions
 // ---------------------------------------------------------------------------
+
+interface AgentTranscriptBlock {
+  type?: unknown;
+  text?: unknown;
+  thinking?: unknown;
+  id?: unknown;
+  name?: unknown;
+  input?: unknown;
+}
+
+interface AgentTranscriptRecord {
+  role?: unknown;
+  type?: unknown;
+  timestamp?: unknown;
+  createdAt?: unknown;
+  message?: {
+    content?: unknown;
+  };
+}
+
+function getCursorProjectsDir(): string {
+  const cursorHome = process.env.CURSOR_AGENT_HOME || path.join(os.homedir(), '.cursor');
+  return path.join(cursorHome, 'projects');
+}
+
+function discoverAgentTranscripts(projectFilter?: string): string[] {
+  const projectsDir = getCursorProjectsDir();
+  if (!fs.existsSync(projectsDir)) return [];
+
+  const transcripts: string[] = [];
+  for (const projectEntry of fs.readdirSync(projectsDir, { withFileTypes: true })) {
+    if (!projectEntry.isDirectory()) continue;
+
+    const projectDir = path.join(projectsDir, projectEntry.name);
+    const projectPath = resolveAgentProjectPath(projectDir);
+    if (projectFilter) {
+      const filter = projectFilter.toLowerCase();
+      if (!projectPath.toLowerCase().includes(filter) && !projectEntry.name.toLowerCase().includes(filter)) {
+        continue;
+      }
+    }
+
+    const transcriptRoot = path.join(projectDir, 'agent-transcripts');
+    if (!fs.existsSync(transcriptRoot)) continue;
+
+    for (const sessionEntry of fs.readdirSync(transcriptRoot, { withFileTypes: true })) {
+      if (!sessionEntry.isDirectory()) continue;
+      const transcriptPath = path.join(transcriptRoot, sessionEntry.name, `${sessionEntry.name}.jsonl`);
+      if (fs.existsSync(transcriptPath)) transcripts.push(transcriptPath);
+    }
+  }
+
+  return transcripts;
+}
+
+/** Best-effort decode of Cursor's slash-and-underscore-to-dash project slug. */
+function resolveAgentProjectPath(projectDir: string): string {
+  const workerLog = path.join(projectDir, 'worker.log');
+  if (fs.existsSync(workerLog)) {
+    try {
+      const matches = [...fs.readFileSync(workerLog, 'utf-8').matchAll(/workspacePath=(\S+)/g)];
+      const latest = matches.at(-1)?.[1];
+      if (latest) return latest;
+    } catch {
+      // Fall through to slug decoding.
+    }
+  }
+
+  const slug = path.basename(projectDir);
+  const parts = slug.split('-').filter(Boolean);
+  if (parts.length === 0) return `cursor://project-${slug}`;
+
+  // Resolve greedily against real directories so names containing '-' or '_'
+  // are preserved whenever the original checkout still exists.
+  if (parts[0] === 'Users' || parts[0] === 'home') {
+    let current = path.join(path.parse(os.homedir()).root, parts[0]);
+    let index = 1;
+    while (index < parts.length && fs.existsSync(current)) {
+      let matched: string | null = null;
+      let nextIndex = index;
+      for (let end = parts.length; end > index && !matched; end--) {
+        for (const candidate of [parts.slice(index, end).join('_'), parts.slice(index, end).join('-')]) {
+          const candidatePath = path.join(current, candidate);
+          if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isDirectory()) {
+            matched = candidatePath;
+            nextIndex = end;
+            break;
+          }
+        }
+      }
+      if (!matched) break;
+      current = matched;
+      index = nextIndex;
+    }
+    if (index === parts.length) return current;
+  }
+
+  const decoded = parts.join(path.sep);
+  return parts[0] === 'Users' || parts[0] === 'home'
+    ? `${path.parse(os.homedir()).root}${decoded}`
+    : decoded;
+}
+
+function extractAgentText(content: unknown): {
+  content: string;
+  thinking: string | null;
+  toolCalls: ToolCall[];
+} {
+  if (typeof content === 'string') {
+    return { content, thinking: null, toolCalls: [] };
+  }
+
+  if (!Array.isArray(content)) {
+    return { content: '', thinking: null, toolCalls: [] };
+  }
+
+  const textParts: string[] = [];
+  const thinkingParts: string[] = [];
+  const toolCalls: ToolCall[] = [];
+  for (const rawBlock of content) {
+    if (!rawBlock || typeof rawBlock !== 'object') continue;
+    const block = rawBlock as AgentTranscriptBlock;
+    if (block.type === 'text' && typeof block.text === 'string') {
+      textParts.push(block.text);
+    } else if (block.type === 'thinking') {
+      const thinking = typeof block.thinking === 'string' ? block.thinking : block.text;
+      if (typeof thinking === 'string') thinkingParts.push(thinking);
+    } else if (block.type === 'tool_use') {
+      toolCalls.push({
+        id: typeof block.id === 'string' ? block.id : `cursor-tool-${toolCalls.length + 1}`,
+        name: typeof block.name === 'string' ? block.name : 'unknown',
+        input: block.input && typeof block.input === 'object' && !Array.isArray(block.input)
+          ? block.input as Record<string, unknown>
+          : {},
+      });
+    }
+  }
+
+  return {
+    content: textParts.join('\n'),
+    thinking: thinkingParts.length > 0 ? thinkingParts.join('\n') : null,
+    toolCalls,
+  };
+}
+
+function cleanAgentUserText(text: string): string {
+  const userQuery = text.match(/<user_query>\s*([\s\S]*?)\s*<\/user_query>/i);
+  return userQuery ? userQuery[1].trim() : text.trim();
+}
+
+function parseAgentTimestamp(value: unknown): Date | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function parseAgentTranscript(transcriptPath: string): ParsedSession | null {
+  try {
+    const sessionId = path.basename(transcriptPath, '.jsonl');
+    if (!sessionId || !fs.existsSync(transcriptPath)) return null;
+
+    const messages: ParsedMessage[] = [];
+    const timestamps: Date[] = [];
+    const lines = fs.readFileSync(transcriptPath, 'utf-8').split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      let record: AgentTranscriptRecord;
+      try {
+        record = JSON.parse(line) as AgentTranscriptRecord;
+      } catch {
+        if (isVerbose()) console.warn(`[cursor] skipping malformed JSONL record in ${transcriptPath}`);
+        continue;
+      }
+
+      if (record.role !== 'user' && record.role !== 'assistant') continue;
+      const extracted = extractAgentText(record.message?.content);
+      const content = record.role === 'user' ? cleanAgentUserText(extracted.content) : extracted.content;
+      if (!content && !extracted.thinking && extracted.toolCalls.length === 0) continue;
+
+      const timestamp = parseAgentTimestamp(record.timestamp ?? record.createdAt) ?? new Date(0);
+      if (timestamp.getTime() > 0) timestamps.push(timestamp);
+      messages.push({
+        id: `cursor:${sessionId}:message:${messages.length + 1}`,
+        sessionId: `cursor:${sessionId}`,
+        type: record.role,
+        content,
+        thinking: extracted.thinking,
+        toolCalls: extracted.toolCalls,
+        toolResults: [],
+        usage: null,
+        timestamp,
+        parentId: null,
+      });
+    }
+
+    if (messages.length === 0) return null;
+
+    const stats = fs.statSync(transcriptPath);
+    const fallbackStartedAt = stats.birthtimeMs > 0 ? stats.birthtime : stats.mtime;
+    const startedAt = timestamps.length > 0 ? timestamps[0] : fallbackStartedAt;
+    const endedAt = timestamps.length > 0 ? timestamps[timestamps.length - 1] : stats.mtime;
+    const projectDir = path.dirname(path.dirname(path.dirname(transcriptPath)));
+    const projectPath = resolveAgentProjectPath(projectDir);
+    const projectName = projectPath.startsWith('cursor://')
+      ? projectPath.replace('cursor://', '')
+      : path.basename(projectPath);
+    const userMessages = messages.filter(message => message.type === 'user');
+    const assistantMessages = messages.filter(message => message.type === 'assistant');
+
+    const session: ParsedSession = {
+      id: `cursor:${sessionId}`,
+      projectPath,
+      projectName,
+      summary: null,
+      generatedTitle: null,
+      titleSource: null,
+      sessionCharacter: null,
+      startedAt,
+      endedAt,
+      messageCount: messages.length,
+      userMessageCount: userMessages.length,
+      assistantMessageCount: assistantMessages.length,
+      toolCallCount: messages.reduce((sum, message) => sum + message.toolCalls.length, 0),
+      compactCount: 0,
+      autoCompactCount: 0,
+      slashCommands: [],
+      gitBranch: null,
+      claudeVersion: null,
+      sourceTool: 'cursor',
+      messages,
+    };
+
+    const titleResult = generateTitle(session);
+    session.generatedTitle = titleResult.title;
+    session.titleSource = titleResult.source;
+    session.sessionCharacter = titleResult.character || detectSessionCharacter(session);
+    return session;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Find Cursor's data directory based on the current platform.
