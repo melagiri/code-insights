@@ -57,6 +57,20 @@ function writeSettings(data: unknown): void {
   fs.writeFileSync(hooksFile(), JSON.stringify(data));
 }
 
+function cursorHooksFile(): string {
+  return path.join(mockHomeDir, '.cursor', 'hooks.json');
+}
+
+function readCursorHooks(): Record<string, unknown> {
+  return JSON.parse(fs.readFileSync(cursorHooksFile(), 'utf-8'));
+}
+
+function writeCursorHooks(data: unknown): void {
+  const dir = path.join(mockHomeDir, '.cursor');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(cursorHooksFile(), JSON.stringify(data));
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('installHookCommand', () => {
@@ -266,5 +280,60 @@ describe('uninstallHookCommand', () => {
 
     const settings = readSettings();
     expect(settings.hooks).toBeUndefined();
+  });
+});
+
+describe('Cursor hook', () => {
+  it('installs one native stop hook and preserves existing configuration', async () => {
+    writeCursorHooks({
+      version: 1,
+      customSetting: true,
+      hooks: { beforeSubmitPrompt: [{ command: 'other-tool validate' }] },
+    });
+
+    const { installHookCommand } = await import('../install-hook.js');
+    await installHookCommand({ cursor: true });
+
+    const settings = readCursorHooks();
+    expect(settings.version).toBe(1);
+    expect(settings.customSetting).toBe(true);
+    const hooks = settings.hooks as Record<string, Array<{ command: string }>>;
+    expect(hooks.beforeSubmitPrompt).toEqual([{ command: 'other-tool validate' }]);
+    expect(hooks.stop).toHaveLength(1);
+    expect(hooks.stop[0].command).toMatch(/^node .+index\.js cursor-stop -q$/);
+  });
+
+  it('does not duplicate the Cursor hook when installed twice', async () => {
+    const { installHookCommand } = await import('../install-hook.js');
+    await installHookCommand({ cursor: true });
+    await installHookCommand({ cursor: true });
+
+    const settings = readCursorHooks();
+    const hooks = settings.hooks as Record<string, unknown[]>;
+    expect(hooks.stop).toHaveLength(1);
+  });
+
+  it('uninstalls only the Code Insights Cursor hook', async () => {
+    writeCursorHooks({
+      version: 1,
+      hooks: {
+        stop: [
+          { command: 'other-tool stop' },
+          { command: 'node /path/code-insights cursor-stop -q' },
+        ],
+      },
+    });
+
+    const { uninstallHookCommand } = await import('../install-hook.js');
+    await uninstallHookCommand({ cursor: true });
+
+    const settings = readCursorHooks();
+    const hooks = settings.hooks as Record<string, Array<{ command: string }>>;
+    expect(hooks.stop).toEqual([{ command: 'other-tool stop' }]);
+  });
+
+  it('handles a missing Cursor hooks file', async () => {
+    const { uninstallHookCommand } = await import('../install-hook.js');
+    await expect(uninstallHookCommand({ cursor: true })).resolves.toBeUndefined();
   });
 });

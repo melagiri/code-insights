@@ -32,6 +32,7 @@ npx @code-insights/cli
 npm install -g @code-insights/cli
 code-insights                          # sync sessions + open dashboard
 code-insights install-hook             # auto-sync + auto-analyze on session end
+code-insights install-hook --cursor    # auto-sync Cursor transcripts after completed turns
 ```
 
 The dashboard opens at `http://localhost:7890` and shows your sessions, analytics, and LLM-powered insights.
@@ -269,21 +270,24 @@ code-insights insights check --analyze
 code-insights insights check --days 14
 ```
 
-### Auto-Sync & Auto-Analyze Hook
+### Automatic Hooks
 
 ```bash
-# Install Claude Code hooks — auto-sync + auto-analyze when sessions end
+# Claude Code: auto-sync + auto-analyze when sessions end
 code-insights install-hook
 
-# Install only the sync hook (no analysis)
-code-insights install-hook --sync-only
+# Cursor: auto-sync after each completed Agent turn
+# Analysis remains explicit to avoid repeated LLM usage.
+code-insights install-hook --cursor
 
-# Install only the analysis hook
-code-insights install-hook --analysis-only
-
-# Remove all hooks
+# Remove the Claude Code or Cursor hook
 code-insights uninstall-hook
+code-insights uninstall-hook --cursor
 ```
+
+The Cursor hook is stored in `~/.cursor/hooks.json`, preserves unrelated hooks,
+and uses Cursor's native `stop` event to sync only the transcript supplied in
+the hook payload.
 
 ### Telemetry
 

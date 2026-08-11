@@ -15,6 +15,7 @@ import { telemetryCommand } from './commands/telemetry.js';
 import { reflectCommand } from './commands/reflect.js';
 import { insightsCommand, insightsCheckCommand } from './commands/insights.js';
 import { sessionEndCommand } from './commands/session-end.js';
+import { cursorStopCommand } from './commands/cursor-stop.js';
 import { buildQueueCommand } from './commands/queue.js';
 import { doctorCommand } from './commands/doctor/index.js';
 import { showTelemetryNoticeIfNeeded } from './utils/telemetry.js';
@@ -92,13 +93,15 @@ program
 
 program
   .command('install-hook')
-  .description('Install Claude Code SessionEnd hook for automatic sync and analysis')
-  .action(() => installHookCommand());
+  .description('Install automatic sync hooks (Claude Code by default)')
+  .option('--cursor', 'Install Cursor stop hook for automatic transcript sync')
+  .action((options) => installHookCommand(options));
 
 program
   .command('uninstall-hook')
-  .description('Remove Claude Code hooks (sync and analysis)')
-  .action(uninstallHookCommand);
+  .description('Remove automatic sync hooks (Claude Code by default)')
+  .option('--cursor', 'Remove the Code Insights Cursor stop hook')
+  .action((options) => uninstallHookCommand(options));
 
 program
   .command('doctor')
@@ -142,6 +145,12 @@ program
   .action(async (opts) => {
     await sessionEndCommand({ native: opts.native ?? true, quiet: opts.quiet, source: opts.source, model: opts.model });
   });
+
+program
+  .command('cursor-stop')
+  .description('Internal Cursor stop hook entry point for transcript sync')
+  .option('-q, --quiet', 'Suppress output')
+  .action(cursorStopCommand);
 
 // queue command suite — manage the analysis_queue
 program.addCommand(buildQueueCommand());

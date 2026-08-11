@@ -5,14 +5,22 @@ import chalk from 'chalk';
 import { trackEvent, captureError, classifyError } from '../utils/telemetry.js';
 import {
   HOOKS_FILE,
+  CURSOR_HOOKS_FILE,
   CLI_ENTRY,
   type ClaudeSettings,
   type HookConfig,
+  type CursorHooksSettings,
   getHookCommand,
   hookAlreadyInstalled,
+  cursorHookAlreadyInstalled,
 } from '../utils/hooks-utils.js';
 
 const CLAUDE_SETTINGS_DIR = path.join(os.homedir(), '.claude');
+const CURSOR_SETTINGS_DIR = path.join(os.homedir(), '.cursor');
+
+export interface HookCommandOptions {
+  cursor?: boolean;
+}
 
 /**
  * Remove any existing Code Insights Stop hooks (v4.8.x migration).
@@ -40,7 +48,12 @@ function removeStopHooks(settings: ClaudeSettings): boolean {
  * Running install-hook again removes the old Stop hook (v4.8.x hygiene) and
  * installs a fresh session-end hook.
  */
-export async function installHookCommand(): Promise<void> {
+export async function installHookCommand(options: HookCommandOptions = {}): Promise<void> {
+  if (options.cursor) {
+    await installCursorHook();
+    return;
+  }
+
   console.log(chalk.cyan('\nInstall Code Insights Hook\n'));
 
   const sessionEndCommand = `node ${CLI_ENTRY} session-end --native -q`;
@@ -109,11 +122,65 @@ export async function installHookCommand(): Promise<void> {
   }
 }
 
+async function installCursorHook(): Promise<void> {
+  console.log(chalk.cyan('\nInstall Code Insights Cursor Hook\n'));
+  const stopCommand = `node ${CLI_ENTRY} cursor-stop -q`;
+
+  console.log(chalk.gray('This will add one Cursor stop hook:\n'));
+  console.log(chalk.white('  stop hook — Syncs the current Cursor transcript after each completed turn'));
+  console.log(chalk.gray('              Analysis remains explicit to avoid repeated LLM usage.\n'));
+
+  try {
+    let settings: CursorHooksSettings = {};
+    if (fs.existsSync(CURSOR_HOOKS_FILE)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(CURSOR_HOOKS_FILE, 'utf-8')) as CursorHooksSettings;
+      } catch {
+        console.log(chalk.yellow('Could not parse existing hooks.json, creating a new one.'));
+      }
+    }
+
+    settings.version ??= 1;
+    settings.hooks ??= {};
+    settings.hooks.stop ??= [];
+    if (!cursorHookAlreadyInstalled(settings.hooks.stop)) {
+      settings.hooks.stop.push({ command: stopCommand });
+    }
+
+    fs.mkdirSync(CURSOR_SETTINGS_DIR, { recursive: true });
+    fs.writeFileSync(CURSOR_HOOKS_FILE, JSON.stringify(settings, null, 2));
+
+    console.log(chalk.green('Cursor hook installed successfully!'));
+    console.log(chalk.gray(`\nConfiguration saved to: ${CURSOR_HOOKS_FILE}`));
+    console.log(chalk.cyan('\nHow it works:'));
+    console.log(chalk.white('  After a completed Cursor Agent turn, Code Insights syncs that transcript.'));
+    console.log(chalk.white('  Run analysis explicitly when the session is ready.'));
+
+    trackEvent('cli_install_hook', {
+      success: true,
+      provider: 'cursor',
+      hook_types: 'stop',
+      sync_installed: true,
+      analysis_installed: false,
+    });
+  } catch (error) {
+    console.log(chalk.red(`Failed to install Cursor hook: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    const { error_type, error_message } = classifyError(error);
+    trackEvent('cli_install_hook', { success: false, provider: 'cursor', error_type, error_message });
+    captureError(error, { command: 'install_hook_cursor', error_type });
+  }
+}
+
 /**
  * Uninstall Code Insights hooks.
  * Handles both v4.9+ (SessionEnd session-end) and v4.8.x (Stop sync + SessionEnd insights --hook).
  */
-export async function uninstallHookCommand(): Promise<void> {
+export async function uninstallHookCommand(options: HookCommandOptions = {}): Promise<void> {
+  if (options.cursor) {
+    await uninstallCursorHook();
+    return;
+  }
+
   console.log(chalk.cyan('\nUninstall Code Insights Hooks\n'));
 
   if (!fs.existsSync(HOOKS_FILE)) {
@@ -159,6 +226,35 @@ export async function uninstallHookCommand(): Promise<void> {
     console.log(chalk.green('Hooks uninstalled successfully!'));
   } catch (error) {
     console.log(chalk.red('Failed to uninstall hooks:'));
+    console.error(error instanceof Error ? error.message : 'Unknown error');
+  }
+}
+
+async function uninstallCursorHook(): Promise<void> {
+  console.log(chalk.cyan('\nUninstall Code Insights Cursor Hook\n'));
+
+  if (!fs.existsSync(CURSOR_HOOKS_FILE)) {
+    console.log(chalk.yellow('No Cursor hooks file found. Nothing to uninstall.'));
+    return;
+  }
+
+  try {
+    const settings = JSON.parse(fs.readFileSync(CURSOR_HOOKS_FILE, 'utf-8')) as CursorHooksSettings;
+    if (!settings.hooks?.stop) {
+      console.log(chalk.yellow('No Code Insights Cursor hook found. Nothing to uninstall.'));
+      return;
+    }
+
+    settings.hooks.stop = settings.hooks.stop.filter(
+      hook => !hook.command.includes('code-insights'),
+    );
+    if (settings.hooks.stop.length === 0) delete settings.hooks.stop;
+    if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+
+    fs.writeFileSync(CURSOR_HOOKS_FILE, JSON.stringify(settings, null, 2));
+    console.log(chalk.green('Cursor hook uninstalled successfully!'));
+  } catch (error) {
+    console.log(chalk.red('Failed to uninstall Cursor hook:'));
     console.error(error instanceof Error ? error.message : 'Unknown error');
   }
 }

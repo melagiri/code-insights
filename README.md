@@ -117,6 +117,7 @@ npx @code-insights/cli
 npm install -g @code-insights/cli
 code-insights                          # sync sessions + open dashboard
 code-insights install-hook             # auto-sync + auto-analyze on session end
+code-insights install-hook --cursor    # auto-sync Cursor transcripts after completed turns
 ```
 
 ### Common Commands

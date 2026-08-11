@@ -4,6 +4,7 @@ import * as os from 'os';
 import { fileURLToPath } from 'url';
 
 export const HOOKS_FILE = path.join(os.homedir(), '.claude', 'settings.json');
+export const CURSOR_HOOKS_FILE = path.join(os.homedir(), '.cursor', 'hooks.json');
 
 // Stable path to the CLI entry point — works across npm link, global install, and npx.
 // Resolved relative to this file's location in utils/ (one level up to src/, then index.js).
@@ -24,6 +25,19 @@ export interface HookConfig {
   hooks: Array<string | { type: string; command: string; timeout?: number }>;
 }
 
+export interface CursorHookCommand {
+  command: string;
+}
+
+export interface CursorHooksSettings {
+  version?: number;
+  hooks?: {
+    stop?: CursorHookCommand[];
+    [key: string]: CursorHookCommand[] | undefined;
+  };
+  [key: string]: unknown;
+}
+
 /** Extract command string from both old (string) and new ({type, command}) hook formats */
 export function getHookCommand(hook: string | { type: string; command: string }): string {
   return typeof hook === 'string' ? hook : hook.command;
@@ -34,6 +48,10 @@ export function hookAlreadyInstalled(hookList: HookConfig[]): boolean {
   return hookList.some(
     (h) => h.hooks.some((hook) => getHookCommand(hook).includes('code-insights'))
   );
+}
+
+export function cursorHookAlreadyInstalled(hookList: CursorHookCommand[]): boolean {
+  return hookList.some(hook => hook.command.includes('code-insights'));
 }
 
 /** Read and parse ~/.claude/settings.json. Returns null if missing or unparseable. */
