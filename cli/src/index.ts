@@ -93,7 +93,9 @@ program
 program
   .command('install-hook')
   .description('Install Claude Code SessionEnd hook for automatic sync and analysis')
-  .action(() => installHookCommand());
+  .option('--runner <runner>', 'Analysis runner: api, claude, codex, or opencode', 'claude')
+  .option('--model <model>', 'Optional model override for the selected runner')
+  .action((opts) => installHookCommand({ runner: opts.runner, model: opts.model }));
 
 program
   .command('uninstall-hook')
@@ -136,11 +138,12 @@ program
   .command('session-end')
   .description('SessionEnd hook: sync session, enqueue for analysis, spawn background worker')
   .option('--native', 'Use claude -p for analysis worker (default: true)')
+  .option('--runner <runner>', 'Analysis runner: api, claude, codex, or opencode')
   .option('-s, --source <tool>', 'Source tool identifier (default: claude-code)')
   .option('-q, --quiet', 'Suppress output')
   .option('--model <model>', 'Model for native analysis (default: sonnet)')
   .action(async (opts) => {
-    await sessionEndCommand({ native: opts.native ?? true, quiet: opts.quiet, source: opts.source, model: opts.model });
+    await sessionEndCommand({ native: opts.native ?? !opts.runner, runner: opts.runner, quiet: opts.quiet, source: opts.source, model: opts.model });
   });
 
 // queue command suite — manage the analysis_queue
@@ -151,6 +154,7 @@ const insightsCmd = program
   .command('insights [session_id]')
   .description('Analyze a session with AI — extracts insights and prompt quality score')
   .option('--native', 'Use claude -p (your Claude subscription, no API key required)')
+  .option('--runner <runner>', 'Analysis runner: api, claude, codex, or opencode')
   .option('--hook', 'Read session context from stdin (for Claude Code SessionEnd hook)')
   .option('-s, --source <tool>', 'Source tool identifier (default: claude-code)')
   .option('--force', 'Re-analyze even if already analyzed at this session length')

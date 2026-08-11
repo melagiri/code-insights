@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useLlmConfig, useSaveLlmConfig } from '@/hooks/useConfig';
 import { useUserProfile, normalizeGithubUsername } from '@/hooks/useUserProfile';
-import { fetchOllamaModels, fetchLlamaCppModels, testLlmConfig } from '@/lib/api';
+import { fetchOllamaModels, fetchLlamaCppModels, fetchOpenCodeModels, testLlmConfig } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 // TODO: tech debt — duplicated provider types (this local type mirrors dashboard/src/lib/types.ts LLMConfig.provider)
-type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'llamacpp';
+type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'opencode' | 'ollama' | 'llamacpp';
 
 interface ProviderInfo {
   id: LLMProvider;
@@ -39,9 +39,9 @@ const PROVIDERS: ProviderInfo[] = [
     requiresApiKey: true,
     apiKeyLink: 'https://platform.openai.com/api-keys',
     models: [
-      { id: 'gpt-4.1', name: 'GPT-4.1', description: 'Best' },
-      { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', description: 'Fast & cheap' },
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Fallback' },
+      { id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol', description: 'Frontier capability' },
+      { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', description: 'Balanced' },
+      { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', description: 'Cost-sensitive workloads' },
     ],
   },
   {
@@ -50,8 +50,9 @@ const PROVIDERS: ProviderInfo[] = [
     requiresApiKey: true,
     apiKeyLink: 'https://console.anthropic.com/settings/keys',
     models: [
-      { id: 'claude-opus-4-6', name: 'Claude Opus 4.6', description: 'Most capable' },
-      { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', description: 'Best balance' },
+      { id: 'claude-fable-5', name: 'Claude Fable 5', description: 'Highest capability' },
+      { id: 'claude-opus-5', name: 'Claude Opus 5', description: 'Complex agentic coding' },
+      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', description: 'Best balance' },
       { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', description: 'Fast & cheap' },
     ],
   },
@@ -61,9 +62,21 @@ const PROVIDERS: ProviderInfo[] = [
     requiresApiKey: true,
     apiKeyLink: 'https://aistudio.google.com/app/apikey',
     models: [
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast' },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Capable' },
-      { id: 'gemma-3-27b-it', name: 'Gemma 4 27B IT', description: 'Free via Gemini API' },
+      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview', description: 'Most capable' },
+      { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', description: 'Agentic and coding workflows' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', description: 'Fast and efficient' },
+    ],
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode Zen / Go',
+    requiresApiKey: true,
+    apiKeyLink: 'https://opencode.ai/auth',
+    models: [
+      { id: 'big-pickle', name: 'Big Pickle', description: 'Zen free model' },
+      { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', description: 'OpenCode Zen' },
+      { id: 'kimi-k3', name: 'Kimi K3', description: 'OpenCode Go' },
+      { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', description: 'Zen or Go' },
     ],
   },
   {
@@ -130,6 +143,7 @@ export default function SettingsPage() {
   const [ollamaCorsOpen, setOllamaCorsOpen] = useState(false);
   const [llamacppDiscoveredModels, setLlamacppDiscoveredModels] = useState<string[]>([]);
   const [llamacppDiscovering, setLlamacppDiscovering] = useState(false);
+  const [openCodeModels, setOpenCodeModels] = useState<string[]>([]);
 
   // Populate form from loaded config
   useEffect(() => {
@@ -168,6 +182,13 @@ export default function SettingsPage() {
     fetchOllamaModels(llmBaseUrl || undefined)
       .then((r) => setOllamaDiscoveredModels(r.models.map((m) => m.name)))
       .catch(() => {});
+  }, [llmProvider, llmBaseUrl]);
+
+  useEffect(() => {
+    if (llmProvider !== 'opencode') return;
+    fetchOpenCodeModels(llmBaseUrl || undefined)
+      .then((r) => setOpenCodeModels(r.models.map((m) => m.id)))
+      .catch(() => setOpenCodeModels([]));
   }, [llmProvider, llmBaseUrl]);
 
   // Handler to manually discover llamacpp models via the Discover button
@@ -424,6 +445,25 @@ export default function SettingsPage() {
             </Select>
           </div>
 
+          {llmProvider === 'opencode' && (
+            <div>
+              <label className="text-sm font-medium">API Base URL</label>
+              <Select
+                value={llmBaseUrl || 'https://opencode.ai/zen/v1'}
+                onValueChange={setLlmBaseUrl}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="https://opencode.ai/zen/v1">OpenCode Zen</SelectItem>
+                  <SelectItem value="https://opencode.ai/zen/go/v1">OpenCode Go</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select the endpoint matching the API key and model from your OpenCode account.
+              </p>
+            </div>
+          )}
+
           {/* Model Selection */}
           <div>
             <label className="text-sm font-medium">Model</label>
@@ -494,7 +534,13 @@ export default function SettingsPage() {
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PROVIDERS.find((p) => p.id === llmProvider)?.models.map((model) => (
+                    {(() => {
+                      const presets = PROVIDERS.find((p) => p.id === llmProvider)?.models ?? [];
+                      const discovered = llmProvider === 'opencode'
+                        ? openCodeModels.filter(id => !presets.some(model => model.id === id)).map(id => ({ id, name: id }))
+                        : [];
+                      return [...presets, ...discovered];
+                    })().map((model) => (
                       <SelectItem key={model.id} value={model.id}>
                         <div className="flex items-center justify-between gap-2">
                           <span>{model.name}</span>
@@ -513,7 +559,7 @@ export default function SettingsPage() {
                   <Input
                     value={customModel}
                     onChange={(e) => setCustomModel(e.target.value)}
-                    placeholder="e.g. gpt-4.1-nano, claude-opus-4-6"
+                    placeholder="e.g. gpt-5.6-terra, claude-sonnet-5"
                     className="mt-1"
                   />
                   {customModel.trim() && (

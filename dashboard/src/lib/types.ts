@@ -265,7 +265,7 @@ export interface DispatchPrefill {
 // LLM config from /api/config/llm
 export interface LLMConfig {
   dashboardPort: number;
-  provider?: 'openai' | 'anthropic' | 'gemini' | 'ollama' | 'llamacpp';
+  provider?: 'openai' | 'anthropic' | 'gemini' | 'opencode' | 'ollama' | 'llamacpp';
   model?: string;
   apiKey?: string;      // masked by server before returning (first4...last4)
   baseUrl?: string;

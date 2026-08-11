@@ -84,9 +84,9 @@ describe('installHookCommand', () => {
       const sessionEndCmd = hooks.SessionEnd[0].hooks[0];
 
       expect(sessionEndCmd.type).toBe('command');
-      expect(sessionEndCmd.command).toContain('session-end --native -q');
+      expect(sessionEndCmd.command).toContain('session-end --runner claude -q');
       // Must use node + absolute path (not process.argv[1] which is unstable under npx)
-      expect(sessionEndCmd.command).toMatch(/^node .+index\.js session-end --native -q$/);
+      expect(sessionEndCmd.command).toMatch(/^node .+index\.js session-end --runner claude -q$/);
       // 10s timeout — session-end exits immediately after spawning the worker
       expect(sessionEndCmd.timeout).toBe(10000);
     });
@@ -100,6 +100,18 @@ describe('installHookCommand', () => {
       const settings = readSettings();
       expect(settings.theme).toBe('dark');
       expect(settings.someOtherKey).toBe(42);
+    });
+
+    it('installs and updates a selected local runner', async () => {
+      const { installHookCommand } = await import('../install-hook.js');
+      await installHookCommand({ runner: 'opencode', model: 'opencode-go/kimi-k3' });
+      await installHookCommand({ runner: 'codex', model: 'gpt-5.4' });
+
+      const settings = readSettings();
+      const hooks = settings.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>;
+      expect(hooks.SessionEnd).toHaveLength(1);
+      expect(hooks.SessionEnd[0].hooks[0].command)
+        .toContain("session-end --runner codex --model 'gpt-5.4' -q");
     });
 
     it('preserves existing non-code-insights SessionEnd hooks', async () => {

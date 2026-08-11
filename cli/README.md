@@ -113,7 +113,16 @@ code-insights config
 code-insights config llm
 
 # Configure LLM provider with flags (non-interactive)
-code-insights config llm --provider anthropic --model claude-sonnet-4-20250514 --api-key sk-ant-...
+code-insights config llm --provider anthropic --model claude-sonnet-5 --api-key sk-ant-...
+
+# OpenCode Zen or Go through its remote API
+code-insights config llm --provider opencode --model kimi-k3 --api-key oc-... \
+  --base-url https://opencode.ai/zen/go/v1
+
+# Reuse an authenticated local coding-agent subscription
+code-insights insights <session-id> --runner opencode --model opencode-go/kimi-k3
+code-insights insights <session-id> --runner codex
+code-insights install-hook --runner opencode --model opencode-go/kimi-k3
 
 # Show current LLM configuration
 code-insights config llm --show
@@ -121,6 +130,10 @@ code-insights config llm --show
 # Set a config value (e.g., disable telemetry)
 code-insights config set telemetry false
 ```
+
+Available analysis runners are `api`, `claude`, `codex`, and `opencode`. The legacy
+`--native` flag continues to select Claude Code. Local runners execute in an isolated
+temporary directory; Codex uses a read-only sandbox and OpenCode tools are denied.
 
 ### Sync
 
@@ -316,9 +329,10 @@ code-insights config llm
 | Provider | Models | Requires API Key |
 |----------|--------|-----------------|
 | Claude Code (native) | Your Claude subscription model | No (via `install-hook`) |
-| Anthropic | claude-opus-4-6, claude-sonnet-4-6, etc. | Yes |
-| OpenAI | gpt-4o, gpt-4o-mini, etc. | Yes |
-| Google Gemini | gemini-2.0-flash, gemini-2.0-pro, etc. | Yes |
+| Anthropic | claude-fable-5, claude-opus-5, claude-sonnet-5, etc. | Yes |
+| OpenAI | gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, etc. | Yes |
+| Google Gemini | gemini-3.1-pro-preview, gemini-3.6-flash, etc. | Yes |
+| OpenCode Zen / Go | Current catalog discovered from the selected endpoint | Yes |
 | Ollama | llama3.2, qwen2.5-coder, etc. | No (local) |
 
 API keys are stored in `~/.code-insights/config.json` (mode 0o600, readable only by you).

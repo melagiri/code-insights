@@ -105,8 +105,8 @@ configCommand
 const llmCommand = configCommand
   .command('llm')
   .description('Configure LLM provider for AI-powered session analysis')
-  .option('--provider <provider>', 'LLM provider (openai, anthropic, gemini, ollama)')
-  .option('--model <model>', 'Model ID (e.g., gpt-4o, claude-sonnet-4-20250514)')
+  .option('--provider <provider>', 'LLM provider (openai, anthropic, gemini, opencode, ollama, llamacpp)')
+  .option('--model <model>', 'Model ID (e.g., gpt-5.6-terra, claude-sonnet-5)')
   .option('--api-key <key>', 'API key for the selected provider')
   .option('--base-url <url>', 'Custom base URL (for Ollama or local endpoints)')
   .option('--show', 'Show current LLM configuration')
@@ -204,18 +204,27 @@ async function runInteractiveLLMConfig(): Promise<void> {
   }
 
   // Step 2: Select model
-  const { model } = await inquirer.prompt<{ model: string }>([
+  const { model: selectedModel } = await inquirer.prompt<{ model: string }>([
     {
       type: 'list',
       name: 'model',
       message: 'Select model:',
-      choices: providerInfo.models.map(m => ({
+      choices: [...providerInfo.models.map(m => ({
         name: `${m.name}${m.description ? ` — ${m.description}` : ''}`,
         value: m.id,
-      })),
+      })), { name: 'Custom model ID…', value: '__custom__' }],
       default: existing?.model ?? getDefaultModel(provider),
     },
   ]);
+
+  let model = selectedModel;
+  if (selectedModel === '__custom__') {
+    const answer = await inquirer.prompt<{ customModel: string }>([{
+      type: 'input', name: 'customModel', message: 'Model ID:',
+      validate: (value: string) => value.trim() ? true : 'Model ID is required',
+    }]);
+    model = answer.customModel.trim();
+  }
 
   const llmConfig: LLMProviderConfig = { provider, model };
 
@@ -278,6 +287,18 @@ async function runInteractiveLLMConfig(): Promise<void> {
       llmConfig.baseUrl = baseUrl;
     }
     // No API key prompt for llamacpp — llama-server runs locally without authentication
+  }
+
+  if (provider === 'opencode') {
+    const { baseUrl } = await inquirer.prompt<{ baseUrl: string }>([{
+      type: 'list', name: 'baseUrl', message: 'OpenCode service:',
+      choices: [
+        { name: 'OpenCode Zen', value: 'https://opencode.ai/zen/v1' },
+        { name: 'OpenCode Go', value: 'https://opencode.ai/zen/go/v1' },
+      ],
+      default: existing?.baseUrl ?? 'https://opencode.ai/zen/v1',
+    }]);
+    llmConfig.baseUrl = baseUrl;
   }
 
   saveLLMConfig(llmConfig);

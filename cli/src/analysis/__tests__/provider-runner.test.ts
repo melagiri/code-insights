@@ -155,6 +155,29 @@ describe('ProviderRunner.runAnalysis() — Anthropic', () => {
   });
 });
 
+describe('ProviderRunner.runAnalysis() — OpenCode', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('uses the selected Zen or Go OpenAI-compatible endpoint', async () => {
+    mockFetch.mockResolvedValueOnce(makeFetchResponse({
+      choices: [{ message: { content: '{"status":"ok"}' } }],
+      usage: { prompt_tokens: 12, completion_tokens: 4 },
+    }));
+    const runner = new ProviderRunner(makeConfig({
+      provider: 'opencode', model: 'kimi-k3', apiKey: 'oc-test',
+      baseUrl: 'https://opencode.ai/zen/go/v1/',
+    }));
+    const result = await runner.runAnalysis({ systemPrompt: 's', userPrompt: 'u' });
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://opencode.ai/zen/go/v1/chat/completions',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer oc-test' }) }),
+    );
+    expect(result.provider).toBe('opencode');
+    expect(result.model).toBe('kimi-k3');
+    expect(result.inputTokens).toBe(12);
+  });
+});
+
 describe('ProviderRunner.runAnalysis() — Anthropic message shaping', () => {
   beforeEach(() => vi.clearAllMocks());
 

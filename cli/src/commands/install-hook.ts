@@ -40,14 +40,20 @@ function removeStopHooks(settings: ClaudeSettings): boolean {
  * Running install-hook again removes the old Stop hook (v4.8.x hygiene) and
  * installs a fresh session-end hook.
  */
-export async function installHookCommand(): Promise<void> {
+export async function installHookCommand(options: { runner?: string; model?: string } = {}): Promise<void> {
   console.log(chalk.cyan('\nInstall Code Insights Hook\n'));
 
-  const sessionEndCommand = `node ${CLI_ENTRY} session-end --native -q`;
+  const runner = options.runner ?? 'claude';
+  if (!['api', 'claude', 'codex', 'opencode'].includes(runner)) {
+    throw new Error(`Unknown analysis runner '${runner}'. Use one of: api, claude, codex, opencode.`);
+  }
+  const shellQuote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
+  const modelArg = options.model ? ` --model ${shellQuote(options.model)}` : '';
+  const sessionEndCommand = `node ${CLI_ENTRY} session-end --runner ${runner}${modelArg} -q`;
 
   console.log(chalk.gray('This will add one Claude Code SessionEnd hook:\n'));
   console.log(chalk.white('  SessionEnd hook — Syncs and analyzes sessions when they end'));
-  console.log(chalk.gray('                    Uses your Claude subscription. No API key needed.\n'));
+  console.log(chalk.gray(`                    Uses the ${runner} analysis runner.${runner === 'api' ? '' : ' No separate API key needed.'}\n`));
 
   try {
     // Load existing settings
@@ -76,7 +82,14 @@ export async function installHookCommand(): Promise<void> {
       settings.hooks.SessionEnd = [];
     }
 
-    if (!hookAlreadyInstalled(settings.hooks.SessionEnd)) {
+    const existingHook = settings.hooks.SessionEnd.find((entry) => hookAlreadyInstalled([entry]));
+    if (existingHook) {
+      existingHook.hooks = existingHook.hooks.map((hook) =>
+        getHookCommand(hook).includes('code-insights')
+          ? { type: typeof hook === 'string' ? 'command' : hook.type, command: sessionEndCommand, timeout: 10000 }
+          : hook
+      );
+    } else {
       const newHook: HookConfig = {
         // timeout: 10s is enough — session-end exits immediately after spawn
         hooks: [{ type: 'command', command: sessionEndCommand, timeout: 10000 }],

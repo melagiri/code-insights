@@ -6,17 +6,18 @@
  * until the queue is empty.
  *
  * Worker spawned with CODE_INSIGHTS_HOOK_ACTIVE=1 in env so that
- * ClaudeNativeRunner does not re-trigger this hook recursively.
+ * local agent runners do not re-trigger this hook recursively.
  */
 
 import chalk from 'chalk';
 import { claimNext, markCompleted, markFailed, resetStale } from '../db/queue.js';
 import { runInsightsCommand } from '../commands/insights.js';
-import { ClaudeNativeRunner } from './native-runner.js';
+import type { AnalysisRunner } from './runner-types.js';
+import { createAnalysisRunner, normalizeRunner } from './runner-factory.js';
 
 export interface ProcessQueueOptions {
   quiet?: boolean;
-  /** Runner type to use — 'native' uses claude -p, anything else uses configured provider */
+  /** Optional model override used by local agent runners. */
   runnerType?: string;
   model?: string;
 }
@@ -37,15 +38,8 @@ export async function processQueue(options: ProcessQueueOptions = {}): Promise<n
 
   let successCount = 0;
 
-  // Build a native runner once and reuse across items (avoids repeated validate() calls)
-  let runner: ClaudeNativeRunner | undefined;
-  try {
-    ClaudeNativeRunner.validate();
-    runner = new ClaudeNativeRunner({ model: options.model });
-  } catch {
-    // claude CLI not available — fall back to provider runner (runInsightsCommand handles this)
-    runner = undefined;
-  }
+  // Build each requested runner once and reuse it across queue items.
+  const runners = new Map<string, AnalysisRunner>();
 
   while (true) {
     const item = claimNext();
@@ -54,11 +48,18 @@ export async function processQueue(options: ProcessQueueOptions = {}): Promise<n
     log(chalk.dim(`[Code Insights] Analyzing session ${item.session_id} (attempt ${item.attempt_count + 1}/${item.max_attempts})...`));
 
     try {
+      const runnerName = normalizeRunner(item.runner_type, item.runner_type === 'native');
+      let runner = runners.get(runnerName);
+      if (!runner) {
+        runner = createAnalysisRunner(runnerName, options.model);
+        runners.set(runnerName, runner);
+      }
       await runInsightsCommand({
         sessionId: item.session_id,
-        native: item.runner_type === 'native',
+        native: runnerName === 'claude',
+        runner: runnerName,
         quiet,
-        _runner: item.runner_type === 'native' ? runner : undefined,
+        _runner: runner,
       });
       markCompleted(item.session_id);
       successCount++;

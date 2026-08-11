@@ -4,10 +4,11 @@ import type { ClaudeInsightConfig, LLMProviderConfig } from '@code-insights/cli/
 import { loadLLMConfig, testLLMConfig } from '../llm/client.js';
 import { discoverOllamaModels } from '../llm/providers/ollama.js';
 import { discoverLlamaCppModels } from '../llm/providers/llamacpp.js';
+import { discoverOpenCodeModels } from '../llm/providers/opencode.js';
 
 const app = new Hono();
 
-const VALID_PROVIDERS = ['openai', 'anthropic', 'gemini', 'ollama', 'llamacpp'] as const;
+const VALID_PROVIDERS = ['openai', 'anthropic', 'gemini', 'opencode', 'ollama', 'llamacpp'] as const;
 
 function maskApiKey(key: string | undefined): string | undefined {
   if (!key || key.length < 8) return key ? '***' : undefined;
@@ -131,6 +132,12 @@ app.post('/llm/test', async (c) => {
 app.get('/llm/ollama-models', async (c) => {
   const baseUrl = c.req.query('baseUrl');
   const models = await discoverOllamaModels(baseUrl);
+  return c.json({ models });
+});
+
+app.get('/llm/opencode-models', async (c) => {
+  const baseUrl = c.req.query('baseUrl');
+  const models = await discoverOpenCodeModels(baseUrl);
   return c.json({ models });
 });
 

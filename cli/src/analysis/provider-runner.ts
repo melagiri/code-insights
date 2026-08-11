@@ -46,7 +46,7 @@ function makeOpenAIChat(apiKey: string, model: string): LLMChatFn {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 8192 }),
+      body: JSON.stringify({ model, messages, temperature: 0.7, max_completion_tokens: 8192 }),
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({})) as { error?: { message?: string } };
@@ -61,6 +61,51 @@ function makeOpenAIChat(apiKey: string, model: string): LLMChatFn {
       usage: data.usage
         ? { inputTokens: data.usage.prompt_tokens, outputTokens: data.usage.completion_tokens }
         : undefined,
+    };
+  };
+}
+
+function makeOpenCodeChat(apiKey: string, model: string, baseUrl?: string): LLMChatFn {
+  const url = (baseUrl || 'https://opencode.ai/zen/v1').replace(/\/$/, '');
+  return async (messages) => {
+    const systemMsg = messages.find(m => m.role === 'system');
+    const chatMsgs = messages.filter(m => m.role !== 'system');
+    const isResponses = model.startsWith('gpt-');
+    const isAnthropic = model.startsWith('claude-') || model.startsWith('minimax-') || model.startsWith('qwen');
+    const endpoint = isResponses ? `${url}/responses` : isAnthropic ? `${url}/messages` : `${url}/chat/completions`;
+    const body = isResponses
+      ? { model, input: messages, max_output_tokens: 8192 }
+      : isAnthropic
+        ? { model, system: systemMsg?.content, messages: chatMsgs, max_tokens: 8192 }
+        : { model, messages, temperature: 0.7, max_tokens: 8192 };
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`,
+        ...(isAnthropic ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({})) as { error?: { message?: string } };
+      throw new Error(err.error?.message || `OpenCode API error (HTTP ${response.status})`);
+    }
+    const data = await response.json() as {
+      choices: Array<{ message: { content: string } }>;
+      content?: Array<{ text?: string }>;
+      output_text?: string;
+      output?: Array<{ content?: Array<{ text?: string }> }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; input_tokens?: number; output_tokens?: number };
+    };
+    const content = isResponses
+      ? data.output_text ?? data.output?.flatMap(o => o.content ?? []).map(c => c.text ?? '').join('') ?? ''
+      : isAnthropic ? data.content?.map(c => c.text ?? '').join('') ?? '' : data.choices[0]?.message?.content || '';
+    return {
+      content,
+      usage: data.usage ? {
+        inputTokens: data.usage.prompt_tokens ?? data.usage.input_tokens ?? 0,
+        outputTokens: data.usage.completion_tokens ?? data.usage.output_tokens ?? 0,
+      } : undefined,
     };
   };
 }
@@ -238,6 +283,7 @@ function makeChatFn(config: LLMProviderConfig): LLMChatFn {
     case 'openai':    return makeOpenAIChat(config.apiKey ?? '', config.model);
     case 'anthropic': return makeAnthropicChat(config.apiKey ?? '', config.model);
     case 'gemini':    return makeGeminiChat(config.apiKey ?? '', config.model);
+    case 'opencode':  return makeOpenCodeChat(config.apiKey ?? '', config.model, config.baseUrl);
     case 'ollama':    return makeOllamaChat(config.model, config.baseUrl);
     case 'llamacpp':  return makeLlamaCppChat(config.model, config.baseUrl);
     default:          throw new Error(`Unknown LLM provider: ${(config as LLMProviderConfig).provider}`);

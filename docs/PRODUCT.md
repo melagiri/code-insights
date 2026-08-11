@@ -22,8 +22,8 @@ Code Insights provides:
 2. **Smart session titles** — Auto-generates meaningful titles from session content
 3. **Session classification** — Categorizes sessions (deep focus, bug hunt, feature build, etc.)
 4. **LLM-powered analysis** — Two analysis paths:
-   - **Native (zero-config):** Claude Code users get automatic analysis via `SessionEnd` hook using their existing Claude subscription. No API key needed. Install with `code-insights install-hook`.
-   - **On-demand:** Configure any LLM provider (OpenAI, Anthropic, Gemini, Ollama, llama.cpp) for manual analysis from the dashboard or CLI. Ollama and llama.cpp run fully local — no API key needed.
+   - **Local agent:** Reuse an authenticated Claude Code, Codex, or OpenCode installation via `--runner`, including automatic `SessionEnd` analysis. No separate API key is required.
+   - **On-demand:** Configure an LLM provider (OpenAI, Anthropic, Gemini, OpenCode Zen/Go, Ollama, llama.cpp) for manual analysis from the dashboard or CLI. Ollama and llama.cpp run fully local — no API key needed.
 5. **Visual dashboard** — Local web interface with charts, timelines, and filters at `http://localhost:7890`
 6. **CLI analytics** — Terminal stats via `code-insights stats` and subcommands
 
@@ -270,7 +270,7 @@ code-insights config                       # Show current configuration
 code-insights config set <key> <value>     # Set config value (e.g., telemetry)
 code-insights config llm                   # Configure LLM provider interactively
 code-insights config llm --provider openai # Set provider directly
-code-insights config llm --model gpt-4o   # Set model
+code-insights config llm --model gpt-5.6-terra   # Set model
 code-insights config llm --api-key <key>  # Set API key
 code-insights config llm --base-url <url> # Set custom base URL (Ollama, proxies)
 code-insights config llm --show           # Show current LLM configuration

@@ -195,6 +195,13 @@ export function fetchLlamaCppModels(baseUrl?: string) {
   );
 }
 
+export function fetchOpenCodeModels(baseUrl?: string) {
+  const qs = baseUrl ? `?baseUrl=${encodeURIComponent(baseUrl)}` : '';
+  return request<{ models: Array<{ id: string; object: string }> }>(
+    `/config/llm/opencode-models${qs}`
+  );
+}
+
 export function analyzePromptQuality(sessionId: string) {
   return request<AnalysisApiResult>('/analysis/prompt-quality', {
     method: 'POST',
@@ -555,4 +562,3 @@ export interface AnalysisQueueStatus {
 export function fetchAnalysisQueue() {
   return request<AnalysisQueueStatus>('/analysis/queue');
 }
-

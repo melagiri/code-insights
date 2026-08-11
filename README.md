@@ -133,7 +133,15 @@ code-insights reflect                  # cross-session pattern synthesis
 code-insights reflect --week 2026-W11  # reflect on a specific week
 code-insights config llm               # configure LLM provider
 code-insights install-hook             # auto-sync + auto-analyze when sessions end
+code-insights install-hook --runner opencode --model opencode-go/kimi-k3
+code-insights insights <id> --runner codex  # analyze with an existing Codex login
 ```
+
+Analysis can use either a configured API provider or a locally authenticated coding
+agent. Supported local runners are Claude Code, Codex, and OpenCode; `--native`
+remains a backwards-compatible alias for `--runner claude`. OpenCode Zen and Go can
+also be configured as a remote provider with a model, API key, and the matching base
+URL (`https://opencode.ai/zen/v1` or `https://opencode.ai/zen/go/v1`).
 
 See [`cli/README.md`](cli/README.md) for the full CLI reference.
 

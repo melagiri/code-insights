@@ -22,7 +22,7 @@ export function createOpenAIClient(apiKey: string, model: string): LLMClient {
           // OpenAI gets automatic prefix caching for free when prefixes match — no extra config needed.
           messages: messages.map(m => ({ role: m.role, content: flattenContent(m.content) })),
           temperature: options?.temperature ?? 0.7,
-          max_tokens: 8192,
+          max_completion_tokens: 8192,
         }),
       });
 

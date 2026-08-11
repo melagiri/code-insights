@@ -11,9 +11,9 @@ export const PROVIDERS: ProviderInfo[] = [
     requiresApiKey: true,
     apiKeyLink: 'https://platform.openai.com/api-keys',
     models: [
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable', inputCostPer1M: 2.5, outputCostPer1M: 10 },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast & cheap', inputCostPer1M: 0.15, outputCostPer1M: 0.6 },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: '128k context', inputCostPer1M: 10, outputCostPer1M: 30 },
+      { id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol', description: 'Frontier capability', inputCostPer1M: 5, outputCostPer1M: 30 },
+      { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', description: 'Balanced intelligence and cost', inputCostPer1M: 2.5, outputCostPer1M: 15 },
+      { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', description: 'Cost-sensitive workloads', inputCostPer1M: 1, outputCostPer1M: 6 },
     ],
   },
   {
@@ -22,9 +22,10 @@ export const PROVIDERS: ProviderInfo[] = [
     requiresApiKey: true,
     apiKeyLink: 'https://console.anthropic.com/settings/keys',
     models: [
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Best balance', inputCostPer1M: 3, outputCostPer1M: 15 },
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fast & cheap', inputCostPer1M: 0.80, outputCostPer1M: 4 },
-      { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', description: 'Most capable', inputCostPer1M: 15, outputCostPer1M: 75 },
+      { id: 'claude-fable-5', name: 'Claude Fable 5', description: 'Highest capability', inputCostPer1M: 10, outputCostPer1M: 50 },
+      { id: 'claude-opus-5', name: 'Claude Opus 5', description: 'Complex agentic coding', inputCostPer1M: 5, outputCostPer1M: 25 },
+      { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', description: 'Best speed and intelligence balance', inputCostPer1M: 3, outputCostPer1M: 15 },
+      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', description: 'Fastest', inputCostPer1M: 1, outputCostPer1M: 5 },
     ],
   },
   {
@@ -33,10 +34,21 @@ export const PROVIDERS: ProviderInfo[] = [
     requiresApiKey: true,
     apiKeyLink: 'https://aistudio.google.com/apikey',
     models: [
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fast & capable', inputCostPer1M: 0.1, outputCostPer1M: 0.4 },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: '2M context', inputCostPer1M: 1.25, outputCostPer1M: 5 },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast', inputCostPer1M: 0.075, outputCostPer1M: 0.3 },
-      { id: 'gemma-3-27b-it', name: 'Gemma 4 27B IT', description: 'Local via Gemini API', inputCostPer1M: 0, outputCostPer1M: 0 },
+      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview', description: 'Most capable' },
+      { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', description: 'Agentic and coding workflows' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite', description: 'Fast and efficient' },
+    ],
+  },
+  {
+    id: 'opencode',
+    name: 'OpenCode Zen / Go',
+    requiresApiKey: true,
+    apiKeyLink: 'https://opencode.ai/auth',
+    models: [
+      { id: 'big-pickle', name: 'Big Pickle', description: 'Zen free model' },
+      { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', description: 'OpenCode Zen' },
+      { id: 'kimi-k3', name: 'Kimi K3', description: 'OpenCode Go' },
+      { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', description: 'Zen or Go' },
     ],
   },
   {

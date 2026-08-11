@@ -13,8 +13,8 @@
 
 import chalk from 'chalk';
 import { getDb } from '../db/client.js';
-import { ClaudeNativeRunner } from '../analysis/native-runner.js';
 import { ProviderRunner } from '../analysis/provider-runner.js';
+import { createAnalysisRunner, normalizeRunner, type RunnerName } from '../analysis/runner-factory.js';
 import {
   SHARED_ANALYST_SYSTEM_PROMPT,
   buildSessionAnalysisInstructions,
@@ -90,6 +90,7 @@ function isAlreadyAnalyzed(sessionId: string, currentMessageCount: number): bool
 export interface InsightsCommandOptions {
   sessionId: string;
   native: boolean;
+  runner?: RunnerName | string;
   force?: boolean;
   quiet?: boolean;
   source?: string;
@@ -112,11 +113,8 @@ export async function runInsightsCommand(options: InsightsCommandOptions): Promi
   let runner: AnalysisRunner;
   if (options._runner) {
     runner = options._runner;
-  } else if (options.native) {
-    ClaudeNativeRunner.validate();
-    runner = new ClaudeNativeRunner({ model: options.model });
   } else {
-    runner = ProviderRunner.fromConfig();
+    runner = createAnalysisRunner(normalizeRunner(options.runner, options.native), options.model);
   }
 
   // 2. Load session from DB
@@ -264,6 +262,7 @@ export async function insightsCommand(
   sessionId: string | undefined,
   opts: {
     native?: boolean;
+    runner?: string;
     hook?: boolean;
     source?: string;
     force?: boolean;
@@ -289,6 +288,7 @@ export async function insightsCommand(
     await runInsightsCommand({
       sessionId,
       native: opts.native ?? false,
+      runner: opts.runner,
       force: opts.force ?? false,
       quiet,
       source: opts.source,
@@ -403,4 +403,3 @@ export async function insightsCheckCommand(opts: {
     process.exit(1);
   }
 }
-

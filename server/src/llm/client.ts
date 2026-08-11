@@ -10,6 +10,7 @@ import { createAnthropicClient } from './providers/anthropic.js';
 import { createGeminiClient } from './providers/gemini.js';
 import { createOllamaClient } from './providers/ollama.js';
 import { createLlamaCppClient } from './providers/llamacpp.js';
+import { createOpenCodeClient } from './providers/opencode.js';
 
 /**
  * Load LLM config from the CLI config file.
@@ -53,6 +54,8 @@ export function createClientFromConfig(config: LLMProviderConfig): LLMClient {
       return createAnthropicClient(config.apiKey ?? '', config.model);
     case 'gemini':
       return createGeminiClient(config.apiKey ?? '', config.model);
+    case 'opencode':
+      return createOpenCodeClient(config.apiKey ?? '', config.model, config.baseUrl);
     case 'ollama':
       return createOllamaClient(config.model, config.baseUrl);
     case 'llamacpp':

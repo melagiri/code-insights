@@ -32,6 +32,7 @@ const WORKER_LOG_PATH = join(getConfigDir(), 'hook-analysis.log');
 
 export interface SessionEndOptions {
   native?: boolean;
+  runner?: string;
   quiet?: boolean;
   source?: string;
   model?: string;
@@ -83,7 +84,8 @@ export async function sessionEndCommand(options: SessionEndOptions = {}): Promis
   }
 
   // Phase 2: Enqueue for async analysis
-  enqueue(sessionId, native ? 'native' : 'provider');
+  const runner = options.runner ?? (native ? 'claude' : 'api');
+  enqueue(sessionId, runner);
 
   // Phase 3: Spawn detached worker to process the queue
   spawnWorker(quiet, options.model);
