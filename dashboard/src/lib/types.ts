@@ -125,6 +125,60 @@ export interface DailyStats {
   estimated_cost_usd?: number;
 }
 
+// Per-day activity series from /api/analytics/activity.
+// All-time, gap-filled (zero-filled) calendar days. Powers the Activity chart's
+// metric selector and composite score. Metric defs match the CLI dashboard:
+//   tokens = input + output + cache_creation + cache_read
+//   cost   = SUM(estimated_cost_usd)
+export interface ActivityDay {
+  date: string;          // YYYY-MM-DD (local calendar day, from started_at)
+  sessions: number;
+  projects: number;      // distinct projects touched that day
+  messages: number;
+  tool_calls: number;
+  tokens: number;
+  cost: number;
+  // Cognitive load: integral of (concurrent warm sessions × concurrent warm
+  // projects²) over the day's active minutes. A human turn keeps a session "warm"
+  // for ~15 min; cross-project concurrency compounds steeply (S×P²). Idle sessions
+  // cool off and add nothing — captures context-switching cost, not raw volume.
+  cognitive_load: number;
+  peak_sessions: number;  // max concurrent warm sessions in any single minute
+  peak_projects: number;  // max concurrent warm projects in any single minute
+}
+
+// Per-ISO-week lifecycle series from /api/analytics/projects-lifecycle.
+// All-time, gap-filled (zero-filled) weeks from the first session ever to the
+// current week. A "logical project" collapses duplicate `projects` rows for
+// the same folder (path-hash vs git-remote id sources, git worktrees) and
+// excludes any project with fewer than 2 sessions. A project is "dropped"
+// once 60 days pass with no session; "reactivated" once it comes back after
+// having dropped at least once before.
+export interface ProjectLifecycleWeek {
+  week: string;          // YYYY-MM-DD (ISO week start, Monday)
+  active: number;         // cumulative projects currently active, never dropped
+  reactivated: number;    // cumulative projects currently active, dropped before
+  dropped: number;        // cumulative projects currently dropped (60+ days idle)
+  started: number;        // projects that started or reactivated this week
+  newly_dropped: number;  // projects that crossed into dropped this week
+}
+
+export type ProjectLifecycleStatus = 'active' | 'reactivated' | 'dropped';
+
+export interface ProjectLifecycleSummary {
+  name: string;
+  path: string;           // representative path (from the most-active grouped row)
+  first_seen: string;     // YYYY-MM-DD
+  last_seen: string;      // YYYY-MM-DD
+  session_count: number;  // summed across all grouped raw project rows
+  status: ProjectLifecycleStatus;
+}
+
+export interface ProjectsLifecycleResponse {
+  weeks: ProjectLifecycleWeek[];
+  projects: ProjectLifecycleSummary[];
+}
+
 /**
  * Safely parse a JSON-encoded string field from the SQLite API response.
  * Returns defaultValue if the field is null, empty, or invalid JSON.

@@ -61,6 +61,18 @@ export function formatIsoWeek(monday: Date): string {
   return `${year}-W${String(weekNum).padStart(2, '0')}`;
 }
 
+/**
+ * Returns the Monday 00:00 UTC that starts the ISO week containing `date`.
+ * Used to bucket arbitrary timestamps into ISO week keys for gap-filled series.
+ */
+export function mondayOfIsoWeek(date: Date): Date {
+  const day = date.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  monday.setUTCDate(monday.getUTCDate() - daysToMonday);
+  return monday;
+}
+
 export function buildPeriodFilter(period: string): string | null {
   const now = new Date();
   if (period === '7d') return new Date(now.getTime() - 7 * 86400000).toISOString();

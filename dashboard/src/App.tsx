@@ -8,6 +8,7 @@ import SessionsPage from '@/pages/SessionsPage';
 import SessionDetailPage from '@/pages/SessionDetailPage';
 import InsightsPage from '@/pages/InsightsPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
+import ProjectsPage from '@/pages/ProjectsPage';
 import SettingsPage from '@/pages/SettingsPage';
 import ExportPage from '@/pages/ExportPage';
 import JournalPage from '@/pages/JournalPage';
@@ -18,6 +19,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/sessions': 'Sessions',
   '/insights': 'Insights',
   '/analytics': 'Analytics',
+  '/projects': 'Projects',
   '/patterns': 'Patterns',
   '/export': 'Export',
   '/journal': 'Journal',
@@ -72,6 +74,7 @@ export default function App() {
           <Route path="/sessions/:id" element={<SessionDetailPage />} />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/patterns" element={<PatternsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/export" element={<ExportPage />} />
