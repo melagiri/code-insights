@@ -8,6 +8,7 @@ import { formatAgentRules } from '../export/agent-rules.js';
 import type { SessionRow, InsightRow } from '../export/knowledge-base.js';
 import { createLLMClient, loadLLMConfig } from '../llm/client.js';
 import { requireLLM } from './route-helpers.js';
+import type { LLMResponse } from '../llm/types.js';
 import {
   applyDepthCap,
   buildInsightContext,
@@ -24,6 +25,15 @@ const app = new Hono();
 // SQLite SQLITE_LIMIT_VARIABLE_NUMBER is 999 by default.
 // Batch insights queries to avoid hitting this limit for large session sets.
 const INSIGHTS_BATCH_SIZE = 500;
+
+function validateExportResponse(response: LLMResponse): void {
+  if (typeof response.content !== 'string' || !response.content.trim()) {
+    throw new Error('The model returned an empty export. Try a smaller depth or check your provider configuration.');
+  }
+  if (response.stopReason === 'max_tokens') {
+    throw new Error('The export reached the model output token limit. Select a smaller depth and generate again.');
+  }
+}
 
 function fetchInsightsForSessions(db: ReturnType<typeof getDb>, sessionIds: string[]): InsightRow[] {
   if (sessionIds.length === 0) return [];
@@ -222,6 +232,9 @@ app.post('/generate', requireLLM(), async (c) => {
   try {
     const rawInsights = fetchScopedInsights(db, scope, projectId);
     const { capped, totalInsights } = applyDepthCap(rawInsights, depth);
+    if (capped.length === 0) {
+      throw new Error('No insights found for the selected scope. Run analysis on some sessions first.');
+    }
     const sessionCtx = fetchSessionContext(db, scope, projectId);
 
     const ctx = {
@@ -244,6 +257,7 @@ app.post('/generate', requireLLM(), async (c) => {
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ], { signal: c.req.raw.signal });
+    validateExportResponse(response);
 
     const metadata: ExportGenerateMetadata = {
       insightCount: capped.length,
@@ -367,6 +381,7 @@ app.get('/generate/stream', requireLLM(), async (c) => {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ], { signal: abortSignal });
+      validateExportResponse(response);
 
       const metadata: ExportGenerateMetadata = {
         insightCount: capped.length,

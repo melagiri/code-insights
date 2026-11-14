@@ -110,6 +110,14 @@ export function useExportGenerate() {
               content: string;
               metadata: ExportGenerateMetadata;
             };
+            if (typeof result.content !== 'string' || !result.content.trim()) {
+              setState({
+                ...IDLE_STATE,
+                status: 'error',
+                error: 'The model returned an empty export. Try a smaller depth or check your provider configuration.',
+              });
+              continue;
+            }
             setState({
               status: 'complete',
               insightCount: result.metadata.insightCount,

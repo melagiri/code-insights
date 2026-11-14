@@ -53,7 +53,8 @@ export function createAnthropicClient(apiKey: string, model: string): LLMClient 
       }
 
       const data = await response.json() as {
-        content: Array<{ text: string }>;
+        content: Array<{ type: string; text?: string }>;
+        stop_reason?: string;
         usage?: {
           input_tokens: number;
           output_tokens: number;
@@ -62,8 +63,16 @@ export function createAnthropicClient(apiKey: string, model: string): LLMClient 
         };
       };
 
+      const content = data.content
+        .filter(block => block.type === 'text' && typeof block.text === 'string')
+        .map(block => block.text)
+        .join('\n');
+      if (!content.trim()) {
+        throw new Error(`Anthropic returned an empty text response (stop reason: ${data.stop_reason ?? 'unknown'}). Try a smaller export depth or check the provider configuration.`);
+      }
       return {
-        content: data.content[0]?.text || '',
+        content,
+        stopReason: data.stop_reason,
         usage: data.usage ? {
           inputTokens: data.usage.input_tokens,
           outputTokens: data.usage.output_tokens,

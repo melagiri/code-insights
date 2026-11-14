@@ -32,6 +32,8 @@ export interface LLMMessage {
 
 export interface LLMResponse {
   content: string;
+  /** Provider termination reason, used to detect incomplete exports. */
+  stopReason?: string;
   usage?: {
     inputTokens: number;
     outputTokens: number;

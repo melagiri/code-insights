@@ -109,7 +109,7 @@ export default function ExportPage() {
   };
 
   const handleDownload = () => {
-    if (!exportState.content) return;
+    if (!exportState.content?.trim()) return;
     const blob = new Blob([exportState.content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -123,7 +123,7 @@ export default function ExportPage() {
   };
 
   const handleCopy = async () => {
-    if (!exportState.content) return;
+    if (!exportState.content?.trim()) return;
     try {
       await navigator.clipboard.writeText(exportState.content);
       setCopied(true);
@@ -441,7 +441,7 @@ export default function ExportPage() {
       )}
 
       {/* ── Step 4: Review & Export ── */}
-      {step === 4 && exportState.content !== null && (
+      {step === 4 && !!exportState.content?.trim() && (
         <div className="space-y-4">
           <Card>
             <CardHeader>
