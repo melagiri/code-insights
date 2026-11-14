@@ -281,6 +281,19 @@ describe('Export routes', () => {
   });
 
   describe('POST /api/export/generate', () => {
+    it.each(['', ' \n\t'])('rejects blank model output %j', async content => {
+      seedProjectAndSession('proj-1', 'sess-1');
+      seedInsight('sess-1', 'proj-1', 'learning', 'Tip', 'Useful evidence.');
+      mockIsLLMConfigured.mockReturnValue(true);
+      mockChat.mockResolvedValue({ content });
+      const res = await createApp().request('/api/export/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'all', format: 'obsidian' }),
+      });
+      expect(res.status).toBe(422);
+      expect((await res.json()).error).toMatch(/empty|blank/i);
+    });
+
     it('returns 400 when LLM not configured', async () => {
       mockIsLLMConfigured.mockReturnValue(false);
 
@@ -411,8 +424,7 @@ describe('Export routes', () => {
       expect(mockCaptureError).not.toHaveBeenCalled();
     });
 
-    it('returns 200 even when no insights are found (empty prompt case)', async () => {
-      // No insights seeded — LLM still gets called with empty context
+    it('rejects an empty scope before calling the model', async () => {
       mockIsLLMConfigured.mockReturnValue(true);
       mockChat.mockResolvedValue({ content: '' });
 
@@ -422,13 +434,36 @@ describe('Export routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scope: 'all', format: 'knowledge-brief' }),
       });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(422);
       const body = await res.json();
-      expect(body.content).toBe('');
+      expect(body.error).toContain('No insights found');
+      expect(mockChat).not.toHaveBeenCalled();
     });
   });
 
   describe('GET /api/export/generate/stream', () => {
+    it.each(['', ' \n\t'])('emits an error instead of completing a blank export %j', async content => {
+      seedProjectAndSession('proj-1', 'sess-1');
+      seedInsight('sess-1', 'proj-1', 'learning', 'Tip', 'Useful evidence.');
+      mockIsLLMConfigured.mockReturnValue(true);
+      mockChat.mockResolvedValue({ content });
+      const res = await createApp().request('/api/export/generate/stream?scope=all&format=obsidian');
+      const events = parseSSEEvents(await res.text());
+      expect(events.find(e => e.event === 'complete')).toBeUndefined();
+      expect(events.find(e => e.event === 'error')?.data).toMatch(/empty|blank/i);
+    });
+
+    it('rejects truncated export content', async () => {
+      seedProjectAndSession('proj-1', 'sess-1');
+      seedInsight('sess-1', 'proj-1', 'learning', 'Tip', 'Useful evidence.');
+      mockIsLLMConfigured.mockReturnValue(true);
+      mockChat.mockResolvedValue({ content: '# Partial', stopReason: 'max_tokens' });
+      const res = await createApp().request('/api/export/generate/stream?scope=all&format=obsidian');
+      const events = parseSSEEvents(await res.text());
+      expect(events.find(e => e.event === 'complete')).toBeUndefined();
+      expect(events.find(e => e.event === 'error')?.data).toContain('token limit');
+    });
+
     it('returns 400 when LLM not configured', async () => {
       mockIsLLMConfigured.mockReturnValue(false);
 
