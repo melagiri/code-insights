@@ -1,0 +1,35 @@
+{
+  "regression_commit": "f928f83",
+  "implementation_commit": "5054d95",
+  "checks": {
+    "server_tests": 593,
+    "cli_tests": 579,
+    "dashboard_tests": 18,
+    "production_build": "passed",
+    "cli_server_typescript": "passed through production build",
+    "standalone_dashboard_typescript": "six errors reproduced unchanged at baseline 4177d3c"
+  },
+  "live_acceptance": {
+    "provider": "Anthropic",
+    "format": "Obsidian",
+    "depth": "Essential",
+    "insights_selected": 25,
+    "rendered_characters": 9771,
+    "saved_copy_bytes": 9787,
+    "saved_copy_readback": "passed",
+    "browser_download_click": "success toast observed",
+    "browser_managed_download_file": "unverified",
+    "copy_button": "unverified",
+    "original_comprehensive_depth": "not rerun"
+  },
+  "independent_reviews": {
+    "architecture": "no actionable P0-P2 findings",
+    "frontend_and_routes": "no actionable P0-P2 findings",
+    "llm_contract": "no actionable P0-P2 findings"
+  },
+  "limits": [
+    "Token-limit termination detection is Anthropic-only.",
+    "Original blank export provider response was unavailable; its precise trigger remains unknown.",
+    "User session data and screenshots are private and excluded from this repository."
+  ]
+}
